@@ -662,6 +662,9 @@ fun AppShell(
                 logoUrl = playing.logoUrl,
                 startPositionMs = playing.positionMs,
                 onProgress = { position, duration, season, episode ->
+                    if (season == null && episode == null && (playing.season == null && playing.episode == null)) {
+                        container.watched.remove(playing.id)
+                    }
                     val next = playing.copy(
                         positionMs = position,
                         durationMs = duration,

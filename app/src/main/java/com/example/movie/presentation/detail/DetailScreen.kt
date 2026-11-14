@@ -1078,6 +1078,11 @@ private fun DetailContent(
                 val id = watchId
                 if (id != null) {
                     watchRequested = false
+                    val serial = detail.franchise?.series == true ||
+                        detail.franchise?.seasons.orEmpty().isNotEmpty() ||
+                        detail.type == "serial" ||
+                        detail.type == "multserial"
+                    if (!serial) watched.remove(detail.id)
                     watching = WatchRequest(id)
                 } else if (franchiseReady) {
                     watchRequested = false
@@ -1153,6 +1158,7 @@ private fun DetailContent(
                     if (seasonList.isNotEmpty()) {
                         episodesOpen = true
                     } else {
+                        if (!series) watched.remove(detail.id)
                         val id = watchId
                         if (id != null) watching = WatchRequest(id) else onResolveWatch()
                     }
@@ -1532,6 +1538,7 @@ private fun DetailContent(
                 logoUrl = detail.logoUrl,
                 startPositionMs = if (!pinned || sameSaved) saved?.positionMs ?: 0L else 0L,
                 onProgress = { position, duration, playedSeason, playedEpisode ->
+                    if (request.season == null && request.episode == null) watched.remove(detail.id)
                     val item = detail.toResume(request.franchiseId, position, duration, playedSeason, playedEpisode)
                     val seasons = detail.franchise?.seasons.orEmpty()
                     val finished = resumeStore.record(item, settings.watchedPercent, settings.progressStartMs) { stored ->

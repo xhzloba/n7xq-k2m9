@@ -66,6 +66,7 @@ import com.example.movie.domain.model.episodeMarks
 import com.example.movie.domain.model.isUnreleased
 import com.example.movie.domain.model.toSaved
 import com.example.movie.presentation.common.HandleSheet
+import com.example.movie.presentation.detail.SeasonPoster
 import com.example.movie.presentation.common.LocalShelfNotices
 import com.example.movie.presentation.common.NoticeShelfWatched
 import com.example.movie.presentation.haptic.rememberHapticTick
@@ -206,6 +207,8 @@ internal fun SeasonWatchSheet(
                             }
                             SeasonBlock(
                                 title = stringResource(R.string.franchise_season, season.number),
+                                posterUrl = season.posterUrl,
+                                fallbackPoster = movie.posterUrl,
                                 progress = if (keys.isEmpty()) {
                                     null
                                 } else {
@@ -353,6 +356,8 @@ private fun SeasonPickRow(
 @Composable
 private fun SeasonBlock(
     title: String,
+    posterUrl: String?,
+    fallbackPoster: String?,
     progress: String?,
     mark: Mark,
     enabled: Boolean,
@@ -396,6 +401,7 @@ private fun SeasonBlock(
                     .padding(end = 8.dp, top = 10.dp, bottom = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                SeasonPoster(posterUrl, fallbackPoster)
                 Text(
                     text = title,
                     modifier = Modifier.weight(1f),

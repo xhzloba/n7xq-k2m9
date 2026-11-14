@@ -74,7 +74,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -768,9 +771,23 @@ internal fun EpisodeSheet(
                                     fontWeight = FontWeight.SemiBold,
                                 )
                                 if (season.episodes.isNotEmpty()) {
+                                    val seen = season.episodes.count { episode ->
+                                        marks.mark(season.number, episode.number)?.completed == true
+                                    }
+                                    val muted = Color(0xFF8E8E93)
+                                    val plain = stringResource(R.string.franchise_episodes, season.episodes.size)
                                     Text(
-                                        text = stringResource(R.string.franchise_episodes, season.episodes.size),
-                                        color = Color(0xFF8E8E93),
+                                        text = if (seen == 0) {
+                                            buildAnnotatedString { append(plain) }
+                                        } else {
+                                            buildAnnotatedString {
+                                                withStyle(SpanStyle(color = PlayBlue)) { append("$seen") }
+                                                withStyle(SpanStyle(color = muted)) {
+                                                    append(" из ${season.episodes.size}")
+                                                }
+                                            }
+                                        },
+                                        color = muted,
                                         fontSize = 13.sp,
                                     )
                                 }
