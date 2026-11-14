@@ -30,9 +30,15 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -75,6 +81,9 @@ import com.example.movie.presentation.common.BookmarkFilled
 import com.example.movie.presentation.common.PlexPlay
 import com.example.movie.presentation.common.THEME_GRAPHITE
 import com.example.movie.presentation.haptic.rememberHapticTick
+import com.example.movie.presentation.home.components.BrandLogoBleed
+import com.example.movie.presentation.home.components.BrandTopInset
+import com.example.movie.presentation.home.components.HomeContentInset
 import com.example.movie.presentation.home.components.PosterGridInset
 import com.example.movie.presentation.settings.LocalUserSettings
 import com.example.movie.presentation.shell.ShellIcons
@@ -497,8 +506,9 @@ internal fun HomeRailsCover(
     val p = progress.value
     val contentAlpha = ((p - 0.78f) / 0.22f).coerceIn(0f, 1f)
     val veil = color.copy(alpha = 1f)
-    BoxWithConstraints(Modifier.fillMaxSize()) {
-        val contentCap = maxHeight * 0.72f
+    val nav = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    val dockClearance = 16.dp + 42.dp + (nav + 4.dp).coerceAtLeast(22.dp) + 12.dp
+    Box(Modifier.fillMaxSize()) {
         CornerIris(progress = p, color = veil, modifier = Modifier.fillMaxSize())
         Box(
             Modifier
@@ -519,43 +529,50 @@ internal fun HomeRailsCover(
                     scaleY = scale
                 },
         ) {
-            Box(
-                Modifier
-                    .align(Alignment.TopEnd)
-                    .statusBarsPadding()
-                    .padding(top = 8.dp, end = 12.dp)
-                    .size(40.dp)
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = onDismiss,
-                    ),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    imageVector = ShellIcons.close,
-                    contentDescription = stringResource(R.string.player_close),
-                    tint = Color.White,
-                    modifier = Modifier.size(22.dp),
-                )
-            }
             Column(
                 modifier = Modifier
-                    .align(Alignment.Center)
-                    .fillMaxWidth(0.9f)
-                    .height(contentCap)
+                    .fillMaxSize()
+                    .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))
+                    .padding(
+                        start = HomeContentInset - BrandLogoBleed,
+                        end = HomeContentInset - 9.dp,
+                        top = BrandTopInset,
+                        bottom = dockClearance,
+                    )
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
                         onClick = {},
                     ),
-                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                RailsLookTabs(
-                    selected = tab,
-                    onSelect = { tab = it },
+                Row(
                     modifier = Modifier.fillMaxWidth(),
-                )
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    RailsLookTabs(
+                        selected = tab,
+                        onSelect = { tab = it },
+                        modifier = Modifier.weight(1f),
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Box(
+                        Modifier
+                            .size(44.dp)
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                onClick = onDismiss,
+                            ),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = ShellIcons.close,
+                            contentDescription = stringResource(R.string.player_close),
+                            tint = Color.White,
+                            modifier = Modifier.size(22.dp),
+                        )
+                    }
+                }
                 Spacer(Modifier.height(14.dp))
                 Box(
                     Modifier

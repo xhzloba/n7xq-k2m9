@@ -1247,12 +1247,7 @@ private fun DetailContent(
                     }
                 }
             }
-            val director = detail.franchise?.directors
-                ?.map { it.trim() }
-                ?.filter { it.isNotEmpty() }
-                ?.joinToString(", ")
-                .orEmpty()
-                .ifBlank { detail.director.trim() }
+            val director = detail.director.substringBefore(',').trim()
             if (detail.overview.isNotBlank() || director.isNotBlank()) {
                 Spacer(Modifier.height(22.dp))
                 if (detail.overview.isNotBlank()) {
@@ -1265,7 +1260,7 @@ private fun DetailContent(
                         color = Color(0xFFA1A1A6),
                         fontSize = 12.sp,
                         lineHeight = 15.sp,
-                        maxLines = 2,
+                        maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.fillMaxWidth(),
                     )
@@ -2276,17 +2271,23 @@ private fun SectionTitle(title: String) {
 private val CastAvatar = 68.dp
 private val CastGap = 14.dp
 
+/** Промахи фото. Ячейка списка при скролле умирает, и rememberSaveable мог вернуть чужой false — иконка пропадала. */
+private val missedActorPhotos = HashSet<String>()
+
 @Composable
 private fun PersonPhoto(url: String?, name: String, size: Dp) {
     val context = LocalContext.current
-    var failed by remember(url) { mutableStateOf(url.isNullOrBlank()) }
+    val missing = url.isNullOrBlank() || url in missedActorPhotos
+    var failed by remember(url) { mutableStateOf(missing) }
     val request = remember(url) {
-        url?.let {
+        if (missing) {
+            null
+        } else {
             ImageRequest.Builder(context)
-                .data(it)
+                .data(url)
                 .crossfade(false)
-                .memoryCacheKey(it)
-                .diskCacheKey(it)
+                .memoryCacheKey(url)
+                .diskCacheKey(url)
                 .build()
         }
     }
@@ -2302,11 +2303,14 @@ private fun PersonPhoto(url: String?, name: String, size: Dp) {
                 model = request,
                 contentDescription = name,
                 contentScale = ContentScale.Crop,
-                onError = { failed = true },
+                onError = {
+                    if (!url.isNullOrBlank()) missedActorPhotos += url
+                    failed = true
+                },
                 modifier = Modifier.fillMaxSize(),
             )
         }
-        if (failed) {
+        if (missing || failed) {
             Icon(
                 imageVector = ShellIcons.person,
                 contentDescription = name,
@@ -2346,12 +2350,14 @@ private fun peopleCountRes(count: Int): Int {
 @Composable
 private fun CastRow(cast: List<CastMember>) {
     val listState = rememberLazyListState()
+    val nameHeight = with(LocalDensity.current) { 15.sp.toDp() }
     HapticOnChange(listState) { listState.firstVisibleItemIndex }
     LazyRow(
         state = listState,
         modifier = Modifier
             .edgeToEdge(DetailInset)
-            .fillMaxWidth(),
+            .fillMaxWidth()
+            .height(112.dp + 6.dp + nameHeight),
         contentPadding = PaddingValues(horizontal = DetailInset),
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
@@ -2367,6 +2373,7 @@ private fun CastRow(cast: List<CastMember>) {
                     textAlign = TextAlign.Center,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
+                    style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false)),
                 )
             }
         }
