@@ -54,18 +54,23 @@ internal class ShelfNotices(private val scope: CoroutineScope?) {
     private var job: Job? = null
     private var token = 0
 
-    fun show(message: String, shelf: String) {
+    fun show(
+        message: String,
+        shelf: String,
+        delayMillis: Long = NoticeDelayMillis,
+        holdMillis: Long = NoticeHoldMillis,
+    ) {
         val scope = scope ?: return
         section = shelf
         val ticket = ++token
         job?.cancel()
         visible = false
         job = scope.launch {
-            delay(NoticeDelayMillis)
+            delay(delayMillis)
             if (ticket != token) return@launch
             label = message
             visible = true
-            delay(NoticeHoldMillis)
+            delay(holdMillis)
             if (ticket == token) visible = false
         }
     }
@@ -104,7 +109,7 @@ internal fun ShelfNoticeHost() {
                 lineHeight = 21.sp,
                 fontWeight = FontWeight.Normal,
                 textAlign = TextAlign.Center,
-                maxLines = 1,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier
                     .padding(bottom = aboveBar)

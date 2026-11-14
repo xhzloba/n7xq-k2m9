@@ -15,6 +15,7 @@ import com.example.movie.domain.model.FeedKind
 import com.example.movie.domain.model.SeriesAlert
 
 internal fun SeriesAlert.textRes(): Int = when {
+    quality -> R.string.alerts_quality
     available -> R.string.alerts_available
     feed -> R.string.alerts_feed
     else -> R.string.alerts_episode

@@ -181,6 +181,8 @@ import android.content.pm.PackageManager
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.example.movie.domain.model.SeriesSub
+import com.example.movie.domain.model.isTsQuality
+import com.example.movie.domain.model.qualityAlert
 import com.example.movie.domain.model.releaseSnapshot
 import com.example.movie.presentation.haptic.HapticOnChange
 import com.example.movie.presentation.haptic.rememberHapticTick
@@ -586,6 +588,7 @@ private fun DetailContent(
     var castSheet by remember(detail.id) { mutableStateOf(false) }
     var downloadSheet by remember(detail.id) { mutableStateOf(false) }
     var moreOpen by remember(detail.id) { mutableStateOf(false) }
+    var qualitySheet by remember(detail.id) { mutableStateOf(false) }
     var offlinePlay by remember(detail.id) { mutableStateOf(false) }
     var watchRequested by remember(detail.id) { mutableStateOf(false) }
     var franchisePage by remember(detail.id) { mutableStateOf<String?>(null) }
@@ -623,6 +626,14 @@ private fun DetailContent(
         val franchise = detail.franchise
         val finished = franchise?.series == true &&
             franchise.serialStatus.equals("offline", ignoreCase = true)
+        if (sub.awaitingQuality) {
+            val quality = franchise?.quality
+            if (!quality.isNullOrBlank() && !quality.isTsQuality()) {
+                releaseWatch.store.push(qualityAlert(sub))
+                releaseWatch.store.disarm(detail.id)
+            }
+            return@LaunchedEffect
+        }
         if (finished && !sub.awaitingPlayer) {
             releaseWatch.store.disarm(detail.id)
             return@LaunchedEffect
@@ -843,7 +854,7 @@ private fun DetailContent(
                     drawRect(Color.Black)
                     return@drawBehind
                 }
-                drawRect(Color(0xFF121212))
+                drawRect(if (settings.appTheme == THEME_BLACK) Color.Black else Color(0xFF121212))
                 if (settings.extractPlex) {
                     drawPlexWash(paintWash, washAlpha)
                 } else {
@@ -1089,6 +1100,21 @@ private fun DetailContent(
             val alertOff = stringResource(R.string.notice_alert_off)
             val releaseOn = stringResource(R.string.notice_release_on)
             val releaseOff = stringResource(R.string.notice_release_off)
+            val tsQuality = !series && online && detail.franchise?.quality.isTsQuality()
+            val qualityArmed = tsQuality &&
+                releaseWatch.store.subs.value.firstOrNull { it.id == detail.id }?.awaitingQuality == true
+            val qualityHint = stringResource(R.string.notice_quality_hint)
+            val settingsRepository = LocalUserSettings.current
+            LaunchedEffect(detail.id, franchiseReady, tsQuality, qualityArmed, settings.qualityHintSeen, qualitySheet) {
+                if (!franchiseReady || !tsQuality || qualityArmed || settings.qualityHintSeen) return@LaunchedEffect
+                if (qualitySheet) {
+                    settingsRepository.setQualityHintSeen(true)
+                    return@LaunchedEffect
+                }
+                delay(3_000)
+                notices.show(qualityHint, NoticeShelfFavorites, delayMillis = 0, holdMillis = 4_000)
+                settingsRepository.setQualityHintSeen(true)
+            }
             val addedWatched = stringResource(R.string.notice_watched_movie)
             val removedWatched = stringResource(R.string.notice_watched_movie_off)
             WatchBar(
@@ -1100,6 +1126,14 @@ private fun DetailContent(
                 available = online,
                 notify = notifyRelease,
                 notifyArmed = notifyArmed,
+                onQuality = if (tsQuality) {
+                    {
+                        tick?.invoke()
+                        qualitySheet = true
+                    }
+                } else {
+                    null
+                },
                 onNotify = {
                     tick?.invoke()
                     if (notifyArmed) {
@@ -1174,12 +1208,14 @@ private fun DetailContent(
                         },
                     )
                 }
-                if (series && !notifyRelease && !finished) {
-                    val armed = detail.id in alertIds
+                if ((series && !notifyRelease && !finished) || tsQuality) {
+                    val armed = if (tsQuality) qualityArmed else detail.id in alertIds
                     ActionSlot(stringResource(R.string.action_alert)) {
                         BellButton(armed = armed) {
                             tick?.invoke()
-                            if (armed) {
+                            if (tsQuality) {
+                                qualitySheet = true
+                            } else if (armed) {
                                 releaseWatch.store.disarm(detail.id)
                                 notices.show(alertOff, NoticeShelfFavorites)
                             } else {
@@ -1401,6 +1437,29 @@ private fun DetailContent(
                 onDismiss = { seasonWatch = false },
             )
         }
+        if (qualitySheet) {
+            val qualityArmed = releaseWatch.store.subs.value
+                .firstOrNull { it.id == detail.id }?.awaitingQuality == true
+            val sheetNotices = LocalShelfNotices.current
+            val qualityOn = stringResource(R.string.notice_quality_on)
+            val qualityOff = stringResource(R.string.notice_quality_off)
+            QualityWaitSheet(
+                armed = qualityArmed,
+                onConfirm = {
+                    tick?.invoke()
+                    qualitySheet = false
+                    if (qualityArmed) {
+                        releaseWatch.store.disarm(detail.id)
+                        sheetNotices.show(qualityOff, NoticeShelfFavorites)
+                    } else {
+                        releaseWatch.store.arm(detail.qualitySub())
+                        context.askNotifyPermission()
+                        sheetNotices.show(qualityOn, NoticeShelfFavorites)
+                    }
+                },
+                onDismiss = { qualitySheet = false },
+            )
+        }
         if (moreOpen) {
             MoreActionsSheet(
                 downloadStatus = downloadStatus,
@@ -1565,6 +1624,7 @@ private fun WatchBar(
     available: Boolean,
     notify: Boolean = false,
     notifyArmed: Boolean = false,
+    onQuality: (() -> Unit)? = null,
     onNotify: () -> Unit = {},
     onWatch: () -> Unit,
 ) {
@@ -1626,22 +1686,6 @@ private fun WatchBar(
                 },
             )
             .posterWave(wave, light = !solid)
-            .then(
-                if (qualityReady) {
-                    Modifier.pressToOpen(
-                        onPressed = { pressed = it },
-                        onClick = {
-                            when {
-                                notify -> onNotify()
-                                available -> onWatch()
-                            }
-                        },
-                        wave = wave,
-                    )
-                } else {
-                    Modifier
-                },
-            )
             .drawWithContent {
                 drawContent()
                 if (qualityReady && glow != null && borderAlpha > 0.01f && borderReveal > 0f) {
@@ -1651,6 +1695,16 @@ private fun WatchBar(
             },
     ) {
         if (qualityReady) {
+            Box(Modifier.matchParentSize().pressToOpen(
+                onPressed = { pressed = it },
+                onClick = {
+                    when {
+                        notify -> onNotify()
+                        available -> onWatch()
+                    }
+                },
+                wave = wave,
+            ))
             val qualityChip = quality?.takeIf { available && it.isNotBlank() }
             Box(
                 modifier = Modifier
@@ -1726,7 +1780,18 @@ private fun WatchBar(
                         .graphicsLayer { alpha = appear.value }
                         .clip(RoundedCornerShape(6.dp))
                         .background(Color.Black.copy(alpha = 0.08f))
-                        .padding(horizontal = 6.dp, vertical = 2.dp),
+                        .then(
+                            if (onQuality != null) {
+                                Modifier.clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null,
+                                    onClick = onQuality,
+                                )
+                            } else {
+                                Modifier
+                            },
+                        )
+                        .padding(horizontal = 6.dp, vertical = 6.dp),
                     color = Color.Black,
                     fontSize = 11.sp,
                     lineHeight = 13.sp,
@@ -1780,6 +1845,81 @@ private fun DrawScope.drawWatchBorder(color: Color, widthPx: Float, reveal: Floa
         style = Stroke(width = widthPx, cap = StrokeCap.Round, join = StrokeJoin.Round),
     )
 }
+
+@Composable
+private fun QualityWaitSheet(
+    armed: Boolean,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    HandleSheet(onDismiss = onDismiss) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .padding(start = 22.dp, end = 22.dp, bottom = 8.dp),
+        ) {
+            Text(
+                text = stringResource(if (armed) R.string.quality_wait_on_title else R.string.quality_wait_title),
+                color = Color.White,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.SemiBold,
+            )
+            if (!armed) {
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    text = stringResource(R.string.quality_wait_chip),
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color.White)
+                        .padding(horizontal = 10.dp, vertical = 4.dp),
+                    color = Color.Black,
+                    fontSize = 13.sp,
+                    lineHeight = 16.sp,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+            Spacer(Modifier.height(10.dp))
+            Text(
+                text = stringResource(if (armed) R.string.quality_wait_on_body else R.string.quality_wait_body),
+                color = CinemaMuted,
+                fontSize = 15.sp,
+                lineHeight = 21.sp,
+            )
+            Spacer(Modifier.height(20.dp))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(if (armed) Color.White.copy(alpha = 0.08f) else Color.White)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = onConfirm,
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = stringResource(if (armed) R.string.quality_wait_cancel else R.string.quality_wait_confirm),
+                    color = if (armed) Color.White else Color.Black,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium,
+                )
+            }
+        }
+    }
+}
+
+private fun MovieDetail.qualitySub(): SeriesSub = SeriesSub(
+    id = id,
+    title = title,
+    posterUrl = posterUrl,
+    year = year,
+    type = type.ifBlank { "movie" },
+    airedKey = "ts",
+    awaitingQuality = true,
+    feedSeen = true,
+)
 
 private fun MovieDetail.releaseSub(awaiting: Boolean): SeriesSub {
     val series = franchise?.series == true ||

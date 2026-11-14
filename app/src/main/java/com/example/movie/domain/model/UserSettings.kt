@@ -43,6 +43,8 @@ data class UserSettings(
     val watchedPercent: Int = DefaultWatchedPercent,
     /** true — прогресс с первой секунды, false — с [DefaultProgressStartMs]. */
     val countFromStart: Boolean = false,
+    /** Подсказка про колокольчик на фильме в TS уже показана. */
+    val qualityHintSeen: Boolean = false,
 ) {
     val progressStartMs: Long
         get() = if (countFromStart) 0L else DefaultProgressStartMs
@@ -123,4 +125,6 @@ interface UserSettingsRepository {
     fun setWatchedPercent(percent: Int)
 
     fun setCountFromStart(enabled: Boolean)
+
+    fun setQualityHintSeen(seen: Boolean)
 }

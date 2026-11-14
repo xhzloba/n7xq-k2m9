@@ -72,4 +72,6 @@ private object DefaultUserSettings : UserSettingsRepository {
     override fun setWatchedPercent(percent: Int) = Unit
 
     override fun setCountFromStart(enabled: Boolean) = Unit
+
+    override fun setQualityHintSeen(seen: Boolean) = Unit
 }

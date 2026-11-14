@@ -12,6 +12,8 @@ data class SeriesSub(
     val nextEpochDay: Long? = null,
     val feedSeen: Boolean = true,
     val awaitingPlayer: Boolean = false,
+    /** Ждём, пока у фильма TS сменится на нормальное качество. */
+    val awaitingQuality: Boolean = false,
     val type: String = "serial",
     val year: Int? = null,
 )
@@ -28,6 +30,26 @@ data class SeriesAlert(
     val read: Boolean = false,
     val feed: Boolean = false,
     val available: Boolean = false,
+    /** TS сменилось на нормальное качество. */
+    val quality: Boolean = false,
+)
+
+internal fun String?.isTsQuality(): Boolean {
+    val raw = this?.trim().orEmpty()
+    if (raw.isEmpty()) return false
+    val token = raw.substringBefore(' ').substringBefore('-').substringBefore('/')
+    return token.equals("TS", ignoreCase = true)
+}
+
+internal fun qualityAlert(sub: SeriesSub): SeriesAlert = SeriesAlert(
+    id = "${sub.id}:quality",
+    movieId = sub.id,
+    title = sub.title,
+    posterUrl = sub.posterUrl,
+    season = 0,
+    episode = 0,
+    at = System.currentTimeMillis(),
+    quality = true,
 )
 
 internal data class AiredEpisode(val season: Int, val episode: Int) : Comparable<AiredEpisode> {

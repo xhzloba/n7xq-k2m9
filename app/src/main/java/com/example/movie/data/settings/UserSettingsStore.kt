@@ -104,6 +104,10 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
         it.copy(countFromStart = enabled)
     }
 
+    override fun setQualityHintSeen(seen: Boolean) = write {
+        it.copy(qualityHintSeen = seen)
+    }
+
     private fun write(transform: (UserSettings) -> UserSettings) {
         val next = transform(state.value)
         prefs.edit()
@@ -138,6 +142,7 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
             .putString(KEY_THEME, next.appTheme)
             .putInt(KEY_WATCHED_PERCENT, next.watchedPercent)
             .putBoolean(KEY_COUNT_FROM_START, next.countFromStart)
+            .putBoolean(KEY_QUALITY_HINT, next.qualityHintSeen)
             .commit()
         state.value = next
     }
@@ -214,6 +219,7 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
         appTheme = prefs.getString(KEY_THEME, "cinema") ?: "cinema",
         watchedPercent = prefs.getInt(KEY_WATCHED_PERCENT, DefaultWatchedPercent).coerceIn(50, 100),
         countFromStart = prefs.getBoolean(KEY_COUNT_FROM_START, false),
+        qualityHintSeen = prefs.getBoolean(KEY_QUALITY_HINT, false),
         )
     }
 
@@ -253,5 +259,6 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
         const val KEY_THEME = "app_theme"
         const val KEY_WATCHED_PERCENT = "watched_percent"
         const val KEY_COUNT_FROM_START = "count_from_start"
+        const val KEY_QUALITY_HINT = "quality_hint_seen"
     }
 }

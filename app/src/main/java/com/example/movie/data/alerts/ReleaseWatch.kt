@@ -6,6 +6,8 @@ import com.example.movie.domain.model.FeedKind
 import com.example.movie.domain.model.FeedShelf
 import com.example.movie.domain.model.SeriesAlert
 import com.example.movie.domain.model.SeriesSub
+import com.example.movie.domain.model.isTsQuality
+import com.example.movie.domain.model.qualityAlert
 import com.example.movie.domain.model.releaseSnapshot
 import com.example.movie.domain.model.shouldAlert
 import com.example.movie.domain.repository.MovieRepository
@@ -62,6 +64,10 @@ class ReleaseWatch(
         val updates = if (waiting) shelfIds("updatings") else null
         val fresh = if (waiting) shelfIds("new") else null
         for (sub in subs) {
+            if (sub.awaitingQuality) {
+                awaitQuality(sub, held)
+                continue
+            }
             if (sub.awaitingPlayer) {
                 awaitPlayer(sub, updates, fresh, held)
                 continue
@@ -125,6 +131,16 @@ class ReleaseWatch(
                 snapshot.nextEpochDay,
             )
         }
+    }
+
+    private suspend fun awaitQuality(sub: SeriesSub, held: MutableSet<String>) {
+        val franchise = movies.franchise(sub.id, sub.title, sub.year) ?: return
+        val quality = franchise.quality
+        if (quality.isNullOrBlank() || quality.isTsQuality()) return
+        val alert = qualityAlert(sub)
+        if (store.push(alert) && !foreground()) notify(alert)
+        store.disarm(sub.id)
+        held.add(sub.id)
     }
 
     private suspend fun awaitPlayer(

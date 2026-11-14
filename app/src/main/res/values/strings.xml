@@ -24,6 +24,17 @@
     <string name="notice_release_on">Сообщим, когда можно будет смотреть</string>
     <string name="notice_release_off">Больше не напомним о выходе</string>
     <string name="alerts_available">Уже можно смотреть</string>
+    <string name="alerts_quality">Вышло нормальное качество</string>
+    <string name="quality_wait_title">Ждать качество</string>
+    <string name="quality_wait_chip">Сейчас фильм в TS</string>
+    <string name="quality_wait_body">Когда появится нормальное качество, пришлём уведомление.</string>
+    <string name="quality_wait_confirm">Ждать</string>
+    <string name="quality_wait_on_title">Ждём качество</string>
+    <string name="quality_wait_on_body">Уведомление придёт, когда вместо TS будет нормальное качество.</string>
+    <string name="quality_wait_cancel">Не ждать</string>
+    <string name="notice_quality_hint">Нажмите «Уведомление» под кнопкой — сообщим, когда вместо TS выйдет нормальное качество</string>
+    <string name="notice_quality_on">Сообщим, когда выйдет нормальное качество</string>
+    <string name="notice_quality_off">Больше не ждём качество</string>
     <string name="library_alerts">Уведомления</string>
     <string name="library_alerts_empty">Здесь фильмы и сериалы, на которые нажали «Уведомить о выходе» или колокольчик.</string>
     <string name="watch_resume">Продолжить</string>
