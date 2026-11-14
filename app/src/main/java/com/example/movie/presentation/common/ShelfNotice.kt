@@ -75,6 +75,12 @@ internal class ShelfNotices(private val scope: CoroutineScope?) {
         }
     }
 
+    fun dismiss() {
+        token++
+        job?.cancel()
+        visible = false
+    }
+
     fun open() {
         token++
         job?.cancel()

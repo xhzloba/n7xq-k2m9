@@ -40,11 +40,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.toMutableStateList
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.zIndex
-import com.example.movie.presentation.common.appBackground
 import com.example.movie.presentation.common.appChrome
 import com.example.movie.presentation.home.CornerIris
 import kotlin.math.roundToInt
@@ -226,7 +226,7 @@ class MainActivity : ComponentActivity() {
                                     .fillMaxSize()
                                     .zIndex(if (rides) presented.size + 5f else index + 1f)
                                     .slideBy({ fraction }, stageWidth)
-                                    .appBackground()
+                                    .background(ComposeColor(0xFF121212))
                                     .clickable(
                                         interactionSource = remember(id) { MutableInteractionSource() },
                                         indication = null,

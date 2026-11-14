@@ -62,6 +62,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -838,13 +839,9 @@ private fun DetailContent(
         modifier = modifier
             .fillMaxSize()
             .drawBehind {
-                if (awaitingColors || (colored && washAlpha < 0.995f)) {
-                    when (settings.appTheme) {
-                        THEME_GRAPHITE -> drawGraphite()
-                        THEME_BLACK -> drawRect(Color.Black)
-                        else -> drawRect(CinemaBlack)
-                    }
-                    if (awaitingColors) return@drawBehind
+                if (awaitingColors) {
+                    drawRect(Color(0xFF121212))
+                    return@drawBehind
                 }
                 if (!colored && settings.appTheme == THEME_GRAPHITE) {
                     drawGraphite()
@@ -854,7 +851,7 @@ private fun DetailContent(
                     drawRect(Color.Black)
                     return@drawBehind
                 }
-                drawRect(if (settings.appTheme == THEME_BLACK) Color.Black else Color(0xFF121212))
+                drawRect(Color(0xFF121212))
                 if (settings.extractPlex) {
                     drawPlexWash(paintWash, washAlpha)
                 } else {
@@ -1104,16 +1101,15 @@ private fun DetailContent(
             val qualityArmed = tsQuality &&
                 releaseWatch.store.subs.value.firstOrNull { it.id == detail.id }?.awaitingQuality == true
             val qualityHint = stringResource(R.string.notice_quality_hint)
-            val settingsRepository = LocalUserSettings.current
-            LaunchedEffect(detail.id, franchiseReady, tsQuality, qualityArmed, settings.qualityHintSeen, qualitySheet) {
-                if (!franchiseReady || !tsQuality || qualityArmed || settings.qualityHintSeen) return@LaunchedEffect
-                if (qualitySheet) {
-                    settingsRepository.setQualityHintSeen(true)
+            LaunchedEffect(detail.id, franchiseReady, tsQuality, qualityArmed, qualitySheet) {
+                if (!franchiseReady || !tsQuality || qualityArmed || qualitySheet) {
+                    notices.dismiss()
                     return@LaunchedEffect
                 }
-                delay(3_000)
-                notices.show(qualityHint, NoticeShelfFavorites, delayMillis = 0, holdMillis = 4_000)
-                settingsRepository.setQualityHintSeen(true)
+                notices.show(qualityHint, NoticeShelfFavorites, delayMillis = 0, holdMillis = 3_000)
+            }
+            DisposableEffect(detail.id) {
+                onDispose { notices.dismiss() }
             }
             val addedWatched = stringResource(R.string.notice_watched_movie)
             val removedWatched = stringResource(R.string.notice_watched_movie_off)
