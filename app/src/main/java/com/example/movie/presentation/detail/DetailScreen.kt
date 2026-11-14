@@ -47,6 +47,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -196,6 +197,7 @@ import com.example.movie.presentation.home.components.posterTitlesOn
 import com.example.movie.presentation.home.holdCue
 import com.example.movie.presentation.home.holdToPeek
 import com.example.movie.presentation.home.SeasonWatchSheet
+import com.example.movie.presentation.home.PosterGrid
 import com.example.movie.presentation.home.PosterWave
 import com.example.movie.presentation.home.posterWave
 import com.example.movie.presentation.home.pressToOpen
@@ -1101,12 +1103,12 @@ private fun DetailContent(
             val qualityArmed = tsQuality &&
                 releaseWatch.store.subs.value.firstOrNull { it.id == detail.id }?.awaitingQuality == true
             val qualityHint = stringResource(R.string.notice_quality_hint)
-            LaunchedEffect(detail.id, franchiseReady, tsQuality, qualityArmed, qualitySheet) {
-                if (!franchiseReady || !tsQuality || qualityArmed || qualitySheet) {
-                    notices.dismiss()
-                    return@LaunchedEffect
-                }
+            LaunchedEffect(detail.id, franchiseReady, tsQuality) {
+                if (!franchiseReady || !tsQuality || qualityArmed) return@LaunchedEffect
                 notices.show(qualityHint, NoticeShelfFavorites, delayMillis = 0, holdMillis = 3_000)
+            }
+            LaunchedEffect(qualitySheet, qualityArmed) {
+                if (qualitySheet || qualityArmed) notices.dismiss()
             }
             DisposableEffect(detail.id) {
                 onDispose { notices.dismiss() }
@@ -1322,13 +1324,19 @@ private fun DetailContent(
             }
             if (detail.similar.isNotEmpty()) {
                 Spacer(Modifier.height(28.dp))
-                SectionTitle(stringResource(R.string.section_similar))
+                OpenTitle(
+                    title = stringResource(R.string.section_similar),
+                    onOpen = { franchisePage = "similar" },
+                )
                 Spacer(Modifier.height(12.dp))
                 MovieStrip(detail.similar, onOpenMovie, onMoviePeek)
             }
             if (detail.sequels.isNotEmpty()) {
                 Spacer(Modifier.height(28.dp))
-                SectionTitle(stringResource(R.string.section_sequels))
+                OpenTitle(
+                    title = stringResource(R.string.section_sequels),
+                    onOpen = { franchisePage = "sequels" },
+                )
                 Spacer(Modifier.height(12.dp))
                 MovieStrip(detail.sequels, onOpenMovie, onMoviePeek)
             }
@@ -1381,6 +1389,17 @@ private fun DetailContent(
             } else if (openedPage == "cast") {
                 CastPage(
                     cast = detail.cast,
+                    onBack = { franchisePage = null },
+                    modifier = pageModifier,
+                )
+            } else if (openedPage == "similar" || openedPage == "sequels") {
+                RelatedPage(
+                    title = stringResource(
+                        if (openedPage == "similar") R.string.section_similar else R.string.section_sequels,
+                    ),
+                    movies = if (openedPage == "similar") detail.similar else detail.sequels,
+                    onOpenMovie = onOpenMovie,
+                    onMoviePeek = onMoviePeek,
                     onBack = { franchisePage = null },
                     modifier = pageModifier,
                 )
@@ -2396,14 +2415,45 @@ private fun Overview(text: String, width: Dp) {
 }
 
 @Composable
-private fun SectionTitle(title: String) {
-    Text(
-        text = title,
-        color = Color.White,
-        fontSize = 18.sp,
-        fontWeight = FontWeight.Bold,
-        modifier = Modifier.fillMaxWidth(),
-    )
+private fun RelatedPage(
+    title: String,
+    movies: List<Movie>,
+    onOpenMovie: (String) -> Unit,
+    onMoviePeek: (Movie) -> Unit,
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val density = LocalDensity.current
+    val top = with(density) { WindowInsets.safeDrawing.getTop(this).toDp() }
+    val bottom = with(density) { WindowInsets.safeDrawing.getBottom(this).toDp() }
+    val gridState = rememberLazyGridState()
+    HapticOnChange(gridState) { gridState.firstVisibleItemIndex }
+    val headerScrim = with(density) {
+        if (gridState.firstVisibleItemIndex > 0) 1f
+        else (gridState.firstVisibleItemScrollOffset / 28.dp.toPx()).coerceIn(0f, 1f)
+    }
+    StackPage(
+        title = title,
+        onBack = onBack,
+        modifier = modifier,
+        scrolling = false,
+        headerScrim = headerScrim,
+    ) {
+        PosterGrid(
+            movies = movies,
+            state = gridState,
+            topPadding = top + BrandTopInset + 36.dp + 18.dp,
+            bottomPadding = bottom + 16.dp,
+            loadingMore = false,
+            end = true,
+            error = null,
+            placeholder = false,
+            onLoadMore = {},
+            onRetry = {},
+            onMovieClick = onOpenMovie,
+            onMoviePeek = onMoviePeek,
+        )
+    }
 }
 
 private val CastAvatar = 68.dp
