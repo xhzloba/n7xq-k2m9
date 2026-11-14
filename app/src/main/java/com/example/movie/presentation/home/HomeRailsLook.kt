@@ -124,10 +124,10 @@ internal enum class RailsLookTab {
 private val PlaqueShape = RoundedCornerShape(18.dp)
 /** Как поверхности cinema: лёгкая прозрачность. На графите раньше была глухая #2A2E38. */
 private val CinemaPlaque = Color.White.copy(alpha = 0.07f)
-private val GraphitePlaque = Color(0xFF2A2E38).copy(alpha = 0.55f)
-private val GraphitePanel = Color(0xFF2A2E38)
+private val GraphitePlaque = Color(0xFF22262E).copy(alpha = 0.42f)
+private val GraphitePanel = Color(0xFF22262E)
 private val IconWellCinema = Color.White.copy(alpha = 0.10f)
-private val IconWellGraphite = Color.White.copy(alpha = 0.12f)
+private val IconWellGraphite = Color.White.copy(alpha = 0.07f)
 
 private fun themePanel(theme: String): Color =
     if (theme == THEME_GRAPHITE) GraphitePanel else Color.White.copy(alpha = 0.08f)
@@ -648,7 +648,11 @@ private fun RailsLookTabs(
                 .width(pillW)
                 .fillMaxHeight()
                 .clip(RoundedCornerShape(11.dp))
-                .background(Color.White.copy(alpha = 0.14f)),
+                .background(
+                    Color.White.copy(
+                        alpha = if (settings.appTheme == THEME_GRAPHITE) 0.08f else 0.14f,
+                    ),
+                ),
         )
         Row(Modifier.fillMaxSize()) {
             RailsLookTab.entries.forEach { tab ->
@@ -757,7 +761,7 @@ private fun RailsToggle(
 @Composable
 private fun RailsSwitch(checked: Boolean) {
     val settings by LocalUserSettings.current.settings.collectAsStateWithLifecycle()
-    val offTrack = if (settings.appTheme == THEME_GRAPHITE) Color(0xFF3A3F4A) else Color(0xFF2C2C30)
+    val offTrack = if (settings.appTheme == THEME_GRAPHITE) Color(0xFF2A2F38) else Color(0xFF2C2C30)
     val travel by animateDpAsState(
         targetValue = if (checked) 20.dp else 0.dp,
         animationSpec = spring(dampingRatio = 1f, stiffness = 500f),

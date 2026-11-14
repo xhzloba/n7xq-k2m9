@@ -1460,7 +1460,9 @@ private fun DetailContent(
                 onProgress = { position, duration, playedSeason, playedEpisode ->
                     val item = detail.toResume(request.franchiseId, position, duration, playedSeason, playedEpisode)
                     val seasons = detail.franchise?.seasons.orEmpty()
-                    val finished = resumeStore.record(item) { stored -> seasons.fullyWatched(stored.episodeMarks()) }
+                    val finished = resumeStore.record(item, settings.watchedPercent, settings.progressStartMs) { stored ->
+                        seasons.fullyWatched(stored.episodeMarks())
+                    }
                     if (finished) {
                         watched.add(detail.toSaved())
                         favorites.remove(detail.id)

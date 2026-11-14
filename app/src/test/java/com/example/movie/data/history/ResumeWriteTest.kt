@@ -28,4 +28,16 @@ class ResumeWriteTest {
     fun ignoresAShortJumpToAnotherEpisode() {
         assertEquals(ResumeWrite.Ignore, resumeWrite(2_000L, 40 * 60_000L, series = true))
     }
+
+    @Test
+    fun dropsAMovieAtTheChosenShare() {
+        assertEquals(ResumeWrite.Drop, resumeWrite(80 * 60_000L, 100 * 60_000L, series = false, percent = 80))
+        assertEquals(ResumeWrite.Save, resumeWrite(70 * 60_000L, 100 * 60_000L, series = false, percent = 80))
+    }
+
+    @Test
+    fun savesTheOpeningSecondsWhenCountingFromTheStart() {
+        assertEquals(ResumeWrite.Save, resumeWrite(2_000L, 120 * 60_000L, series = false, startMs = 0L))
+        assertEquals(ResumeWrite.Ignore, resumeWrite(0L, 120 * 60_000L, series = false, startMs = 0L))
+    }
 }

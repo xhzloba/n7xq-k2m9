@@ -39,7 +39,14 @@ data class UserSettings(
     /** Ссылка «Зачем это?» под плашкой «Вид полок». */
     val hideRailsLookHint: Boolean = false,
     val appTheme: String = "cinema",
+    /** Доля длины, после которой фильм или серия уходит в «Просмотренное». */
+    val watchedPercent: Int = DefaultWatchedPercent,
+    /** true — прогресс с первой секунды, false — с [DefaultProgressStartMs]. */
+    val countFromStart: Boolean = false,
 ) {
+    val progressStartMs: Long
+        get() = if (countFromStart) 0L else DefaultProgressStartMs
+
     fun homeRailVisible(id: String): Boolean = id !in hiddenHomeRails
 }
 
@@ -112,4 +119,8 @@ interface UserSettingsRepository {
     fun setHideRailsLookHint(hidden: Boolean)
 
     fun setAppTheme(theme: String)
+
+    fun setWatchedPercent(percent: Int)
+
+    fun setCountFromStart(enabled: Boolean)
 }

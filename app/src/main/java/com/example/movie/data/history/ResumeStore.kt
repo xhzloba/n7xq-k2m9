@@ -5,6 +5,8 @@ import com.example.movie.domain.model.EpisodeProgress
 import com.example.movie.domain.model.FranchiseSeason
 import com.example.movie.domain.model.ResumeItem
 import com.example.movie.domain.model.episodeDone
+import com.example.movie.domain.model.DefaultProgressStartMs
+import com.example.movie.domain.model.DefaultWatchedPercent
 import com.example.movie.domain.model.episodeFinished
 import com.example.movie.domain.model.combineMarks
 import com.example.movie.domain.model.episodeMarks
@@ -19,9 +21,18 @@ import kotlinx.serialization.json.Json
 
 internal enum class ResumeWrite { Save, Complete, Drop, Ignore }
 
-internal fun resumeWrite(positionMs: Long, durationMs: Long, series: Boolean): ResumeWrite {
-    if (episodeFinished(positionMs, durationMs)) return if (series) ResumeWrite.Complete else ResumeWrite.Drop
-    if (positionMs < MIN_POSITION_MS) return ResumeWrite.Ignore
+internal fun resumeWrite(
+    positionMs: Long,
+    durationMs: Long,
+    series: Boolean,
+    percent: Int = DefaultWatchedPercent,
+    startMs: Long = DefaultProgressStartMs,
+): ResumeWrite {
+    if (episodeFinished(positionMs, durationMs, percent)) {
+        return if (series) ResumeWrite.Complete else ResumeWrite.Drop
+    }
+    val floor = if (startMs <= 0L) 1L else startMs
+    if (positionMs < floor) return ResumeWrite.Ignore
     return ResumeWrite.Save
 }
 
@@ -52,19 +63,24 @@ class ResumeStore(context: Context) {
         }
     }
 
-    fun record(item: ResumeItem, seriesDone: (ResumeItem) -> Boolean = { false }): Boolean {
+    fun record(
+        item: ResumeItem,
+        watchedPercent: Int = DefaultWatchedPercent,
+        progressStartMs: Long = DefaultProgressStartMs,
+        seriesDone: (ResumeItem) -> Boolean = { false },
+    ): Boolean {
         if (item.id.isBlank() || item.franchiseId <= 0 || item.posterUrl.isNullOrBlank()) return false
         val current = itemsState.value
         val previous = current.firstOrNull { it.id == item.id }
         val series = item.season != null && item.episode != null
-        when (resumeWrite(item.positionMs, item.durationMs, series)) {
+        when (resumeWrite(item.positionMs, item.durationMs, series, watchedPercent, progressStartMs)) {
             ResumeWrite.Ignore -> return false
             ResumeWrite.Drop -> {
                 write(current.filter { it.id != item.id })
                 return true
             }
             ResumeWrite.Save, ResumeWrite.Complete -> {
-                val completed = episodeFinished(item.positionMs, item.durationMs)
+                val completed = episodeFinished(item.positionMs, item.durationMs, watchedPercent)
                 val stored = item.copy(
                     posterUrl = item.posterUrl ?: previous?.posterUrl,
                     logoUrl = if (item.logoUrl.isNullOrBlank()) previous?.logoUrl else item.logoUrl,
@@ -248,5 +264,3 @@ private fun nextOpen(seasons: List<FranchiseSeason>, marks: List<EpisodeProgress
     }
     return null
 }
-
-private const val MIN_POSITION_MS = 10_000L

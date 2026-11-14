@@ -68,4 +68,8 @@ private object DefaultUserSettings : UserSettingsRepository {
     override fun setHideRailsLookHint(hidden: Boolean) = Unit
 
     override fun setAppTheme(theme: String) = Unit
+
+    override fun setWatchedPercent(percent: Int) = Unit
+
+    override fun setCountFromStart(enabled: Boolean) = Unit
 }

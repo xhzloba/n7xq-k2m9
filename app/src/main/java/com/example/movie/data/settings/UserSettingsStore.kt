@@ -2,6 +2,7 @@ package com.example.movie.data.settings
 
 import android.content.Context
 import com.example.movie.domain.model.DefaultHiddenHomeRails
+import com.example.movie.domain.model.DefaultWatchedPercent
 import com.example.movie.domain.model.UserSettings
 import com.example.movie.domain.model.UserSettingsRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -95,6 +96,14 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
         )
     }
 
+    override fun setWatchedPercent(percent: Int) = write {
+        it.copy(watchedPercent = percent.coerceIn(50, 100))
+    }
+
+    override fun setCountFromStart(enabled: Boolean) = write {
+        it.copy(countFromStart = enabled)
+    }
+
     private fun write(transform: (UserSettings) -> UserSettings) {
         val next = transform(state.value)
         prefs.edit()
@@ -127,6 +136,8 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
             .putStringSet(KEY_HIDDEN_HOME_RAILS, HashSet(next.hiddenHomeRails))
             .putBoolean(KEY_HIDE_RAILS_LOOK_HINT, next.hideRailsLookHint)
             .putString(KEY_THEME, next.appTheme)
+            .putInt(KEY_WATCHED_PERCENT, next.watchedPercent)
+            .putBoolean(KEY_COUNT_FROM_START, next.countFromStart)
             .commit()
         state.value = next
     }
@@ -201,6 +212,8 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
         },
         hideRailsLookHint = prefs.getBoolean(KEY_HIDE_RAILS_LOOK_HINT, false),
         appTheme = prefs.getString(KEY_THEME, "cinema") ?: "cinema",
+        watchedPercent = prefs.getInt(KEY_WATCHED_PERCENT, DefaultWatchedPercent).coerceIn(50, 100),
+        countFromStart = prefs.getBoolean(KEY_COUNT_FROM_START, false),
         )
     }
 
@@ -238,5 +251,7 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
         const val KEY_HIDDEN_HOME_RAILS = "hidden_home_rails"
         const val KEY_HIDE_RAILS_LOOK_HINT = "hide_rails_look_hint"
         const val KEY_THEME = "app_theme"
+        const val KEY_WATCHED_PERCENT = "watched_percent"
+        const val KEY_COUNT_FROM_START = "count_from_start"
     }
 }

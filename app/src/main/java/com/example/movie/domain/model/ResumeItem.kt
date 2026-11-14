@@ -43,8 +43,22 @@ data class EpisodeProgress(
         }
 }
 
-internal fun episodeFinished(positionMs: Long, durationMs: Long): Boolean =
-    durationMs > 0L && (durationMs - positionMs < 20_000L || positionMs >= durationMs * 95 / 100)
+/** Доля длины, после которой тайтл считается просмотренным. 95 — как было. */
+internal const val DefaultWatchedPercent = 95
+
+/** До этой позиции прогресс не пишется. 0 в настройке «с начала» означает первую секунду. */
+internal const val DefaultProgressStartMs = 10_000L
+
+internal fun episodeFinished(
+    positionMs: Long,
+    durationMs: Long,
+    percent: Int = DefaultWatchedPercent,
+): Boolean {
+    if (durationMs <= 0L) return false
+    val share = percent.coerceIn(50, 100)
+    if (positionMs >= durationMs * share / 100) return true
+    return share == DefaultWatchedPercent && durationMs - positionMs < 20_000L
+}
 
 internal fun String?.isUnreleased(today: LocalDate = LocalDate.now()): Boolean {
     val raw = this?.trim().orEmpty()
@@ -118,7 +132,7 @@ internal fun ResumeItem.episodeDone(): Boolean {
 }
 
 internal fun ResumeItem.played(): Boolean {
-    if (positionMs >= 10_000L) return true
+    if (positionMs > 0L) return true
     return marks.any { it.durationMs > 1L }
 }
 

@@ -652,6 +652,9 @@ fun AppShell(
         val playing = resumePlayback
         if (playing != null) {
             val scope = rememberCoroutineScope()
+            val playerSettings = LocalUserSettings.current.settings.collectAsStateWithLifecycle().value
+            val watchedPercent = playerSettings.watchedPercent
+            val progressStartMs = playerSettings.progressStartMs
             var aired by remember(playing.id) { mutableStateOf<List<FranchiseSeason>?>(null) }
             WatchPlayer(
                 url = resumeWatchUrl(playing.franchiseId, playing.season, playing.episode),
@@ -666,7 +669,7 @@ fun AppShell(
                         episode = episode ?: playing.episode,
                     )
                     val series = next.season != null && next.episode != null
-                    if (series && aired == null && episodeFinished(position, duration)) {
+                    if (series && aired == null && episodeFinished(position, duration, watchedPercent)) {
                         aired = emptyList()
                         scope.launch {
                             val seasons = container.getMovieDetail(next.id).getOrNull()?.franchise?.seasons.orEmpty()
@@ -681,7 +684,7 @@ fun AppShell(
                             }
                         }
                     }
-                    val finished = container.resume.record(next) { stored ->
+                    val finished = container.resume.record(next, watchedPercent, progressStartMs) { stored ->
                         aired.orEmpty().fullyWatched(stored.episodeMarks())
                     }
                     if (finished) {

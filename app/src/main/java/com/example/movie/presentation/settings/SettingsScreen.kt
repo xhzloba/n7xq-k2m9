@@ -1,5 +1,9 @@
 package com.example.movie.presentation.settings
 
+import androidx.activity.OnBackPressedCallback
+import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -9,13 +13,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -23,30 +26,37 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
@@ -54,8 +64,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlin.math.roundToInt
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import android.view.HapticFeedbackConstants
 import com.example.movie.BuildConfig
@@ -71,9 +84,6 @@ import com.example.movie.presentation.update.UpdateBadge
 import com.example.movie.presentation.update.UpdateNotice
 import com.example.movie.presentation.update.UpdatePhase
 import com.example.movie.presentation.update.downloadStatus
-import com.example.movie.presentation.home.components.CategoryTabFontSize
-import com.example.movie.presentation.home.components.CategoryTabLetterSpacing
-import com.example.movie.presentation.home.components.CategoryTabLineHeight
 import com.example.movie.domain.model.AppRelease
 import com.example.movie.domain.model.DownloadProgress
 import com.example.movie.presentation.common.HandleSheet
@@ -81,20 +91,60 @@ import com.example.movie.presentation.common.THEME_BLACK
 import com.example.movie.presentation.common.THEME_CINEMA
 import com.example.movie.presentation.common.THEME_GRAPHITE
 import com.example.movie.presentation.common.appBackground
+import com.example.movie.presentation.shell.ShellIcons
 import com.example.movie.ui.theme.CinemaMuted
 import com.example.movie.ui.theme.CinemaSurface
+import kotlinx.coroutines.flow.first
 
-private enum class SettingsSection {
-    Interface,
+private enum class SettingsPage {
+    Root,
+    Theme,
+    Posters,
+    Navigation,
+    Color,
+    Detail,
+    Player,
     Sensors,
     About,
     ;
 
     val label: Int
         get() = when (this) {
-            Interface -> R.string.settings_interface
+            Root -> R.string.settings_title
+            Theme -> R.string.settings_group_theme
+            Posters -> R.string.settings_group_posters
+            Navigation -> R.string.settings_group_navigation
+            Color -> R.string.settings_group_color
+            Detail -> R.string.settings_group_detail
+            Player -> R.string.settings_group_player
             Sensors -> R.string.settings_sensors
             About -> R.string.settings_about
+        }
+
+    val hint: Int
+        get() = when (this) {
+            Root -> R.string.settings_title
+            Theme -> R.string.settings_menu_theme
+            Posters -> R.string.settings_menu_posters
+            Navigation -> R.string.settings_menu_navigation
+            Color -> R.string.settings_menu_color
+            Detail -> R.string.settings_menu_detail
+            Player -> R.string.settings_menu_player
+            Sensors -> R.string.settings_menu_sensors
+            About -> R.string.settings_version_value
+        }
+
+    val icon: ImageVector
+        get() = when (this) {
+            Root -> ShellIcons.settings
+            Theme -> ShellIcons.brush
+            Posters -> ShellIcons.shelf
+            Navigation -> ShellIcons.navigate
+            Color -> ShellIcons.palette
+            Detail -> ShellIcons.movie
+            Player -> ShellIcons.play
+            Sensors -> ShellIcons.vibrate
+            About -> ShellIcons.info
         }
 }
 
@@ -122,6 +172,8 @@ fun SettingsRoute() {
         onDetailIris = repository::setDetailIris,
         onHaptic = repository::setHaptic,
         onAppTheme = repository::setAppTheme,
+        onWatchedPercent = repository::setWatchedPercent,
+        onCountFromStart = repository::setCountFromStart,
     )
 }
 
@@ -146,37 +198,163 @@ private fun SettingsScreen(
     onDetailIris: (Boolean) -> Unit,
     onHaptic: (Boolean) -> Unit,
     onAppTheme: (String) -> Unit,
+    onWatchedPercent: (Int) -> Unit,
+    onCountFromStart: (Boolean) -> Unit,
 ) {
-    var sectionName by rememberSaveable { mutableStateOf(SettingsSection.Interface.name) }
-    val section = SettingsSection.valueOf(sectionName)
-    Column(
+    var pageName by rememberSaveable { mutableStateOf(SettingsPage.Root.name) }
+    val page = SettingsPage.entries.firstOrNull { it.name == pageName } ?: SettingsPage.Root
+    var shown by remember { mutableStateOf(SettingsPage.Root) }
+    val shift = remember { Animatable(1f) }
+    var stageWidth by remember { mutableIntStateOf(0) }
+    LaunchedEffect(page) {
+        snapshotFlow { stageWidth }.first { it > 0 }
+        val move = tween<Float>(240, easing = FastOutSlowInEasing)
+        if (page != SettingsPage.Root) {
+            shown = page
+            shift.snapTo(1f)
+            withFrameNanos { }
+            withFrameNanos { }
+            shift.animateTo(0f, move)
+        } else if (shown != SettingsPage.Root) {
+            shift.animateTo(1f, move)
+            shown = SettingsPage.Root
+        }
+    }
+    val backDispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
+    val backOwner = LocalLifecycleOwner.current
+    DisposableEffect(page, backDispatcher, backOwner) {
+        if (page == SettingsPage.Root || backDispatcher == null) {
+            return@DisposableEffect onDispose {}
+        }
+        val callback = object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                pageName = SettingsPage.Root.name
+            }
+        }
+        backDispatcher.addCallback(backOwner, callback)
+        onDispose { callback.remove() }
+    }
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .appBackground()
-            .windowInsetsPadding(WindowInsets.safeDrawing)
-            .padding(top = BrandTopInset),
+            .onSizeChanged { stageWidth = it.width }
+            .appBackground(),
     ) {
-        SettingsTabs(
-            selected = section,
-            onSelect = { sectionName = it.name },
-        )
-        Spacer(Modifier.height(28.dp))
-        when (section) {
-            SettingsSection.Interface -> Column(
-                Modifier
-                    .weight(1f)
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .windowInsetsPadding(WindowInsets.safeDrawing)
+                .padding(top = BrandTopInset),
+        ) {
+            Box(
+                modifier = Modifier
                     .fillMaxWidth()
-                    .verticalScroll(rememberScrollState())
-                    .padding(bottom = 96.dp),
+                    .height(36.dp),
+                contentAlignment = Alignment.CenterStart,
             ) {
-                ThemeGroup(
-                    selected = settings.appTheme,
-                    onSelect = onAppTheme,
+                Text(
+                    text = stringResource(R.string.settings_title),
+                    modifier = Modifier.padding(start = PosterGridInset),
+                    color = Color.White,
+                    fontSize = 18.sp,
+                    lineHeight = 24.sp,
+                    fontWeight = FontWeight.Normal,
+                    maxLines = 1,
                 )
-                Spacer(Modifier.height(22.dp))
+            }
+            SettingsMenu(
+                onOpen = { pageName = it.name },
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+            )
+        }
+        if (shown != SettingsPage.Root) {
+            val travel = shift.value
+            Column(
+                modifier = Modifier
+                    .offset { IntOffset((travel * stageWidth).roundToInt(), 0) }
+                    .fillMaxSize()
+                    .appBackground(),
+            ) {
+                SettingsBar(
+                    title = stringResource(shown.label),
+                    onBack = { pageName = SettingsPage.Root.name },
+                )
+                SettingsLeaf(
+                    page = shown,
+                    settings = settings,
+                    onExtractBackdrop = onExtractBackdrop,
+                    onExtractPlex = onExtractPlex,
+                    onPlexBackdrop = onPlexBackdrop,
+                    onHeroPosterColors = onHeroPosterColors,
+                    onHeroPosterPage = onHeroPosterPage,
+                    onShowLogos = onShowLogos,
+                    onWatchedBadge = onWatchedBadge,
+                    onShowPosterTitles = onShowPosterTitles,
+                    onWhiteTitles = onWhiteTitles,
+                    onHideBottomBarOnScroll = onHideBottomBarOnScroll,
+                    onNavLabels = onNavLabels,
+                    onSliderShade = onSliderShade,
+                    onLargePosters = onLargePosters,
+                    onAutoBackdrop = onAutoBackdrop,
+                    onWatchGlow = onWatchGlow,
+                    onDetailIris = onDetailIris,
+                    onHaptic = onHaptic,
+                    onAppTheme = onAppTheme,
+                    onWatchedPercent = onWatchedPercent,
+                    onCountFromStart = onCountFromStart,
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .windowInsetsPadding(
+                            WindowInsets.safeDrawing.only(
+                                WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom,
+                            ),
+                        ),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SettingsLeaf(
+    page: SettingsPage,
+    settings: UserSettings,
+    onExtractBackdrop: (Boolean) -> Unit,
+    onExtractPlex: (Boolean) -> Unit,
+    onPlexBackdrop: (Boolean) -> Unit,
+    onHeroPosterColors: (Boolean) -> Unit,
+    onHeroPosterPage: (Boolean) -> Unit,
+    onShowLogos: (Boolean) -> Unit,
+    onWatchedBadge: (Boolean) -> Unit,
+    onShowPosterTitles: (Boolean) -> Unit,
+    onWhiteTitles: (Boolean) -> Unit,
+    onHideBottomBarOnScroll: (Boolean) -> Unit,
+    onNavLabels: (Boolean) -> Unit,
+    onSliderShade: (Boolean) -> Unit,
+    onLargePosters: (Boolean) -> Unit,
+    onAutoBackdrop: (Boolean) -> Unit,
+    onWatchGlow: (Boolean) -> Unit,
+    onDetailIris: (Boolean) -> Unit,
+    onHaptic: (Boolean) -> Unit,
+    onAppTheme: (String) -> Unit,
+    onWatchedPercent: (Int) -> Unit,
+    onCountFromStart: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    when (page) {
+        SettingsPage.Root -> Unit
+        SettingsPage.Theme -> Column(
+            modifier
+                .verticalScroll(rememberScrollState())
+                .padding(top = 18.dp, bottom = 96.dp),
+        ) {
+            ThemeGroup(selected = settings.appTheme, onSelect = onAppTheme)
+        }
+        SettingsPage.Posters -> Column(leafScroll(modifier)) {
                 SettingGroup(
-                    title = stringResource(R.string.settings_group_posters),
-                    accent = PosterBlue,
                     items = listOf(
                         SettingItem(
                             title = stringResource(R.string.settings_large_posters),
@@ -210,10 +388,9 @@ private fun SettingsScreen(
                         ),
                     ),
                 )
-                Spacer(Modifier.height(22.dp))
+            }
+        SettingsPage.Navigation -> Column(leafScroll(modifier)) {
                 SettingGroup(
-                    title = stringResource(R.string.settings_group_navigation),
-                    accent = PosterBlue,
                     items = listOf(
                         SettingItem(
                             title = stringResource(R.string.settings_nav_labels),
@@ -229,10 +406,9 @@ private fun SettingsScreen(
                         ),
                     ),
                 )
-                Spacer(Modifier.height(22.dp))
+            }
+        SettingsPage.Color -> Column(leafScroll(modifier)) {
                 SettingGroup(
-                    title = stringResource(R.string.settings_group_color),
-                    accent = ColorViolet,
                     items = listOfNotNull(
                         SettingItem(
                             title = stringResource(R.string.settings_hero_colors),
@@ -274,10 +450,9 @@ private fun SettingsScreen(
                         ),
                     ),
                 )
-                Spacer(Modifier.height(22.dp))
+            }
+        SettingsPage.Detail -> Column(leafScroll(modifier)) {
                 SettingGroup(
-                    title = stringResource(R.string.settings_group_detail),
-                    accent = DetailGreen,
                     items = listOf(
                         SettingItem(
                             title = stringResource(R.string.settings_detail_iris),
@@ -306,10 +481,25 @@ private fun SettingsScreen(
                     ),
                 )
             }
-            SettingsSection.Sensors -> {
+        SettingsPage.Player -> Column(leafScroll(modifier)) {
+            WatchedPercentControl(
+                percent = settings.watchedPercent,
+                onSelect = onWatchedPercent,
+            )
+            Spacer(Modifier.height(22.dp))
+            SettingGroup(
+                items = listOf(
+                    SettingItem(
+                        title = stringResource(R.string.settings_count_from_start),
+                        hint = stringResource(R.string.settings_count_from_start_hint),
+                        checked = settings.countFromStart,
+                        onChecked = onCountFromStart,
+                    ),
+                ),
+            )
+        }
+        SettingsPage.Sensors -> Column(leafScroll(modifier)) {
                 SettingGroup(
-                    title = stringResource(R.string.settings_sensors),
-                    accent = SensorAmber,
                     items = listOf(
                         SettingItem(
                             title = stringResource(R.string.settings_haptic),
@@ -321,10 +511,15 @@ private fun SettingsScreen(
                     ),
                 )
             }
-            SettingsSection.About -> AboutPage(Modifier.weight(1f).fillMaxWidth())
-        }
+        SettingsPage.About -> AboutPage(modifier.padding(top = 18.dp))
     }
 }
+
+@Composable
+private fun leafScroll(modifier: Modifier): Modifier =
+    modifier
+        .verticalScroll(rememberScrollState())
+        .padding(top = 18.dp, bottom = 96.dp)
 
 @Composable
 private fun AboutPage(modifier: Modifier = Modifier) {
@@ -655,35 +850,101 @@ private fun ChangeLine(text: String) {
 }
 
 @Composable
-private fun SettingsTabs(
-    selected: SettingsSection,
-    onSelect: (SettingsSection) -> Unit,
+private fun SettingsMenu(
+    onOpen: (SettingsPage) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    LazyRow(
-        contentPadding = PaddingValues(horizontal = PosterGridInset),
-        horizontalArrangement = Arrangement.spacedBy(20.dp),
+    val tick = rememberHapticTick()
+    val pending = LocalAppUpdate.current.pending
+    val pages = SettingsPage.entries.filter { it != SettingsPage.Root }
+    Column(
+        modifier
+            .verticalScroll(rememberScrollState())
+            .padding(top = 18.dp, bottom = 96.dp),
     ) {
-        items(SettingsSection.entries, key = { it.name }) { section ->
-            val on = section == selected
-            val badge = section == SettingsSection.About && LocalAppUpdate.current.pending
-            Row(
-                modifier = Modifier.clickable(
-                    interactionSource = remember(section) { MutableInteractionSource() },
-                    indication = null,
-                    onClick = { onSelect(section) },
-                ),
-                verticalAlignment = Alignment.Top,
-            ) {
-                Text(
-                    text = stringResource(section.label),
-                    color = if (on) Color.White else Color(0xFF8A8A90),
-                    fontWeight = if (on) FontWeight.Bold else FontWeight.Normal,
-                    fontSize = CategoryTabFontSize,
-                    lineHeight = CategoryTabLineHeight,
-                    letterSpacing = CategoryTabLetterSpacing,
-                )
-                if (badge) {
-                    UpdateBadge(Modifier.padding(start = 5.dp))
+        Column(
+            modifier = Modifier
+                .padding(horizontal = PosterGridInset)
+                .clip(RoundedCornerShape(20.dp))
+                .background(settingsPanel()),
+        ) {
+            pages.forEachIndexed { index, page ->
+                if (index > 0) {
+                    Box(
+                        modifier = Modifier
+                            .padding(start = 64.dp, end = 16.dp)
+                            .fillMaxWidth()
+                            .height(0.5.dp)
+                            .background(Color.White.copy(alpha = 0.08f)),
+                    )
+                }
+                val hint = if (page == SettingsPage.About) {
+                    stringResource(R.string.settings_version_value, BuildConfig.VERSION_NAME)
+                } else {
+                    stringResource(page.hint)
+                }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(
+                            interactionSource = remember(page) { MutableInteractionSource() },
+                            indication = null,
+                            onClick = {
+                                tick?.invoke()
+                                onOpen(page)
+                            },
+                        )
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color.White.copy(alpha = 0.08f)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = page.icon,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(20.dp),
+                        )
+                    }
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(start = 12.dp, end = 12.dp),
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = stringResource(page.label),
+                                color = Color.White,
+                                fontWeight = FontWeight.Medium,
+                                fontSize = 16.sp,
+                                lineHeight = 22.sp,
+                                letterSpacing = (-0.2).sp,
+                            )
+                            if (page == SettingsPage.About && pending) {
+                                UpdateBadge(Modifier.padding(start = 8.dp))
+                            }
+                        }
+                        Spacer(Modifier.height(2.dp))
+                        Text(
+                            text = hint,
+                            color = CinemaMuted,
+                            fontSize = 13.sp,
+                            lineHeight = 18.sp,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                    Icon(
+                        imageVector = ShellIcons.chevron,
+                        contentDescription = null,
+                        tint = Color(0xFF8A8A90),
+                        modifier = Modifier.size(18.dp),
+                    )
                 }
             }
         }
@@ -691,25 +952,126 @@ private fun SettingsTabs(
 }
 
 @Composable
-private fun SettingsDivider() {
+private fun SettingsBar(
+    title: String,
+    onBack: () -> Unit,
+) {
+    val tick = rememberHapticTick()
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))
+            .padding(top = BrandTopInset)
+            .height(36.dp),
+    ) {
+        Text(
+            text = title,
+            color = Color.White,
+            fontSize = 18.sp,
+            lineHeight = 24.sp,
+            fontWeight = FontWeight.Normal,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .align(Alignment.Center)
+                .padding(horizontal = 56.dp),
+        )
+        Box(
+            modifier = Modifier
+                .align(Alignment.CenterStart)
+                .padding(start = PosterGridInset - 7.dp)
+                .size(36.dp)
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = {
+                        tick?.invoke()
+                        onBack()
+                    },
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = ShellIcons.back,
+                contentDescription = stringResource(R.string.section_back),
+                tint = Color.White,
+                modifier = Modifier.size(22.dp),
+            )
+        }
+    }
+}
+
+/** Чуть над графитовым фоном, без прежнего #2A2E38. */
+private val GraphitePanel = Color(0xFF22262E)
+
+private val WatchedPercentSteps = (50..100 step 5).toList()
+
+private fun stepWatchedPercent(current: Int, delta: Int): Int {
+    val nearest = WatchedPercentSteps.minBy { kotlin.math.abs(it - current) }
+    val index = WatchedPercentSteps.indexOf(nearest).coerceAtLeast(0)
+    return WatchedPercentSteps[(index + delta).coerceIn(WatchedPercentSteps.indices)]
+}
+
+@Composable
+private fun WatchedPercentControl(
+    percent: Int,
+    onSelect: (Int) -> Unit,
+) {
+    val tick = rememberHapticTick()
+    val settings by LocalUserSettings.current.settings.collectAsStateWithLifecycle()
+    val graphite = settings.appTheme == THEME_GRAPHITE
+    Text(
+        text = stringResource(R.string.settings_watched_percent),
+        modifier = Modifier.padding(start = PosterGridInset + 4.dp, end = PosterGridInset, bottom = 8.dp),
+        color = CinemaMuted,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 13.sp,
+        lineHeight = 16.sp,
+        letterSpacing = 0.4.sp,
+    )
     Box(
         modifier = Modifier
             .padding(horizontal = PosterGridInset)
             .fillMaxWidth()
-            .height(0.5.dp)
-            .background(Color.White.copy(alpha = 0.08f)),
+            .height(48.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(settingsPanel()),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = "$percent%",
+            color = Color.White,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Medium,
+        )
+        ThemeKey(
+            glyph = "−",
+            raised = graphite,
+            modifier = Modifier.align(Alignment.CenterStart).padding(start = 6.dp),
+            onClick = {
+                tick?.invoke()
+                onSelect(stepWatchedPercent(percent, -1))
+            },
+        )
+        ThemeKey(
+            glyph = "+",
+            raised = graphite,
+            modifier = Modifier.align(Alignment.CenterEnd).padding(end = 6.dp),
+            onClick = {
+                tick?.invoke()
+                onSelect(stepWatchedPercent(percent, 1))
+            },
+        )
+    }
+    Text(
+        text = stringResource(R.string.settings_watched_percent_hint),
+        modifier = Modifier.padding(start = PosterGridInset + 4.dp, end = PosterGridInset, top = 8.dp),
+        color = CinemaMuted,
+        fontSize = 13.sp,
+        lineHeight = 18.sp,
     )
 }
-
-private val ThemeInk = Color(0xFF8AA0B8)
-private val ThemeInkGraphite = Color(0xFFA8B4C4)
-private val PosterBlue = Color(0xFF3B6EF5)
-private val PosterBlueGraphite = Color(0xFF6B8CFF)
-private val ColorVioletGraphite = Color(0xFFB08CFF)
-private val DetailGreenGraphite = Color(0xFF2BC48A)
-private val SensorAmberGraphite = Color(0xFFE0A83A)
-/** Приподнятая плашка на фоне graphite, чтобы не сливалась с #1A1E26. */
-private val GraphitePanel = Color(0xFF2A2E38)
 
 private val ThemeOrder = listOf(THEME_CINEMA, THEME_GRAPHITE, THEME_BLACK)
 
@@ -741,15 +1103,6 @@ private fun ThemeGroup(
         tick?.invoke()
         onSelect(stepTheme(selected, delta))
     }
-    Text(
-        text = stringResource(R.string.settings_group_theme),
-        modifier = Modifier.padding(start = PosterGridInset + 4.dp, end = PosterGridInset, bottom = 8.dp),
-        color = if (graphite) ThemeInkGraphite else ThemeInk,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 13.sp,
-        lineHeight = 16.sp,
-        letterSpacing = 0.4.sp,
-    )
     Box(
         modifier = Modifier
             .padding(horizontal = PosterGridInset)
@@ -806,7 +1159,7 @@ private fun ThemeKey(
             .size(36.dp)
             .clip(RoundedCornerShape(12.dp))
             .background(
-                if (raised) Color.White.copy(alpha = 0.12f)
+                if (raised) Color.White.copy(alpha = 0.07f)
                 else Color.White.copy(alpha = 0.14f),
             )
             .clickable(
@@ -824,10 +1177,6 @@ private fun ThemeKey(
         )
     }
 }
-private val ColorViolet = Color(0xFF9B6BFF)
-private val DetailGreen = Color(0xFF14A36A)
-private val SensorAmber = Color(0xFFD4920A)
-
 private data class SettingItem(
     val title: String,
     val hint: String,
@@ -838,29 +1187,8 @@ private data class SettingItem(
 
 @Composable
 private fun SettingGroup(
-    title: String,
-    accent: Color,
     items: List<SettingItem>,
 ) {
-    val settings by LocalUserSettings.current.settings.collectAsStateWithLifecycle()
-    val muted = settings.appTheme == THEME_GRAPHITE
-    val titleColor = when {
-        !muted -> accent
-        accent == PosterBlue -> PosterBlueGraphite
-        accent == ColorViolet -> ColorVioletGraphite
-        accent == DetailGreen -> DetailGreenGraphite
-        accent == SensorAmber -> SensorAmberGraphite
-        else -> accent
-    }
-    Text(
-        text = title,
-        modifier = Modifier.padding(start = PosterGridInset + 4.dp, end = PosterGridInset, bottom = 8.dp),
-        color = titleColor,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 13.sp,
-        lineHeight = 16.sp,
-        letterSpacing = 0.4.sp,
-    )
     Column(
         modifier = Modifier
             .padding(horizontal = PosterGridInset)
@@ -944,7 +1272,7 @@ private fun SettingRow(
 @Composable
 private fun CinemaSwitch(checked: Boolean) {
     val settings by LocalUserSettings.current.settings.collectAsStateWithLifecycle()
-    val offTrack = if (settings.appTheme == THEME_GRAPHITE) Color(0xFF3A3F4A) else Color(0xFF2C2C30)
+    val offTrack = if (settings.appTheme == THEME_GRAPHITE) Color(0xFF2A2F38) else Color(0xFF2C2C30)
     val travel by animateDpAsState(
         targetValue = if (checked) 20.dp else 0.dp,
         animationSpec = spring(dampingRatio = 1f, stiffness = 500f),
