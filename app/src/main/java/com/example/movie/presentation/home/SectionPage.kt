@@ -77,6 +77,7 @@ import com.example.movie.presentation.home.components.rememberWatchedIds
 import com.example.movie.presentation.home.components.WatchProgress
 import com.example.movie.presentation.home.components.PosterGap
 import com.example.movie.presentation.home.components.posterGridColumns
+import com.example.movie.presentation.home.components.posterAspect
 import com.example.movie.presentation.home.components.posterTitlesOn
 import com.example.movie.presentation.home.holdCue
 import com.example.movie.presentation.home.holdToPeek
@@ -91,8 +92,6 @@ import com.example.movie.presentation.common.topScrimFade
 import com.example.movie.presentation.common.topScrimPalette
 import com.example.movie.ui.theme.PosterShape
 import kotlinx.coroutines.flow.distinctUntilChanged
-
-private val PosterAspect = 1.46f
 
 @Composable
 fun SectionRoute(
@@ -502,7 +501,7 @@ private fun PosterCell(
         Box(
             Modifier
                 .fillMaxWidth()
-                .aspectRatio(1f / PosterAspect)
+                .aspectRatio(1f / posterAspect())
                 .graphicsLayer {
                     scaleX = pressScale
                     scaleY = pressScale
@@ -558,7 +557,7 @@ private fun SkeletonPoster() {
         Box(
             Modifier
                 .fillMaxWidth()
-                .aspectRatio(1f / PosterAspect)
+                .aspectRatio(1f / posterAspect())
                 .clip(PosterShape)
                 .background(Color.White.copy(alpha = 0.08f)),
         )

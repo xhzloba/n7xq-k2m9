@@ -44,6 +44,10 @@ internal fun largePostersOn(): Boolean {
 @Composable
 internal fun posterSize(base: Dp): Dp = if (largePostersOn()) base * 1.22f else base
 
+/** Обычный постер чуть выше 2:3. Крупный режим и главный слайдер остаются 1.46. */
+@Composable
+internal fun posterAspect(): Float = if (largePostersOn()) 1.46f else 1.50f
+
 /** Полный список / избранное / поиск — прежний крупный режим (2 колонки). */
 @Composable
 internal fun posterGridColumns(): Int = if (largePostersOn()) 2 else 3

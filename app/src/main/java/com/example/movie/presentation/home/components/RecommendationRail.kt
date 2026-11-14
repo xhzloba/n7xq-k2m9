@@ -83,7 +83,6 @@ import com.example.movie.ui.theme.PosterShape
 import kotlinx.coroutines.flow.distinctUntilChanged
 
 private val PosterWidth = 112.dp
-private val PosterAspect = 1.46f
 private val RailStart = PosterGridInset
 internal val PosterGap = 8.dp
 private val SideRetouch = 56.dp
@@ -193,7 +192,7 @@ internal fun RecommendationRailSkeleton(
     Column(modifier = modifier.fillMaxWidth()) {
         BoxWithConstraints(Modifier.fillMaxWidth()) {
             val posterWidth = posterSize(PosterWidth)
-            val posterHeight = posterWidth * PosterAspect
+            val posterHeight = posterWidth * posterAspect()
             val showTitles = posterTitlesOn()
             val rowHeight = posterHeight + WatchedBadgeHang + if (showTitles) PosterCaptionBlock else 0.dp
             val count = ((maxWidth - RailStart) / (posterWidth + PosterGap)).toInt().coerceIn(2, 4)
@@ -306,7 +305,7 @@ private fun RecommendationPager(
         )
     }
     val posterWidth = posterSize(PosterWidth)
-    val posterHeight = posterWidth * PosterAspect
+    val posterHeight = posterWidth * posterAspect()
     val showTitles = posterTitlesOn()
     val watched = rememberWatchedIds()
     val favorites = rememberFavoriteIds()

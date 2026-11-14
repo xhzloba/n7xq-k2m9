@@ -192,6 +192,7 @@ import com.example.movie.presentation.home.components.MovieLogoShadow
 import com.example.movie.presentation.home.components.PosterCaption
 import com.example.movie.presentation.home.components.PosterCaptionBlock
 import com.example.movie.presentation.home.components.PosterGap
+import com.example.movie.presentation.home.components.posterAspect
 import com.example.movie.presentation.home.components.posterSize
 import com.example.movie.presentation.home.components.posterTitlesOn
 import com.example.movie.presentation.home.holdCue
@@ -2585,13 +2586,14 @@ private fun MovieStrip(
     val tick = rememberHapticTick()
     val showTitles = posterTitlesOn()
     val posterWidth = posterSize(108.dp)
+    val aspect = posterAspect()
     HapticOnChange(listState) { listState.firstVisibleItemIndex }
     LazyRow(
         state = listState,
         modifier = Modifier
             .edgeToEdge(DetailInset)
             .fillMaxWidth()
-            .height(posterWidth * 1.46f + if (showTitles) PosterCaptionBlock else 0.dp),
+            .height(posterWidth * aspect + if (showTitles) PosterCaptionBlock else 0.dp),
         contentPadding = PaddingValues(horizontal = DetailInset),
         horizontalArrangement = Arrangement.spacedBy(PosterGap),
     ) {
@@ -2607,7 +2609,7 @@ private fun MovieStrip(
                     contentDescription = movie.title,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .aspectRatio(1f / 1.46f)
+                        .aspectRatio(1f / aspect)
                         .graphicsLayer {
                             scaleX = pressScale
                             scaleY = pressScale

@@ -44,6 +44,12 @@ internal object Changelog {
 
     val releases: List<Release> = listOf(
         Release(
+            version = "2.43.1",
+            fixed = listOf(
+                "Обычные постеры в полках, похожих и полном списке чуть выше. Главный слайдер и крупные постеры без изменений.",
+            ),
+        ),
+        Release(
             version = "2.43.0",
             added = listOf(
                 "В «Не смотрел» у сезона обложка: из API, если есть, иначе постер сериала.",
