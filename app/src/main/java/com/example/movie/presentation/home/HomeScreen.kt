@@ -83,13 +83,17 @@ import com.example.movie.presentation.home.components.RecommendationRail
 import com.example.movie.presentation.common.BookmarkFilled
 import com.example.movie.presentation.common.HideBarOnScroll
 import com.example.movie.presentation.common.PlexPlay
+import com.example.movie.presentation.common.THEME_BLACK
+import com.example.movie.presentation.common.THEME_GRAPHITE
 import com.example.movie.presentation.common.appBackground
+import com.example.movie.presentation.common.drawGraphite
 import com.example.movie.presentation.common.TopScrimBrand
 import com.example.movie.presentation.common.TopScrimTail
 import com.example.movie.presentation.common.topScrimFade
 import com.example.movie.presentation.common.topScrimPalette
 import com.example.movie.presentation.palette.PosterWash
 import com.example.movie.presentation.shell.ShellIcons
+import com.example.movie.ui.theme.CinemaBlack
 import com.example.movie.ui.theme.MovieTheme
 import com.example.movie.ui.theme.PlayBlue
 
@@ -157,7 +161,7 @@ fun HomeScreen(
     onOpenSection: (HomeSection) -> Unit = {},
     onPlayResume: (String) -> Unit = {},
     onSearchCover: (Float) -> Unit = {},
-    onHeroDock: (Color?, Color?) -> Unit = { _, _ -> },
+    onHeroDock: (Color?, Color?, Float) -> Unit = { _, _, _ -> },
     onHideBar: (Boolean) -> Unit = {},
     onOpenRailsLook: () -> Unit = {},
     presentSearch: Boolean = true,
@@ -183,15 +187,17 @@ fun HomeScreen(
     val settings by LocalUserSettings.current.settings.collectAsStateWithLifecycle()
     val pageWashOn = settings.heroPosterColors && settings.heroPosterPage
     val playTintOn = settings.heroPosterColors
+    var washPrimed by remember { mutableStateOf(false) }
     LaunchedEffect(settings.heroPosterColors) {
         if (!settings.heroPosterColors) {
             heroWash = null
             heroWashes.clear()
             playRequest = ShelfTint(PlayBlue, PlayBlue, false)
+            washPrimed = false
         }
     }
     val washMotion = remember { WashMotion() }
-    var washPrimed by remember { mutableStateOf(false) }
+    val pageReveal = remember { androidx.compose.animation.core.Animatable(0f) }
     var glideToken by remember { mutableIntStateOf(0) }
     var glideSeen by remember { mutableIntStateOf(0) }
     LaunchedEffect(state.selectedId) {
@@ -208,15 +214,32 @@ fun HomeScreen(
         washPrimed = true
     }
     val paintedWash = if (pageWashOn && washPrimed) washMotion.current() else null
+    // Отдельный эффект: смена кадра не должна обрывать первое проявление.
+    LaunchedEffect(paintedWash != null) {
+        if (paintedWash == null) {
+            pageReveal.snapTo(0f)
+            return@LaunchedEffect
+        }
+        if (pageReveal.value < 1f) {
+            pageReveal.animateTo(1f, tween(900, easing = FastOutSlowInEasing))
+        }
+    }
+    val reveal = pageReveal.value
     SideEffect {
-        // Dock бара только в режиме «на всю главную».
+        // Dock бара только в режиме «на всю главную», в такт проявлению.
         val dock = paintedWash
-        onHeroDock(dock?.bottomLeft, dock?.bottomRight)
+        onHeroDock(dock?.bottomLeft, dock?.bottomRight, if (dock == null) 0f else reveal)
     }
     val homeBackground = if (paintedWash != null) {
         Modifier.drawBehind {
-            drawRect(Color(0xFF121212))
-            drawPlexWash(paintedWash, 1f)
+            if (reveal < 0.995f) {
+                when (settings.appTheme) {
+                    THEME_GRAPHITE -> drawGraphite()
+                    THEME_BLACK -> drawRect(Color.Black)
+                    else -> drawRect(CinemaBlack)
+                }
+            }
+            drawPlexWash(paintedWash, reveal)
         }
     } else {
         Modifier.appBackground()

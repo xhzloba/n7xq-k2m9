@@ -42,6 +42,12 @@ internal object Changelog {
 
     val releases: List<Release> = listOf(
         Release(
+            version = "2.39.6",
+            fixed = listOf(
+                "UltraBlur на всю главную при первом открытии проявляется плавно, а не встаёт сразу.",
+            ),
+        ),
+        Release(
             version = "2.39.5",
             fixed = listOf(
                 "В Chromecast те же качества, что в онлайн-плеере: если в манифесте есть 4K, оно есть в списке.",

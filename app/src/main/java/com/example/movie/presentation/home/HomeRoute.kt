@@ -16,7 +16,7 @@ fun HomeRoute(
     onOpenSection: (HomeSection) -> Unit,
     onPlayResume: (String) -> Unit = {},
     onSearchCover: (Float) -> Unit = {},
-    onHeroDock: (Color?, Color?) -> Unit = { _, _ -> },
+    onHeroDock: (Color?, Color?, Float) -> Unit = { _, _, _ -> },
     onHideBar: (Boolean) -> Unit = {},
     onOpenRailsLook: () -> Unit = {},
     onOpenAlerts: () -> Unit = {},

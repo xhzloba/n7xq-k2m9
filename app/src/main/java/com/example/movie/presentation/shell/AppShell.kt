@@ -59,7 +59,9 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -188,6 +190,7 @@ fun AppShell(
     var railsLook by remember { mutableStateOf<RailsLookTab?>(null) }
     var homeDockLeft by remember { mutableStateOf<Color?>(null) }
     var homeDockRight by remember { mutableStateOf<Color?>(null) }
+    var homeDockAlpha by remember { mutableFloatStateOf(0f) }
     LaunchedEffect(section) {
         val move = tween<Float>(240, easing = FastOutSlowInEasing)
         if (section != null) {
@@ -367,9 +370,10 @@ fun AppShell(
                     onOpenSection = { sectionName = it.name },
                     onPlayResume = playResume,
                     onSearchCover = { searchCover = it },
-                    onHeroDock = { left, right ->
+                    onHeroDock = { left, right, alpha ->
                         homeDockLeft = left
                         homeDockRight = right
+                        homeDockAlpha = alpha
                     },
                     onHideBar = { barHidden = it },
                     onOpenRailsLook = {
@@ -567,6 +571,7 @@ fun AppShell(
                 onHomeHold = { homeNavMenu = !homeNavMenu },
                 washLeft = homeDockLeft.takeIf { washBar },
                 washRight = homeDockRight.takeIf { washBar },
+                washAlpha = if (washBar) homeDockAlpha else 0f,
                 clear = onHome && shelvesOff,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
@@ -725,6 +730,7 @@ private fun AppBottomBar(
     onHomeHold: () -> Unit,
     washLeft: Color? = null,
     washRight: Color? = null,
+    washAlpha: Float = 1f,
     clear: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
@@ -751,15 +757,26 @@ private fun AppBottomBar(
         label = "barDockR",
     )
     val washOn = washLeft != null && !clear
+    val washIn = washAlpha.coerceIn(0f, 1f)
+    // Пока фон проявляется — сразу целевой цвет. После 1f лист полок идёт через animateColorAsState.
+    val inkLeft = if (washOn && washIn < 0.995f) leftTarget else left
+    val inkRight = if (washOn && washIn < 0.995f) rightTarget else right
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .background(if (washOn || clear) Color.Transparent else appChrome())
+            .background(if (clear || (washOn && washIn >= 0.995f)) Color.Transparent else appChrome())
             .drawBehind {
                 if (clear) return@drawBehind
-                if (washOn) {
+                if (washOn && washIn > 0.01f) {
+                    val layer = washIn < 0.995f
+                    if (layer) {
+                        drawContext.canvas.saveLayer(
+                            Rect(0f, 0f, size.width, size.height),
+                            Paint().apply { alpha = washIn },
+                        )
+                    }
                     // Горизонталь как нижние углы UltraBlur + плотный scrim для иконок.
-                    drawRect(brush = Brush.horizontalGradient(listOf(left, right)))
+                    drawRect(brush = Brush.horizontalGradient(listOf(inkLeft, inkRight)))
                     drawRect(
                         brush = Brush.verticalGradient(
                             0f to Color.Black.copy(alpha = 0.22f),
@@ -767,10 +784,11 @@ private fun AppBottomBar(
                             1f to Color.Black.copy(alpha = 0.46f),
                         ),
                     )
+                    if (layer) drawContext.canvas.restore()
                 }
                 val stroke = 0.6.dp.toPx()
                 drawLine(
-                    color = Color.White.copy(alpha = if (washOn) 0.16f else 0.28f),
+                    color = Color.White.copy(alpha = if (washOn) 0.28f + (0.16f - 0.28f) * washIn else 0.28f),
                     start = Offset(0f, stroke / 2f),
                     end = Offset(size.width, stroke / 2f),
                     strokeWidth = stroke,
