@@ -51,6 +51,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.movie.R
 import com.example.movie.data.cast.DlnaDevice
+import com.example.movie.data.player.videoTrackLabel
 import com.example.movie.data.cast.TvCastHub
 import com.example.movie.domain.model.EpisodeProgress
 import com.example.movie.domain.model.FranchiseEpisode
@@ -189,7 +190,6 @@ internal fun CastSheet(
                             expanded = opened == device.location,
                             playing = device.name == state.playingOn,
                             busy = state.busy,
-                            hls = state.hls,
                             qualities = state.qualities,
                             quality = state.quality,
                             audios = state.audios,
@@ -266,7 +266,6 @@ private fun TvDrop(
     expanded: Boolean,
     playing: Boolean,
     busy: Boolean,
-    hls: Boolean,
     qualities: List<Int>,
     quality: Int?,
     audios: List<String>,
@@ -357,7 +356,8 @@ private fun TvDrop(
                     val auto = stringResource(R.string.player_quality_auto)
                     val ladder = listOf<Int?>(null) + qualities
                     val spot = ladder.indexOf(quality).let { if (it < 0) 0 else it }
-                    ValueRow(stringResource(R.string.cast_quality_value, if (quality == null) auto else "${quality}p")) {
+                    val label = if (quality == null) auto else videoTrackLabel(quality, 0)
+                    ValueRow(stringResource(R.string.cast_quality_value, label)) {
                         onQuality(ladder[(spot + 1) % ladder.size])
                     }
                     Spacer(Modifier.height(8.dp))
@@ -406,7 +406,7 @@ private fun TvDrop(
                 Spacer(Modifier.height(8.dp))
                 CastRow(
                     text = stringResource(R.string.cast_tv_player),
-                    enabled = !busy && hls,
+                    enabled = !busy,
                     white = true,
                     onClick = onPlayer,
                 )

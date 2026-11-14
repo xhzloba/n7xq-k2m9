@@ -27,9 +27,9 @@ import com.example.movie.data.cast.openTvBrowser
 import com.example.movie.data.cast.playOnRenderer
 import com.example.movie.data.cast.stopRenderer
 import com.example.movie.data.player.WatchKind
-import com.example.movie.data.player.WatchStream
 import com.example.movie.data.player.fetchLiftStream
 import com.example.movie.data.player.playlistHeights
+import com.example.movie.data.player.preferRicherManifest
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import java.util.concurrent.Executors
 import java.util.concurrent.RejectedExecutionException
@@ -154,7 +154,7 @@ class TvCastService : Service() {
     }
 
     private fun bindStream(current: CastProxy, pageUrl: String, title: String, emulator: Boolean) {
-        val stream = preferHls(fetchLiftStream(pageUrl).stream)
+        val stream = fetchLiftStream(pageUrl).stream.preferRicherManifest()
         current.referer = pageUrl.toHttpUrlOrNull()?.let { "${it.scheme}://${it.host}/" }
         current.title = title.ifBlank { mediaTitle.ifBlank { getString(R.string.cast_notification_title) } }
         mediaTitle = current.title
@@ -185,8 +185,7 @@ class TvCastService : Service() {
                 audio = 0,
                 message = when {
                     emulator -> getString(R.string.cast_emulator, current.origin + "/")
-                    hls -> getString(R.string.cast_ready)
-                    else -> getString(R.string.cast_dash_only)
+                    else -> getString(R.string.cast_ready)
                 },
             )
         }
@@ -233,7 +232,6 @@ class TvCastService : Service() {
                 devices = devices,
                 message = when {
                     devices.isEmpty() -> getString(R.string.cast_none)
-                    !hls -> getString(R.string.cast_dash_only)
                     else -> getString(R.string.cast_ready)
                 },
             )
@@ -241,14 +239,10 @@ class TvCastService : Service() {
     }
 
     private fun play(name: String, control: String) {
-        if (!hls) {
-            TvCastHub.update { it.copy(message = getString(R.string.cast_dash_only)) }
-            return
-        }
         val url = publish(mediaUrl)
         if (url.isNullOrBlank() || control.isBlank()) return
         TvCastHub.update { it.copy(busy = true) }
-        playOnRenderer(DlnaDevice(name, control, control), url, mediaTitle)
+        playOnRenderer(DlnaDevice(name, control, control), url, mediaTitle, dash = !hls)
         controlUrl = control
         TvCastHub.update {
             it.copy(busy = false, playingOn = name, streamUrl = url, message = getString(R.string.cast_playing, name))
@@ -427,15 +421,3 @@ class TvCastService : Service() {
     }
 }
 
-private fun preferHls(stream: WatchStream): WatchStream {
-    val alternate = stream.alternateUrl
-    if (stream.kind == WatchKind.Dash && stream.alternateKind == WatchKind.Hls && !alternate.isNullOrBlank()) {
-        return stream.copy(
-            url = alternate,
-            kind = WatchKind.Hls,
-            alternateUrl = stream.url,
-            alternateKind = WatchKind.Dash,
-        )
-    }
-    return stream
-}

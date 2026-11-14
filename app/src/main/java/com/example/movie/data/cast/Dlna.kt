@@ -75,12 +75,12 @@ internal fun parseDevice(xml: String, location: String): DlnaDevice? {
     return DlnaDevice(name.ifBlank { "Телевизор" }, absolute, location)
 }
 
-internal fun playOnRenderer(device: DlnaDevice, mediaUrl: String, title: String) {
+internal fun playOnRenderer(device: DlnaDevice, mediaUrl: String, title: String, dash: Boolean = false) {
     runCatching { invoke(device.controlUrl, "Stop", "") }
     try {
-        setUri(device.controlUrl, mediaUrl, title, withMeta = true)
+        setUri(device.controlUrl, mediaUrl, title, withMeta = true, dash = dash)
     } catch (_: Exception) {
-        setUri(device.controlUrl, mediaUrl, title, withMeta = false)
+        setUri(device.controlUrl, mediaUrl, title, withMeta = false, dash = dash)
     }
     Thread.sleep(300)
     invoke(device.controlUrl, "Play", "<Speed>1</Speed>")
@@ -90,8 +90,8 @@ internal fun stopRenderer(controlUrl: String) {
     invoke(controlUrl, "Stop", "")
 }
 
-private fun setUri(controlUrl: String, mediaUrl: String, title: String, withMeta: Boolean) {
-    val meta = if (withMeta) xmlEscape(didl(title, mediaUrl)) else ""
+private fun setUri(controlUrl: String, mediaUrl: String, title: String, withMeta: Boolean, dash: Boolean) {
+    val meta = if (withMeta) xmlEscape(didl(title, mediaUrl, dash)) else ""
     invoke(
         controlUrl,
         "SetAVTransportURI",
@@ -99,13 +99,15 @@ private fun setUri(controlUrl: String, mediaUrl: String, title: String, withMeta
     )
 }
 
-private fun didl(title: String, url: String): String =
-    "<DIDL-Lite xmlns=\"urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/\" xmlns:dc=\"http://purl.org/dc/elements/1.1/\" xmlns:upnp=\"urn:schemas-upnp-org:metadata-1-0/upnp/\">" +
+private fun didl(title: String, url: String, dash: Boolean): String {
+    val mime = if (dash) "application/dash+xml" else "application/vnd.apple.mpegurl"
+    return "<DIDL-Lite xmlns=\"urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/\" xmlns:dc=\"http://purl.org/dc/elements/1.1/\" xmlns:upnp=\"urn:schemas-upnp-org:metadata-1-0/upnp/\">" +
         "<item id=\"0\" parentID=\"-1\" restricted=\"1\">" +
         "<dc:title>${xmlEscape(title)}</dc:title>" +
         "<upnp:class>object.item.videoItem</upnp:class>" +
-        "<res protocolInfo=\"http-get:*:application/vnd.apple.mpegurl:*\">${xmlEscape(url)}</res>" +
+        "<res protocolInfo=\"http-get:*:$mime:*\">${xmlEscape(url)}</res>" +
         "</item></DIDL-Lite>"
+}
 
 private fun invoke(controlUrl: String, action: String, inner: String) {
     val body = """
