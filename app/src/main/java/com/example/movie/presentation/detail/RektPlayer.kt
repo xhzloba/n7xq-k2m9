@@ -99,12 +99,18 @@ import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.ui.PlayerView
 import com.example.movie.R
 import com.example.movie.data.download.MediaCache
+import com.example.movie.data.player.CodecCeiling
+import com.example.movie.data.player.WatchCodec
 import com.example.movie.data.player.WatchEpisode
 import com.example.movie.data.player.WatchKind
+import com.example.movie.data.player.WatchManifest
 import com.example.movie.data.player.WatchPlayback
 import com.example.movie.data.player.WatchStream
 import com.example.movie.data.player.fallbackManifest
-import com.example.movie.data.player.preferRicherManifest
+import com.example.movie.data.player.nextPlayableManifest
+import com.example.movie.data.player.preferPlayableManifest
+import com.example.movie.data.player.selectManifest
+import com.example.movie.data.player.withCodec
 import com.example.movie.presentation.settings.LocalUserSettings
 import com.example.movie.presentation.shell.ShellIcons
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -115,13 +121,15 @@ import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
+import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 @OptIn(UnstableApi::class)
 @Composable
-internal fun LiftExoPlayer(
+internal fun RektPlayer(
     playback: WatchPlayback,
     title: String,
     logoUrl: String?,
@@ -137,6 +145,11 @@ internal fun LiftExoPlayer(
     val settings by settingsRepository.settings.collectAsStateWithLifecycle()
     val delayProcessor = remember { AudioDelayProcessor() }
     var current by remember(playback) { mutableStateOf(playback.stream) }
+    var codecPick by remember(playback) { mutableStateOf<WatchManifest?>(null) }
+    fun openEpisode(stream: WatchStream) {
+        val pick = codecPick
+        current = if (pick == null) stream.copy(manifestPicked = false) else stream.withCodec(pick.codec, pick.kind)
+    }
     val player = remember(playback) {
         val source = MediaCache.readSource(activity)
         val selector = DefaultTrackSelector(activity).apply {
@@ -179,12 +192,23 @@ internal fun LiftExoPlayer(
             !current.manifestPicked &&
             current.alternateUrl != null
         ) {
-            val picked = withContext(Dispatchers.IO) { current.preferRicherManifest() }
+            val screenHdr = activity.displaySupportsHdr()
+            val ceiling = settings.playerCodec.asCodecCeiling()
+            val picked = withContext(Dispatchers.IO) { current.preferPlayableManifest(screenHdr, ceiling) }
+            codecPick = if (ceiling == CodecCeiling.Auto) {
+                null
+            } else {
+                picked.manifests.firstOrNull { it.url == picked.url }
+            }
             current = picked
             return@LaunchedEffect
         }
         val playing = player.currentMediaItem?.localConfiguration?.uri?.toString()
         if (playing == current.url && player.playbackState != Player.STATE_IDLE) return@LaunchedEffect
+        val held = playing
+            ?.takeIf { previous -> current.manifests.any { it.url == previous } }
+            ?.let { player.currentPosition }
+            ?: 0L
         val textOff = C.TRACK_TYPE_TEXT in player.trackSelectionParameters.disabledTrackTypes
         val downloadId = resolveDownload?.invoke(current)
         val mediaItem = downloadId?.let { MediaCache.mediaItem(activity, it) } ?: current.toMediaItem()
@@ -200,7 +224,7 @@ internal fun LiftExoPlayer(
             .build()
         player.prepare()
         player.playWhenReady = true
-        val jump = pendingStart
+        val jump = held.takeIf { it > 1_000L } ?: pendingStart
         if (jump > 1_000L) {
             player.seekTo(jump)
             pendingStart = 0L
@@ -236,11 +260,18 @@ internal fun LiftExoPlayer(
             var season: Int? = null
             var episode: Int? = null
             var emit: (Long, Long, Int?, Int?) -> Unit = { _, _, _, _ -> }
+            var codec: WatchManifest? = null
+            var displayHdr: Boolean = false
+            var ceiling: CodecCeiling = CodecCeiling.Auto
         }
     }
+    val scope = rememberCoroutineScope()
     follow.index = episodeIndex
     follow.auto = autoNext
     follow.episodes = playback.episodes
+    follow.codec = codecPick
+    follow.displayHdr = activity.displaySupportsHdr()
+    follow.ceiling = settings.playerCodec.asCodecCeiling()
     follow.stream = current
     follow.season = episode?.season
     follow.episode = episode?.episode
@@ -305,16 +336,31 @@ internal fun LiftExoPlayer(
             override fun onPlaybackStateChanged(state: Int) {
                 buffering = state == Player.STATE_BUFFERING
                 if (state == Player.STATE_ENDED && follow.auto) {
-                    follow.episodes.getOrNull(follow.index + 1)?.let { current = it.stream }
+                    val next = follow.episodes.getOrNull(follow.index + 1) ?: return
+                    val pick = follow.codec
+                    current = if (pick == null) next.stream.copy(manifestPicked = false) else next.stream.withCodec(pick.codec, pick.kind)
                 }
             }
 
             override fun onPlayerError(error: PlaybackException) {
                 // Офлайн: fallback манифеста снова полезет в сеть — пропускаем.
                 if (resolveDownload?.invoke(follow.stream) != null) return
-                val next = follow.stream.fallbackManifest() ?: return
-                if (next.url == follow.stream.url) return
-                current = next
+                if (follow.codec != null) {
+                    val next = follow.stream.fallbackManifest() ?: return
+                    if (next.url == follow.stream.url) return
+                    current = next
+                    return
+                }
+                val screenHdr = follow.displayHdr
+                val ceiling = follow.ceiling
+                val failed = follow.stream
+                scope.launch {
+                    val next = withContext(Dispatchers.IO) {
+                        failed.nextPlayableManifest(screenHdr, ceiling)
+                    } ?: return@launch
+                    if (next.url == failed.url) return@launch
+                    current = next
+                }
             }
         }
         player.addListener(listener)
@@ -493,7 +539,7 @@ internal fun LiftExoPlayer(
                         showChrome()
                     },
                     onPrevious = {
-                        playback.episodes.getOrNull(episodeIndex - 1)?.let { current = it.stream }
+                        playback.episodes.getOrNull(episodeIndex - 1)?.let { openEpisode(it.stream) }
                         showChrome()
                     },
                     onPlay = {
@@ -501,7 +547,7 @@ internal fun LiftExoPlayer(
                         showChrome()
                     },
                     onNext = {
-                        playback.episodes.getOrNull(episodeIndex + 1)?.let { current = it.stream }
+                        playback.episodes.getOrNull(episodeIndex + 1)?.let { openEpisode(it.stream) }
                         showChrome()
                     },
                     onForward = {
@@ -542,6 +588,21 @@ internal fun LiftExoPlayer(
                 qualityPinned = qualityPinned,
                 audioNames = current.audioNames,
                 audioOrder = current.audioOrder,
+                manifests = current.manifests,
+                selectedManifest = current.url,
+                autoCodec = codecPick == null,
+                onManifest = { picked ->
+                    qualityPinned = false
+                    codecPick = picked
+                    settingsRepository.setPlayerCodec(picked.ceilingKey())
+                    current = current.selectManifest(picked)
+                },
+                onAutoCodec = {
+                    qualityPinned = false
+                    codecPick = null
+                    settingsRepository.setPlayerCodec("auto")
+                    current = current.copy(manifestPicked = false)
+                },
                 onPage = { page = it },
                 onBack = {
                     if (fromSettings && page != PlayerPage.Root) page = PlayerPage.Root else closeMenu()
@@ -555,7 +616,7 @@ internal fun LiftExoPlayer(
                     picture = it
                     settingsRepository.setPlayerPicture(it.stored())
                 },
-                onEpisode = { current = it.stream },
+                onEpisode = { openEpisode(it.stream) },
                 onAudio = { group, index -> player.switchAudio(group, index) },
                 onDelay = { picked ->
                     delayUs = picked
@@ -596,6 +657,19 @@ private fun ExoPlayer.switchAudio(group: Tracks.Group, index: Int) {
         .setOverrideForType(TrackSelectionOverride(group.mediaTrackGroup, listOf(index)))
         .build()
     seekTo(at)
+}
+
+private fun String.asCodecCeiling(): CodecCeiling = when (this) {
+    "av1" -> CodecCeiling.Av1
+    "vp9" -> CodecCeiling.Vp9
+    "h264" -> CodecCeiling.H264
+    else -> CodecCeiling.Auto
+}
+
+private fun WatchManifest.ceilingKey(): String = when (codec) {
+    WatchCodec.Av1 -> "av1"
+    WatchCodec.Vp9 -> "vp9"
+    else -> "h264"
 }
 
 private fun Activity.displaySupportsHdr(): Boolean {

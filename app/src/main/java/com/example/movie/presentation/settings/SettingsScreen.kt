@@ -74,6 +74,7 @@ import android.view.HapticFeedbackConstants
 import com.example.movie.BuildConfig
 import com.example.movie.R
 import com.example.movie.domain.model.UserSettings
+import com.example.movie.domain.model.normalizedPlayerCodec
 import com.example.movie.presentation.haptic.rememberHapticTick
 import com.example.movie.presentation.home.components.BrandLogoBleed
 import com.example.movie.presentation.home.components.BrandTopInset
@@ -482,6 +483,8 @@ private fun SettingsLeaf(
                 )
             }
         SettingsPage.Player -> Column(leafScroll(modifier)) {
+            MaxCodecControl(selected = settings.playerCodec)
+            Spacer(Modifier.height(22.dp))
             WatchedPercentControl(
                 percent = settings.watchedPercent,
                 onSelect = onWatchedPercent,
@@ -1066,6 +1069,92 @@ private fun WatchedPercentControl(
     }
     Text(
         text = stringResource(R.string.settings_watched_percent_hint),
+        modifier = Modifier.padding(start = PosterGridInset + 4.dp, end = PosterGridInset, top = 8.dp),
+        color = CinemaMuted,
+        fontSize = 13.sp,
+        lineHeight = 18.sp,
+    )
+}
+
+private val CodecOrder = listOf("auto", "av1", "vp9", "h264")
+
+private fun stepCodec(current: String, delta: Int): String {
+    val index = CodecOrder.indexOf(current.normalizedPlayerCodec()).let { if (it < 0) 0 else it }
+    return CodecOrder[(index + delta).mod(CodecOrder.size)]
+}
+
+@Composable
+private fun MaxCodecControl(selected: String) {
+    val tick = rememberHapticTick()
+    val repository = LocalUserSettings.current
+    val label = when (selected.normalizedPlayerCodec()) {
+        "av1" -> R.string.settings_max_codec_av1
+        "vp9" -> R.string.settings_max_codec_vp9
+        "h264" -> R.string.settings_max_codec_h264
+        else -> R.string.settings_max_codec_auto
+    }
+    Text(
+        text = stringResource(R.string.settings_max_codec),
+        modifier = Modifier.padding(start = PosterGridInset + 4.dp, end = PosterGridInset, bottom = 8.dp),
+        color = CinemaMuted,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 13.sp,
+        lineHeight = 16.sp,
+        letterSpacing = 0.4.sp,
+    )
+    Box(
+        modifier = Modifier
+            .padding(horizontal = PosterGridInset)
+            .fillMaxWidth()
+            .height(48.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(settingsPanel()),
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .padding(horizontal = 48.dp)
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = {
+                        tick?.invoke()
+                        repository.setPlayerCodec(stepCodec(selected, 1))
+                    },
+                ),
+        )
+        Text(
+            text = stringResource(label),
+            modifier = Modifier.padding(horizontal = 52.dp),
+            color = Color.White,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Medium,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        ThemeKey(
+            glyph = "−",
+            raised = false,
+            modifier = Modifier.align(Alignment.CenterStart).padding(start = 6.dp),
+            onClick = {
+                tick?.invoke()
+                repository.setPlayerCodec(stepCodec(selected, -1))
+            },
+        )
+        ThemeKey(
+            glyph = "+",
+            raised = false,
+            modifier = Modifier.align(Alignment.CenterEnd).padding(end = 6.dp),
+            onClick = {
+                tick?.invoke()
+                repository.setPlayerCodec(stepCodec(selected, 1))
+            },
+        )
+    }
+    Text(
+        text = stringResource(R.string.settings_max_codec_hint),
         modifier = Modifier.padding(start = PosterGridInset + 4.dp, end = PosterGridInset, top = 8.dp),
         color = CinemaMuted,
         fontSize = 13.sp,

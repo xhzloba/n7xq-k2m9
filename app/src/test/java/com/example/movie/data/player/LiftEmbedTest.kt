@@ -55,10 +55,10 @@ class LiftEmbedTest {
         assertEquals("https://cdn.example/master.m3u8", stream?.url)
         assertEquals(
             listOf(
-                WatchManifest("https://cdn.example/master.m3u8", WatchKind.Hls),
-                WatchManifest("https://cdn.example/av1.mpd", WatchKind.Dash),
-                WatchManifest("https://cdn.example/vp9.mpd", WatchKind.Dash),
-                WatchManifest("https://cdn.example/h264.mpd", WatchKind.Dash),
+                WatchManifest("https://cdn.example/master.m3u8", WatchKind.Hls, WatchCodec.H264),
+                WatchManifest("https://cdn.example/av1.mpd", WatchKind.Dash, WatchCodec.Av1),
+                WatchManifest("https://cdn.example/vp9.mpd", WatchKind.Dash, WatchCodec.Vp9),
+                WatchManifest("https://cdn.example/h264.mpd", WatchKind.Dash, WatchCodec.H264),
             ),
             stream?.manifests,
         )
@@ -85,9 +85,9 @@ class LiftEmbedTest {
         assertEquals(WatchKind.Hls, stream?.kind)
         assertEquals(
             listOf(
-                WatchManifest("https://cdn.example/master.m3u8", WatchKind.Hls),
-                WatchManifest("https://cdn.example/av1.mpd", WatchKind.Dash),
-                WatchManifest("https://cdn.example/vp9.mpd", WatchKind.Dash),
+                WatchManifest("https://cdn.example/master.m3u8", WatchKind.Hls, WatchCodec.H264),
+                WatchManifest("https://cdn.example/av1.mpd", WatchKind.Dash, WatchCodec.Av1),
+                WatchManifest("https://cdn.example/vp9.mpd", WatchKind.Dash, WatchCodec.Vp9),
             ),
             stream?.manifests,
         )
@@ -120,9 +120,9 @@ class LiftEmbedTest {
         assertEquals("https://cdn.example/s5e1.m3u8", playback?.stream?.url)
         assertEquals(
             listOf(
-                WatchManifest("https://cdn.example/s5e1.m3u8", WatchKind.Hls),
-                WatchManifest("https://cdn.example/s5e1-av1.mpd", WatchKind.Dash),
-                WatchManifest("https://cdn.example/s5e1-vp9.mpd", WatchKind.Dash),
+                WatchManifest("https://cdn.example/s5e1.m3u8", WatchKind.Hls, WatchCodec.H264),
+                WatchManifest("https://cdn.example/s5e1-av1.mpd", WatchKind.Dash, WatchCodec.Av1),
+                WatchManifest("https://cdn.example/s5e1-vp9.mpd", WatchKind.Dash, WatchCodec.Vp9),
             ),
             playback?.stream?.manifests,
         )
@@ -181,6 +181,118 @@ class LiftEmbedTest {
         val playback = parseLiftEmbed(html, season = 1, episode = 3)
 
         assertEquals("https://cdn.example/e3.m3u8", playback?.stream?.url)
+    }
+
+    @Test
+    fun autoPrefersHardwareAv1OverSoftwareVp9() {
+        val manifests = listOf(
+            WatchManifest("https://cdn.example/master.m3u8", WatchKind.Hls, WatchCodec.H264),
+            WatchManifest("https://cdn.example/av1.mpd", WatchKind.Dash, WatchCodec.Av1),
+            WatchManifest("https://cdn.example/vp9.mpd", WatchKind.Dash, WatchCodec.Vp9),
+        )
+        val order = manifests.playableOrder { manifest ->
+            when (manifest.codec) {
+                WatchCodec.Av1 -> DecoderTier.Hardware
+                WatchCodec.Vp9 -> DecoderTier.Software
+                WatchCodec.H264 -> DecoderTier.Hardware
+            }
+        }
+        assertEquals(listOf("https://cdn.example/av1.mpd", "https://cdn.example/master.m3u8"), order.map { it.url })
+    }
+
+    @Test
+    fun autoFallsToSoftwareWhenDeviceHasNoHardware() {
+        val manifests = listOf(
+            WatchManifest("https://cdn.example/h264.mpd", WatchKind.Dash, WatchCodec.H264),
+            WatchManifest("https://cdn.example/av1.mpd", WatchKind.Dash, WatchCodec.Av1),
+            WatchManifest("https://cdn.example/vp9.mpd", WatchKind.Dash, WatchCodec.Vp9),
+        )
+        val order = manifests.playableOrder { DecoderTier.Software }
+        assertEquals(
+            listOf("https://cdn.example/av1.mpd", "https://cdn.example/vp9.mpd", "https://cdn.example/h264.mpd"),
+            order.map { it.url },
+        )
+    }
+
+    @Test
+    fun hlsPqAndSdrBothCount() {
+        val text = """
+            #EXT-X-STREAM-INF:BANDWIDTH=1,RESOLUTION=1920x1080,VIDEO-RANGE=PQ,CODECS="hvc1.2.4.L153.B0"
+            video.m3u8
+            #EXT-X-STREAM-INF:BANDWIDTH=1,RESOLUTION=1280x720,VIDEO-RANGE=SDR,CODECS="avc1.64001f"
+            sdr.m3u8
+        """.trimIndent()
+        val range = manifestRange(text)
+        assertEquals(true, range.sdr)
+        assertEquals(true, range.hdr)
+        assertEquals(true, range.playsOn(displayHdr = false))
+    }
+
+    @Test
+    fun hlsPqOnlyIsRejectedOnSdrScreen() {
+        val text = """
+            #EXT-X-STREAM-INF:BANDWIDTH=1,RESOLUTION=1920x1080,VIDEO-RANGE=PQ
+            video.m3u8
+        """.trimIndent()
+        val range = manifestRange(text)
+        assertEquals(false, range.sdr)
+        assertEquals(true, range.hdr)
+        assertEquals(false, range.playsOn(displayHdr = false))
+        assertEquals(true, range.playsOn(displayHdr = true))
+    }
+
+    @Test
+    fun dashHdrOnlyAndMixed() {
+        val hdrOnly = """
+            <AdaptationSet mimeType="video/mp4" codecs="hvc1.2.4.L153.B0">
+              <EssentialProperty schemeIdUri="urn:mpeg:mpegB:cicp:TransferCharacteristics" value="16"/>
+              <Representation height="2160"/>
+            </AdaptationSet>
+        """.trimIndent()
+        val mixed = hdrOnly + """
+            <AdaptationSet mimeType="video/mp4" codecs="avc1.640028">
+              <Representation height="1080"/>
+            </AdaptationSet>
+        """.trimIndent()
+        val dolby = """
+            <AdaptationSet mimeType="video/mp4" codecs="dvh1.05.01">
+              <Representation height="2160"/>
+            </AdaptationSet>
+            <AdaptationSet mimeType="audio/mp4" codecs="mp4a.40.2">
+              <Representation id="a"/>
+            </AdaptationSet>
+        """.trimIndent()
+        assertEquals(false, manifestRange(hdrOnly).playsOn(displayHdr = false))
+        assertEquals(true, manifestRange(mixed).playsOn(displayHdr = false))
+        assertEquals(false, manifestRange(dolby).sdr)
+        assertEquals(true, manifestRange(dolby).hdr)
+    }
+
+    @Test
+    fun av1CeilingKeepsSoftwareAv1First() {
+        val manifests = listOf(
+            WatchManifest("https://cdn.example/h264.mpd", WatchKind.Dash, WatchCodec.H264),
+            WatchManifest("https://cdn.example/av1.mpd", WatchKind.Dash, WatchCodec.Av1),
+            WatchManifest("https://cdn.example/vp9.mpd", WatchKind.Dash, WatchCodec.Vp9),
+        )
+        val order = manifests.underCeiling(CodecCeiling.Av1) { manifest ->
+            if (manifest.codec == WatchCodec.Av1) DecoderTier.Software else DecoderTier.Hardware
+        }
+        assertEquals("https://cdn.example/av1.mpd", order.first().url)
+    }
+
+    @Test
+    fun vp9CeilingDropsAv1() {
+        val manifests = listOf(
+            WatchManifest("https://cdn.example/av1.mpd", WatchKind.Dash, WatchCodec.Av1),
+            WatchManifest("https://cdn.example/vp9.mpd", WatchKind.Dash, WatchCodec.Vp9),
+            WatchManifest("https://cdn.example/h264.mpd", WatchKind.Dash, WatchCodec.H264),
+        )
+        val order = manifests.underCeiling(CodecCeiling.Vp9) { DecoderTier.Hardware }
+        assertEquals(
+            listOf("https://cdn.example/vp9.mpd", "https://cdn.example/h264.mpd"),
+            order.map { it.url },
+        )
     }
 
     @Test

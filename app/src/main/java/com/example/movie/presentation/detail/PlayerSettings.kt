@@ -39,7 +39,10 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
 import com.example.movie.R
+import com.example.movie.data.player.WatchCodec
 import com.example.movie.data.player.WatchEpisode
+import com.example.movie.data.player.WatchKind
+import com.example.movie.data.player.WatchManifest
 import com.example.movie.data.player.audioCodeIndex
 import com.example.movie.data.player.audioTrackLabel
 import com.example.movie.data.player.namedTrackLabel
@@ -59,7 +62,14 @@ internal enum class PictureMode(val resizeMode: Int, val label: Int) {
     Fill(AspectRatioFrameLayout.RESIZE_MODE_FILL, R.string.player_fill),
 }
 
-internal enum class PlayerPage { Root, Quality, Audio, Episodes, Subtitles, Speed, Scale, Delay, Brightness }
+internal enum class PlayerPage { Root, Quality, Codec, Audio, Episodes, Subtitles, Speed, Scale, Delay, Brightness }
+
+internal fun WatchManifest.codecLabel(): Int = when {
+    kind == WatchKind.Hls -> R.string.player_codec_hls
+    codec == WatchCodec.Av1 -> R.string.player_codec_av1
+    codec == WatchCodec.Vp9 -> R.string.player_codec_vp9
+    else -> R.string.player_codec_dash
+}
 
 private val speeds = listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 2f)
 
@@ -91,6 +101,11 @@ internal fun PlayerMenu(
     qualityPinned: Boolean,
     audioNames: List<String>,
     audioOrder: List<Int>,
+    manifests: List<WatchManifest>,
+    selectedManifest: String,
+    autoCodec: Boolean,
+    onManifest: (WatchManifest) -> Unit,
+    onAutoCodec: () -> Unit,
     onPage: (PlayerPage) -> Unit,
     onBack: () -> Unit,
     onClose: () -> Unit,
@@ -114,6 +129,7 @@ internal fun PlayerMenu(
     val title = when (page) {
         PlayerPage.Root -> stringResource(R.string.player_menu)
         PlayerPage.Quality -> stringResource(R.string.player_quality)
+        PlayerPage.Codec -> stringResource(R.string.player_codec)
         PlayerPage.Audio -> stringResource(R.string.player_audio)
         PlayerPage.Episodes -> stringResource(R.string.player_episodes)
         PlayerPage.Subtitles -> stringResource(R.string.player_subtitles)
@@ -160,6 +176,17 @@ internal fun PlayerMenu(
         ) {
             when (page) {
                 PlayerPage.Root -> {
+                    val playingCodec = manifests.firstOrNull { it.url == selectedManifest }
+                    if (manifests.size > 1 && playingCodec != null) {
+                        val codecValue = if (autoCodec) {
+                            stringResource(R.string.player_codec_auto)
+                        } else {
+                            stringResource(playingCodec.codecLabel())
+                        }
+                        NavRow(stringResource(R.string.player_codec), codecValue) {
+                            onPage(PlayerPage.Codec)
+                        }
+                    }
                     NavRow(stringResource(R.string.player_speed), speedLabel(player.playbackParameters.speed)) {
                         onPage(PlayerPage.Speed)
                     }
@@ -206,6 +233,22 @@ internal fun PlayerMenu(
                         Choice(row.label, qualityPinned && overrideIndex(player, row.group) == row.index) {
                             onVideoPinned(true)
                             player.selectTrack(C.TRACK_TYPE_VIDEO, row.group, row.index)
+                            onClose()
+                        }
+                    }
+                }
+                PlayerPage.Codec -> {
+                    val playing = manifests.firstOrNull { it.url == selectedManifest }
+                    Choice(stringResource(R.string.player_codec_auto), autoCodec) {
+                        onAutoCodec()
+                        onClose()
+                    }
+                    manifests.distinctBy { it.codec to it.kind }.forEach { manifest ->
+                        Choice(
+                            stringResource(manifest.codecLabel()),
+                            !autoCodec && playing?.codec == manifest.codec && playing.kind == manifest.kind,
+                        ) {
+                            onManifest(manifest)
                             onClose()
                         }
                     }

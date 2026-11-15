@@ -1,5 +1,7 @@
 package com.example.movie.presentation.detail
 
+import android.app.Activity
+import android.content.Context
 import android.graphics.drawable.ColorDrawable
 import android.view.ViewGroup
 import android.view.WindowManager
@@ -56,6 +58,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -75,10 +78,11 @@ import com.example.movie.data.download.downloadId
 import com.example.movie.data.download.offlineItem
 import com.example.movie.data.download.toPlayback
 import com.example.movie.data.download.toPlayback
+import com.example.movie.data.player.CodecCeiling
 import com.example.movie.data.player.WatchPlayback
+import com.example.movie.data.player.WatchStream
 import com.example.movie.data.player.fetchLiftPlayback
-import com.example.movie.data.player.forDownload
-import com.example.movie.data.player.preferRicherManifest
+import com.example.movie.data.player.preferPlayableManifest
 import com.example.movie.di.LocalAppContainer
 import com.example.movie.domain.model.FranchiseEpisode
 import com.example.movie.domain.model.FranchiseSeason
@@ -91,7 +95,9 @@ import com.example.movie.presentation.common.NoticeShelfDownloads
 import com.example.movie.presentation.common.inProgress
 import com.example.movie.presentation.common.offlineProgressTitle
 import com.example.movie.presentation.common.offlineSizeLabel
+import com.example.movie.domain.model.normalizedPlayerCodec
 import com.example.movie.presentation.haptic.rememberHapticTick
+import com.example.movie.presentation.settings.LocalUserSettings
 import com.example.movie.ui.theme.CinemaMuted
 import com.example.movie.ui.theme.PlayBlue
 import kotlinx.coroutines.Dispatchers
@@ -116,6 +122,10 @@ internal fun DownloadSheet(
     onDismiss: () -> Unit,
 ) {
     val container = LocalAppContainer.current
+    val context = LocalContext.current
+    val settingsRepository = LocalUserSettings.current
+    val settings by settingsRepository.settings.collectAsStateWithLifecycle()
+    val codec = settings.playerCodec.normalizedPlayerCodec()
     val offline = container.offline
     val scope = rememberCoroutineScope()
     val tick = rememberHapticTick()
@@ -152,19 +162,26 @@ internal fun DownloadSheet(
         val playback = withContext(Dispatchers.IO) {
             runCatching { fetchLiftPlayback(franchise) }.getOrNull()
         } ?: return@LaunchedEffect
-        val rich = withContext(Dispatchers.IO) { playback.stream.preferRicherManifest() }
-        cachedPlayback = playback.copy(stream = rich)
-        audios = rich.audioNames
-        audioOrder = rich.audioOrder
-        val probed = offline.heights(rich)
+        cachedPlayback = playback
+        audios = playback.stream.audioNames
+        audioOrder = playback.stream.audioOrder
+        streamReady = true
+    }
+
+    LaunchedEffect(cachedPlayback, codec) {
+        val playback = cachedPlayback ?: return@LaunchedEffect
+        val picked = withContext(Dispatchers.IO) {
+            playback.stream.preferPlayableManifest(context.screenHdr(), codec.asCodecCeiling())
+        }
+        val probed = offline.heights(picked)
             .filter { it > 0 }
             .distinct()
             .sortedDescending()
+        if (cachedPlayback !== playback) return@LaunchedEffect
         if (probed.isNotEmpty()) {
             ladder = listOf(0) + probed
             if (height !in ladder) height = 0
         }
-        streamReady = true
     }
 
     LaunchedEffect(title.id, attempt, series) {
@@ -227,6 +244,20 @@ internal fun DownloadSheet(
                     .fillMaxWidth()
                     .padding(horizontal = 22.dp),
             ) {
+                when {
+                    watchId != null && !streamReady -> DownloadValueRow(
+                        text = stringResource(R.string.download_codec_loading),
+                        enabled = false,
+                        loading = true,
+                    ) {}
+                    watchId != null -> DownloadValueRow(
+                        text = stringResource(R.string.download_codec_value, codecCeilingLabel(codec)),
+                    ) {
+                        tick?.invoke()
+                        settingsRepository.setPlayerCodec(stepCodec(codec, 1))
+                    }
+                }
+                if (watchId != null) Spacer(Modifier.height(8.dp))
                 val spot = ladder.indexOf(height).let { if (it < 0) 0 else it }
                 DownloadValueRow(
                     text = stringResource(R.string.cast_quality_value, qualityLabel(height)),
@@ -418,7 +449,9 @@ internal fun DownloadSheet(
                             applying = false
                             return@launch
                         }
-                        val playback = withContext(Dispatchers.IO) { raw.forDownload() }
+                        val playback = withContext(Dispatchers.IO) {
+                            raw.forCeiling(context.screenHdr(), codec.asCodecCeiling())
+                        }
                         cachedPlayback = playback
                         if (audios.isEmpty()) {
                             audios = playback.stream.audioNames
@@ -491,6 +524,43 @@ internal fun DownloadSheet(
             }
         }
     }
+}
+
+private fun WatchPlayback.forCeiling(displayHdr: Boolean, ceiling: CodecCeiling): WatchPlayback {
+    fun WatchStream.picked(): WatchStream = preferPlayableManifest(displayHdr, ceiling)
+    return copy(
+        stream = stream.picked(),
+        episodes = episodes.map { episode -> episode.copy(stream = episode.stream.picked()) },
+    )
+}
+
+private val CodecOrder = listOf("auto", "av1", "vp9", "h264")
+
+private fun stepCodec(current: String, delta: Int): String {
+    val index = CodecOrder.indexOf(current.normalizedPlayerCodec()).let { if (it < 0) 0 else it }
+    return CodecOrder[(index + delta).mod(CodecOrder.size)]
+}
+
+private fun String.asCodecCeiling(): CodecCeiling = when (normalizedPlayerCodec()) {
+    "av1" -> CodecCeiling.Av1
+    "vp9" -> CodecCeiling.Vp9
+    "h264" -> CodecCeiling.H264
+    else -> CodecCeiling.Auto
+}
+
+@Composable
+private fun codecCeilingLabel(codec: String): String = stringResource(
+    when (codec.normalizedPlayerCodec()) {
+        "av1" -> R.string.settings_max_codec_av1
+        "vp9" -> R.string.settings_max_codec_vp9
+        "h264" -> R.string.settings_max_codec_h264
+        else -> R.string.settings_max_codec_auto
+    },
+)
+
+private fun Context.screenHdr(): Boolean {
+    val display = (this as? Activity)?.display ?: return false
+    return display.supportedModes.any { it.supportedHdrTypes.isNotEmpty() }
 }
 
 private enum class Mark { Empty, Partial, Full }
@@ -784,7 +854,7 @@ internal fun OfflinePlayer(
             item.streams.associate { stream -> stream.url to stream.downloadId(item.title.id) }
         }
         Box(Modifier.fillMaxSize().background(Color.Black), contentAlignment = Alignment.Center) {
-            LiftExoPlayer(
+            RektPlayer(
                 playback = item.toPlayback(season, episode),
                 title = item.title.title,
                 logoUrl = item.title.logoUrl,

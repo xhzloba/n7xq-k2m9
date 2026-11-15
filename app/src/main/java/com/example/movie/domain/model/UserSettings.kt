@@ -24,6 +24,8 @@ data class UserSettings(
     val playerUnderCamera: Boolean = false,
     val playerAutoNext: Boolean = true,
     val playerHdr: Boolean = true,
+    /** Потолок кодека: auto, av1, vp9, h264. По умолчанию авто, как у Lift. */
+    val playerCodec: String = "auto",
     val watchedBadge: Boolean = true,
     val whiteTitles: Boolean = true,
     /** Прятать нижнее меню при скролле вниз (главная, каталог, полный список). */
@@ -49,10 +51,17 @@ data class UserSettings(
     val progressStartMs: Long
         get() = if (countFromStart) 0L else DefaultProgressStartMs
 
+    fun playerCodecCeiling(): String = playerCodec.normalizedPlayerCodec()
+
     fun homeRailVisible(id: String): Boolean = id !in hiddenHomeRails
 }
 
 /** Совпадает с HomeRails.All — по дефолту на главной только слайдер. */
+fun String.normalizedPlayerCodec(): String = when (this) {
+    "av1", "vp9", "h264" -> this
+    else -> "auto"
+}
+
 val DefaultHiddenHomeRails: Set<String> = setOf(
     "recommendations",
     "history",
@@ -103,6 +112,8 @@ interface UserSettingsRepository {
     fun setPlayerAutoNext(enabled: Boolean)
 
     fun setPlayerHdr(enabled: Boolean)
+
+    fun setPlayerCodec(codec: String)
 
     fun setWatchedBadge(enabled: Boolean)
 

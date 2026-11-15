@@ -110,7 +110,7 @@ import com.example.movie.presentation.home.SectionScrim
 import com.example.movie.presentation.home.components.BrandTopInset
 import com.example.movie.presentation.home.components.PosterGridInset
 import com.example.movie.data.player.WatchPlayback
-import com.example.movie.data.player.fetchLiftStream
+import com.example.movie.data.player.fetchLiftWatch
 import com.example.movie.presentation.shell.ShellIcons
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -403,14 +403,14 @@ internal fun WatchPlayer(
     val start = remember(url) { startPositionMs }
     LaunchedEffect(url) {
         val resolved = withContext(Dispatchers.IO) {
-            runCatching { fetchLiftStream(url) }.getOrNull()
+            runCatching { fetchLiftWatch(url) }.getOrNull()
         }
         if (resolved == null) embed = true else playback = resolved
     }
     val direct = playback
     when {
         embed -> EmbedPlayer(url = url, direct = true, allowedHostSuffix = null, onDismiss = onDismiss)
-        direct != null -> LiftExoPlayer(
+        direct != null -> RektPlayer(
             playback = direct,
             title = title,
             logoUrl = logoUrl,

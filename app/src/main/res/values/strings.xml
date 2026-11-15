@@ -43,6 +43,12 @@
     <string name="player_episode">Сезон %1$d · Серия %2$d</string>
     <string name="player_quality">Качество</string>
     <string name="player_quality_auto">Авто</string>
+    <string name="player_codec">Кодек</string>
+    <string name="player_codec_auto">Авто — лучший доступный</string>
+    <string name="player_codec_hls">HLS · H.264</string>
+    <string name="player_codec_av1">DASH · AV1</string>
+    <string name="player_codec_vp9">DASH · VP9</string>
+    <string name="player_codec_dash">DASH · H.264</string>
     <string name="player_audio">Озвучка</string>
     <string name="player_subtitles">Субтитры</string>
     <string name="player_logo">Логотип</string>
@@ -133,6 +139,8 @@
     <string name="download_progress">Скачивание… %1$d%%</string>
     <string name="download_size_of">%1$s из %2$s</string>
     <string name="download_audio_loading">Озвучка</string>
+    <string name="download_codec_value">Кодек: %1$s</string>
+    <string name="download_codec_loading">Кодек: загрузка…</string>
     <string name="download_channel_name">Загрузки</string>
     <string name="download_channel_description">Загрузка видео для просмотра без интернета</string>
     <string name="favorites_downloaded">Скачанное</string>
@@ -296,7 +304,13 @@
     <string name="settings_menu_color">UltraBlur на главной и цвета карточки.</string>
     <string name="settings_menu_detail">Переход, логотипы, кадры и свечение.</string>
     <string name="settings_group_player">Плеер</string>
-    <string name="settings_menu_player">Когда фильм уходит в «Просмотренное».</string>
+    <string name="settings_menu_player">Кодек и когда фильм уходит в «Просмотренное».</string>
+    <string name="settings_max_codec">Максимальный видеокодек</string>
+    <string name="settings_max_codec_auto">Авто — лучший доступный</string>
+    <string name="settings_max_codec_av1">AV1 максимум</string>
+    <string name="settings_max_codec_vp9">VP9 максимум</string>
+    <string name="settings_max_codec_h264">H.264 максимум</string>
+    <string name="settings_max_codec_hint">По умолчанию авто. Выбор в плеере или при скачивании запоминается и ставится следующим.</string>
     <string name="settings_watched_percent">Просмотрено</string>
     <string name="settings_watched_percent_hint">Доля длины фильма или серии. После неё тайтл уходит в «Просмотренное». По умолчанию 95%.</string>
     <string name="settings_count_from_start">Считать с начала</string>

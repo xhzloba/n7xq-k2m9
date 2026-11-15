@@ -13,12 +13,20 @@ import java.util.concurrent.TimeUnit
 
 internal enum class WatchKind { Hls, Dash }
 
+internal enum class WatchCodec { H264, Av1, Vp9 }
+
+internal enum class DecoderTier { None, Software, Hardware }
+
+/** Потолок, как «Максимальный видеокодек» у Lift. auto — без потолка. */
+internal enum class CodecCeiling { Auto, Av1, Vp9, H264 }
+
 internal data class WatchSubtitle(val url: String, val name: String)
 
 /** Кандидат манифеста: HLS / DASH (в т.ч. dash_av1 / dash_vp9). */
 internal data class WatchManifest(
     val url: String,
     val kind: WatchKind,
+    val codec: WatchCodec = WatchCodec.H264,
 )
 
 internal data class WatchStream(
@@ -96,6 +104,18 @@ internal fun fetchTrailerSources(pageUrl: String): TrailerSources {
         video = mediaPlaylist(master, text) ?: master,
         audio = audioPlaylist(master, text),
     )
+}
+
+/** Просмотр: playlist Lift (AV1/VP9), иначе HTML embed. */
+internal fun fetchLiftWatch(pageUrl: String): WatchPlayback {
+    val page = pageUrl.toHttpUrlOrNull()
+    val id = page?.pathSegments?.lastOrNull()?.toIntOrNull()
+    if (page != null && id != null && page.host.endsWith("liftw.ws")) {
+        val season = page.queryParameter("season")?.toIntOrNull()
+        val episode = page.queryParameter("episode")?.toIntOrNull()
+        runCatching { return fetchLiftPlaylist(id, season, episode) }
+    }
+    return fetchLiftStream(pageUrl)
 }
 
 internal fun fetchLiftStream(pageUrl: String): WatchPlayback {
@@ -244,9 +264,11 @@ private fun buildStream(
     order: List<Int>,
 ): WatchStream? {
     val manifests = buildList {
-        if (hls != null) add(WatchManifest(hls, WatchKind.Hls))
+        if (hls != null) add(WatchManifest(hls, WatchKind.Hls, WatchCodec.H264))
         // AV1 → VP9 → обычный DASH — как у Lift
-        listOfNotNull(dashAv1, dashVp9, dash).distinct().forEach { add(WatchManifest(it, WatchKind.Dash)) }
+        if (dashAv1 != null) add(WatchManifest(dashAv1, WatchKind.Dash, WatchCodec.Av1))
+        if (dashVp9 != null && dashVp9 != dashAv1) add(WatchManifest(dashVp9, WatchKind.Dash, WatchCodec.Vp9))
+        if (dash != null && dash != dashAv1 && dash != dashVp9) add(WatchManifest(dash, WatchKind.Dash, WatchCodec.H264))
     }.distinctBy { it.url }
     if (manifests.isEmpty()) return null
     val primary = manifests.first()
@@ -310,6 +332,110 @@ internal fun WatchPlayback.forDownload(): WatchPlayback = copy(
     stream = stream.preferRicherManifest(),
     episodes = episodes.map { episode -> episode.copy(stream = episode.stream.preferRicherManifest()) },
 )
+
+internal fun codecRank(manifest: WatchManifest): Int = when {
+    manifest.codec == WatchCodec.Av1 -> 4
+    manifest.codec == WatchCodec.Vp9 -> 3
+    manifest.kind == WatchKind.Dash -> 2
+    else -> 1
+}
+
+/** Железо важнее софта. Внутри уровня: AV1, VP9, DASH H.264, HLS. */
+internal fun List<WatchManifest>.playableOrder(tier: (WatchManifest) -> DecoderTier): List<WatchManifest> {
+    if (isEmpty()) return this
+    val known = map { it to tier(it) }
+    val hardware = known.filter { it.second == DecoderTier.Hardware }
+    val software = known.filter { it.second == DecoderTier.Software }
+    val pool = when {
+        hardware.isNotEmpty() -> hardware
+        software.isNotEmpty() -> software
+        else -> known
+    }
+    return pool.sortedByDescending { codecRank(it.first) }.map { it.first }
+}
+
+internal data class ManifestRange(val sdr: Boolean, val hdr: Boolean)
+
+internal fun ManifestRange.playsOn(displayHdr: Boolean): Boolean = displayHdr || sdr || !hdr
+
+/** HLS `VIDEO-RANGE` и DASH PQ/HLG/Dolby. Пустой разбор не режем. */
+internal fun manifestRange(text: String): ManifestRange = when {
+    text.contains("#EXT-X-STREAM-INF") -> hlsRange(text)
+    text.contains("<AdaptationSet") -> dashRange(text)
+    else -> ManifestRange(sdr = true, hdr = false)
+}
+
+internal fun WatchStream.preferPlayableManifest(
+    displayHdr: Boolean,
+    ceiling: CodecCeiling = CodecCeiling.Auto,
+): WatchStream {
+    val best = orderedFor(displayHdr, ceiling).firstOrNull() ?: return copy(manifestPicked = true)
+    return selectManifest(best)
+}
+
+internal fun WatchStream.nextPlayableManifest(
+    displayHdr: Boolean,
+    ceiling: CodecCeiling = CodecCeiling.Auto,
+): WatchStream? {
+    val order = orderedFor(displayHdr, ceiling)
+    val next = order.getOrNull(order.indexOfFirst { it.url == url } + 1) ?: return null
+    return selectManifest(next)
+}
+
+internal fun List<WatchManifest>.underCeiling(
+    ceiling: CodecCeiling,
+    tier: (WatchManifest) -> DecoderTier,
+): List<WatchManifest> {
+    fun present(codec: WatchCodec) = filter { it.codec == codec && tier(it) != DecoderTier.None }
+    return when (ceiling) {
+        CodecCeiling.Auto -> this
+        CodecCeiling.Av1 -> {
+            val av1 = present(WatchCodec.Av1)
+            if (av1.isEmpty()) this else av1 + filter { it.codec != WatchCodec.Av1 }
+        }
+        CodecCeiling.Vp9 -> {
+            val rest = filter { it.codec != WatchCodec.Av1 }
+            val vp9 = present(WatchCodec.Vp9)
+            when {
+                vp9.isNotEmpty() -> vp9 + rest.filter { it.codec != WatchCodec.Vp9 }
+                rest.isNotEmpty() -> rest
+                else -> this
+            }
+        }
+        CodecCeiling.H264 -> filter { it.codec == WatchCodec.H264 }.ifEmpty { this }
+    }
+}
+
+private fun WatchStream.orderedFor(displayHdr: Boolean, ceiling: CodecCeiling): List<WatchManifest> {
+    val tier = { manifest: WatchManifest -> manifest.decoderTier() }
+    val order = if (ceiling == CodecCeiling.Auto) {
+        manifests.playableOrder(tier)
+    } else {
+        manifests.underCeiling(ceiling, tier)
+    }
+    if (displayHdr) return order
+    val allowed = order.filter { manifest ->
+        val text = fetchManifest(manifest.url) ?: return@filter true
+        manifestRange(text).playsOn(displayHdr = false)
+    }
+    return allowed.ifEmpty { order }
+}
+
+internal fun WatchStream.withCodec(codec: WatchCodec, kind: WatchKind): WatchStream {
+    val picked = manifests.firstOrNull { it.codec == codec && it.kind == kind } ?: return this
+    return selectManifest(picked)
+}
+
+internal fun WatchStream.selectManifest(picked: WatchManifest): WatchStream {
+    val rest = manifests.filterNot { it.url == picked.url }
+    return copy(
+        url = picked.url,
+        kind = picked.kind,
+        alternateUrl = rest.firstOrNull()?.url,
+        alternateKind = rest.firstOrNull()?.kind,
+        manifestPicked = true,
+    )
+}
 
 internal fun WatchStream.fallbackManifest(): WatchStream? {
     val other = alternateUrl ?: return null
@@ -382,6 +508,70 @@ private fun audioPlaylist(master: String, text: String): String? {
 internal fun playlistHeights(url: String): List<Int> =
     fetchHeights(url).filter { it > 0 }.sortedDescending()
 
+private fun fetchManifest(url: String): String? = runCatching {
+    val request = Request.Builder().url(url).header("User-Agent", LIFT_USER_AGENT).build()
+    client.newCall(request).execute().use { response ->
+        if (!response.isSuccessful) return null
+        response.body?.string()
+    }
+}.getOrNull()
+
+private fun hlsRange(text: String): ManifestRange {
+    val lines = text.lines().filter { it.contains("#EXT-X-STREAM-INF") }
+    if (lines.isEmpty()) return ManifestRange(sdr = true, hdr = false)
+    var sdr = false
+    var hdr = false
+    for (line in lines) {
+        val range = videoRange.find(line)?.groupValues?.get(1)?.uppercase()
+        val dolby = line.split("CODECS=", limit = 2).getOrNull(1)?.let { codecsHaveDolby(it) } == true
+        if (range == "PQ" || range == "HLG" || dolby) hdr = true else sdr = true
+    }
+    return ManifestRange(sdr, hdr)
+}
+
+private fun dashRange(text: String): ManifestRange {
+    val sets = text.split("<AdaptationSet").drop(1)
+    var sdr = false
+    var hdr = false
+    for (raw in sets) {
+        val body = raw.substringBefore("</AdaptationSet")
+        if (!body.isVideoSet()) continue
+        if (body.isHdrSet()) hdr = true else sdr = true
+    }
+    if (!sdr && !hdr) return ManifestRange(sdr = true, hdr = false)
+    return ManifestRange(sdr, hdr)
+}
+
+private fun String.isVideoSet(): Boolean {
+    val lower = lowercase()
+    if ("audio/" in lower && "video/" !in lower) return false
+    if ("video/" in lower) return true
+    return codecTokens(this).any { it.isVideoCodec() }
+}
+
+private fun String.isHdrSet(): Boolean {
+    if (transferHdr.containsMatchIn(this) || transferHdrReversed.containsMatchIn(this)) return true
+    return codecTokens(this).any { token ->
+        token.startsWith("dvh1") || token.startsWith("dvhe") || token.startsWith("dav1")
+    }
+}
+
+private fun codecTokens(body: String): List<String> =
+    codecsAttr.findAll(body).flatMap { match ->
+        match.groupValues[1].split(',').map { it.trim().lowercase() }
+    }.toList()
+
+private fun String.isVideoCodec(): Boolean =
+    startsWith("avc1") || startsWith("avc3") || startsWith("hvc1") || startsWith("hev1") ||
+        startsWith("dvh1") || startsWith("dvhe") || startsWith("dav1") || startsWith("av01") ||
+        startsWith("vp09") || startsWith("vp9")
+
+private fun codecsHaveDolby(raw: String): Boolean =
+    raw.lowercase().split(',').any { token ->
+        val codec = token.trim().trim('"')
+        codec.startsWith("dvh1") || codec.startsWith("dvhe") || codec.startsWith("dav1")
+    }
+
 private fun fetchHeights(url: String): Set<Int> = runCatching {
     val request = Request.Builder().url(url).header("User-Agent", LIFT_USER_AGENT).build()
     client.newCall(request).execute().use { response ->
@@ -392,6 +582,16 @@ private fun fetchHeights(url: String): Set<Int> = runCatching {
 
 private val hlsResolution = Regex("""RESOLUTION=(\d+)x(\d+)""")
 private val dashHeight = Regex("""height\s*=\s*["'](\d+)["']""")
+private val videoRange = Regex("""VIDEO-RANGE=(SDR|PQ|HLG)""", RegexOption.IGNORE_CASE)
+private val codecsAttr = Regex("""codecs\s*=\s*["']([^"']+)["']""", RegexOption.IGNORE_CASE)
+private val transferHdr = Regex(
+    """TransferCharacteristics["'][^>]*\bvalue\s*=\s*["'](16|18)["']""",
+    RegexOption.IGNORE_CASE,
+)
+private val transferHdrReversed = Regex(
+    """\bvalue\s*=\s*["'](16|18)["'][^>]*TransferCharacteristics""",
+    RegexOption.IGNORE_CASE,
+)
 
 private fun audioFromHtml(html: String): Pair<List<String>, List<Int>> {
     for (match in audioKey.findAll(html)) {

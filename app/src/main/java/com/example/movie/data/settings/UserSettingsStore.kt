@@ -5,6 +5,7 @@ import com.example.movie.domain.model.DefaultHiddenHomeRails
 import com.example.movie.domain.model.DefaultWatchedPercent
 import com.example.movie.domain.model.UserSettings
 import com.example.movie.domain.model.UserSettingsRepository
+import com.example.movie.domain.model.normalizedPlayerCodec
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -62,6 +63,8 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
     override fun setPlayerAutoNext(enabled: Boolean) = write { it.copy(playerAutoNext = enabled) }
 
     override fun setPlayerHdr(enabled: Boolean) = write { it.copy(playerHdr = enabled) }
+
+    override fun setPlayerCodec(codec: String) = write { it.copy(playerCodec = codec.normalizedPlayerCodec()) }
 
     override fun setWatchedBadge(enabled: Boolean) = write { it.copy(watchedBadge = enabled) }
 
@@ -131,6 +134,7 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
             .putBoolean(KEY_PLAYER_UNDER_CAMERA, next.playerUnderCamera)
             .putBoolean(KEY_PLAYER_AUTO_NEXT, next.playerAutoNext)
             .putBoolean(KEY_PLAYER_HDR, next.playerHdr)
+            .putString(KEY_PLAYER_CODEC, next.playerCodec)
             .putBoolean(KEY_WATCHED_BADGE, next.watchedBadge)
             .putBoolean(KEY_WHITE_TITLES, next.whiteTitles)
             .putBoolean(KEY_HIDE_BAR, next.hideBottomBarOnScroll)
@@ -204,6 +208,7 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
         playerUnderCamera = prefs.getBoolean(KEY_PLAYER_UNDER_CAMERA, false),
         playerAutoNext = prefs.getBoolean(KEY_PLAYER_AUTO_NEXT, true),
         playerHdr = prefs.getBoolean(KEY_PLAYER_HDR, true),
+        playerCodec = prefs.getString(KEY_PLAYER_CODEC, "auto").orEmpty().normalizedPlayerCodec(),
         watchedBadge = prefs.getBoolean(KEY_WATCHED_BADGE, true),
         whiteTitles = prefs.getBoolean(KEY_WHITE_TITLES, true),
         hideBottomBarOnScroll = prefs.getBoolean(KEY_HIDE_BAR, true),
@@ -248,6 +253,7 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
         const val KEY_PLAYER_UNDER_CAMERA = "player_under_camera"
         const val KEY_PLAYER_AUTO_NEXT = "player_auto_next"
         const val KEY_PLAYER_HDR = "player_hdr"
+        const val KEY_PLAYER_CODEC = "player_codec"
         const val KEY_WATCHED_BADGE = "watched_badge"
         const val KEY_WHITE_TITLES = "white_titles"
         const val KEY_HIDE_BAR = "hide_bottom_bar_scroll"
