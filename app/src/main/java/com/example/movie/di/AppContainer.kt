@@ -78,6 +78,7 @@ class AppContainer(context: Context) {
         token = BuildConfig.VOKINO_TOKEN,
         franchiseToken = BuildConfig.FRANCHISE_TOKEN,
         http = client,
+        lookupTimeoutMs = { userSettings.settings.value.networkTimeoutSec * 1_000L },
     )
 
     val getHomeShelves: GetHomeShelvesUseCase = GetHomeShelvesUseCase(movieRepository)

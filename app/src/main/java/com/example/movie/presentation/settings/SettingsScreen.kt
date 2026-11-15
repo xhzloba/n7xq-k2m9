@@ -73,7 +73,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import android.view.HapticFeedbackConstants
 import com.example.movie.BuildConfig
 import com.example.movie.R
+import com.example.movie.domain.model.MaxNetworkTimeoutSec
+import com.example.movie.domain.model.MinNetworkTimeoutSec
 import com.example.movie.domain.model.UserSettings
+import com.example.movie.domain.model.normalizedNetworkTimeout
 import com.example.movie.domain.model.normalizedPlayerCodec
 import com.example.movie.presentation.haptic.rememberHapticTick
 import com.example.movie.presentation.home.components.BrandLogoBleed
@@ -106,6 +109,7 @@ private enum class SettingsPage {
     Detail,
     Player,
     Sensors,
+    Network,
     About,
     ;
 
@@ -119,6 +123,7 @@ private enum class SettingsPage {
             Detail -> R.string.settings_group_detail
             Player -> R.string.settings_group_player
             Sensors -> R.string.settings_sensors
+            Network -> R.string.settings_group_network
             About -> R.string.settings_about
         }
 
@@ -132,6 +137,7 @@ private enum class SettingsPage {
             Detail -> R.string.settings_menu_detail
             Player -> R.string.settings_menu_player
             Sensors -> R.string.settings_menu_sensors
+            Network -> R.string.settings_menu_network
             About -> R.string.settings_version_value
         }
 
@@ -145,6 +151,7 @@ private enum class SettingsPage {
             Detail -> ShellIcons.movie
             Player -> ShellIcons.play
             Sensors -> ShellIcons.vibrate
+            Network -> ShellIcons.network
             About -> ShellIcons.info
         }
 }
@@ -501,6 +508,9 @@ private fun SettingsLeaf(
                 ),
             )
         }
+        SettingsPage.Network -> Column(leafScroll(modifier)) {
+            NetworkTimeoutControl(seconds = settings.networkTimeoutSec)
+        }
         SettingsPage.Sensors -> Column(leafScroll(modifier)) {
                 SettingGroup(
                     items = listOf(
@@ -664,31 +674,62 @@ private fun AboutPage(modifier: Modifier = Modifier) {
             }
         }
         Spacer(Modifier.height(28.dp))
-        Changelog.releases.firstOrNull()?.let { release ->
+        val releases = Changelog.releases
+        var historyOpen by rememberSaveable { mutableStateOf(false) }
+        val shown = if (historyOpen) releases else releases.take(5)
+        shown.forEach { release ->
+            ReleaseNotes(release)
+            Spacer(Modifier.height(20.dp))
+        }
+        if (releases.size > 5) {
             Text(
-                text = release.version,
-                modifier = Modifier.padding(horizontal = PosterGridInset),
+                text = stringResource(
+                    if (historyOpen) R.string.changelog_collapse else R.string.changelog_more,
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = {
+                            tick?.invoke()
+                            historyOpen = !historyOpen
+                        },
+                    )
+                    .padding(horizontal = PosterGridInset, vertical = 8.dp),
                 color = VersionBlue,
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 17.sp,
+                fontWeight = FontWeight.Medium,
+                fontSize = 15.sp,
                 lineHeight = 22.sp,
-                letterSpacing = (-0.2).sp,
             )
-            if (release.added.isNotEmpty()) {
-                Spacer(Modifier.height(14.dp))
-                ChangeLabel(stringResource(R.string.changelog_added))
-                release.added.forEach { ChangeLine(it) }
-            }
-            if (release.fixed.isNotEmpty()) {
-                Spacer(Modifier.height(16.dp))
-                ChangeLabel(stringResource(R.string.changelog_fixed))
-                release.fixed.forEach { ChangeLine(it) }
-            }
             Spacer(Modifier.height(20.dp))
         }
     }
     if (featuresOpen) {
         FeaturesSheet(onDismiss = { featuresOpen = false })
+    }
+}
+
+@Composable
+private fun ReleaseNotes(release: Release) {
+    Text(
+        text = release.version,
+        modifier = Modifier.padding(horizontal = PosterGridInset),
+        color = VersionBlue,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 17.sp,
+        lineHeight = 22.sp,
+        letterSpacing = (-0.2).sp,
+    )
+    if (release.added.isNotEmpty()) {
+        Spacer(Modifier.height(14.dp))
+        ChangeLabel(stringResource(R.string.changelog_added))
+        release.added.forEach { ChangeLine(it) }
+    }
+    if (release.fixed.isNotEmpty()) {
+        Spacer(Modifier.height(16.dp))
+        ChangeLabel(stringResource(R.string.changelog_fixed))
+        release.fixed.forEach { ChangeLine(it) }
     }
 }
 
@@ -1069,6 +1110,70 @@ private fun WatchedPercentControl(
     }
     Text(
         text = stringResource(R.string.settings_watched_percent_hint),
+        modifier = Modifier.padding(start = PosterGridInset + 4.dp, end = PosterGridInset, top = 8.dp),
+        color = CinemaMuted,
+        fontSize = 13.sp,
+        lineHeight = 18.sp,
+    )
+}
+
+private fun stepNetworkTimeout(current: Int, delta: Int): Int {
+    val seconds = current.normalizedNetworkTimeout()
+    return (seconds + delta).coerceIn(MinNetworkTimeoutSec, MaxNetworkTimeoutSec)
+}
+
+@Composable
+private fun NetworkTimeoutControl(seconds: Int) {
+    val tick = rememberHapticTick()
+    val repository = LocalUserSettings.current
+    val settings by repository.settings.collectAsStateWithLifecycle()
+    val graphite = settings.appTheme == THEME_GRAPHITE
+    val shown = seconds.normalizedNetworkTimeout()
+    Text(
+        text = stringResource(R.string.settings_network_timeout),
+        modifier = Modifier.padding(start = PosterGridInset + 4.dp, end = PosterGridInset, bottom = 8.dp),
+        color = CinemaMuted,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 13.sp,
+        lineHeight = 16.sp,
+        letterSpacing = 0.4.sp,
+    )
+    Box(
+        modifier = Modifier
+            .padding(horizontal = PosterGridInset)
+            .fillMaxWidth()
+            .height(48.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(settingsPanel()),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = stringResource(R.string.settings_network_timeout_value, shown),
+            color = Color.White,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Medium,
+        )
+        ThemeKey(
+            glyph = "−",
+            raised = graphite,
+            modifier = Modifier.align(Alignment.CenterStart).padding(start = 6.dp),
+            onClick = {
+                tick?.invoke()
+                repository.setNetworkTimeoutSec(stepNetworkTimeout(shown, -1))
+            },
+        )
+        ThemeKey(
+            glyph = "+",
+            raised = graphite,
+            modifier = Modifier.align(Alignment.CenterEnd).padding(end = 6.dp),
+            onClick = {
+                tick?.invoke()
+                repository.setNetworkTimeoutSec(stepNetworkTimeout(shown, 1))
+            },
+        )
+    }
+    Text(
+        text = stringResource(R.string.settings_network_timeout_hint),
         modifier = Modifier.padding(start = PosterGridInset + 4.dp, end = PosterGridInset, top = 8.dp),
         color = CinemaMuted,
         fontSize = 13.sp,

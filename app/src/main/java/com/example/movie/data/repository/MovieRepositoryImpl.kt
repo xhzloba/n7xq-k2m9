@@ -37,6 +37,7 @@ internal class MovieRepositoryImpl(
     private val token: String,
     private val franchiseToken: String,
     http: OkHttpClient,
+    private val lookupTimeoutMs: () -> Long = { 4_000L },
 ) : MovieRepository {
     private val embed = http.newBuilder()
         .callTimeout(4, TimeUnit.SECONDS)
@@ -101,7 +102,7 @@ internal class MovieRepositoryImpl(
     override suspend fun watchCheck(id: String, title: String?, year: Int?): WatchCheck {
         if (franchiseToken.isBlank()) return WatchCheck.Unknown
         val card = try {
-            withTimeout(4_000) { lookupCard(id, title, year) }
+            withTimeout(lookupTimeoutMs().coerceIn(4_000L, 20_000L)) { lookupCard(id, title, year) }
         } catch (timeout: TimeoutCancellationException) {
             return WatchCheck.Unknown
         } catch (cancelled: CancellationException) {

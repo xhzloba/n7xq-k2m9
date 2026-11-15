@@ -3,8 +3,10 @@ package com.example.movie.data.settings
 import android.content.Context
 import com.example.movie.domain.model.DefaultHiddenHomeRails
 import com.example.movie.domain.model.DefaultWatchedPercent
+import com.example.movie.domain.model.DefaultNetworkTimeoutSec
 import com.example.movie.domain.model.UserSettings
 import com.example.movie.domain.model.UserSettingsRepository
+import com.example.movie.domain.model.normalizedNetworkTimeout
 import com.example.movie.domain.model.normalizedPlayerCodec
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -111,6 +113,10 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
         it.copy(qualityHintSeen = seen)
     }
 
+    override fun setNetworkTimeoutSec(seconds: Int) = write {
+        it.copy(networkTimeoutSec = seconds.normalizedNetworkTimeout())
+    }
+
     private fun write(transform: (UserSettings) -> UserSettings) {
         val next = transform(state.value)
         prefs.edit()
@@ -147,6 +153,7 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
             .putInt(KEY_WATCHED_PERCENT, next.watchedPercent)
             .putBoolean(KEY_COUNT_FROM_START, next.countFromStart)
             .putBoolean(KEY_QUALITY_HINT, next.qualityHintSeen)
+            .putInt(KEY_NETWORK_TIMEOUT, next.networkTimeoutSec)
             .commit()
         state.value = next
     }
@@ -225,6 +232,7 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
         watchedPercent = prefs.getInt(KEY_WATCHED_PERCENT, DefaultWatchedPercent).coerceIn(50, 100),
         countFromStart = prefs.getBoolean(KEY_COUNT_FROM_START, false),
         qualityHintSeen = prefs.getBoolean(KEY_QUALITY_HINT, false),
+        networkTimeoutSec = prefs.getInt(KEY_NETWORK_TIMEOUT, DefaultNetworkTimeoutSec).normalizedNetworkTimeout(),
         )
     }
 
@@ -266,5 +274,6 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
         const val KEY_WATCHED_PERCENT = "watched_percent"
         const val KEY_COUNT_FROM_START = "count_from_start"
         const val KEY_QUALITY_HINT = "quality_hint_seen"
+        const val KEY_NETWORK_TIMEOUT = "network_timeout_sec"
     }
 }

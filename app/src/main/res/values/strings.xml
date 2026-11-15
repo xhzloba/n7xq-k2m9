@@ -343,6 +343,11 @@
     <string name="settings_group_color">Цвет</string>
     <string name="settings_group_detail">Деталка</string>
     <string name="settings_sensors">Сенсоры</string>
+    <string name="settings_group_network">Сеть</string>
+    <string name="settings_menu_network">Сколько ждать карточку. Быстрый ответ открывается сразу.</string>
+    <string name="settings_network_timeout">Ожидание ответа</string>
+    <string name="settings_network_timeout_value">%1$d с</string>
+    <string name="settings_network_timeout_hint">По умолчанию 4 секунды. Это потолок: если карточка пришла раньше, экран открывается сразу и оставшееся время не ждётся. От 4 до 20 секунд.</string>
     <string name="settings_hero_colors">UltraBlur на главной</string>
     <string name="settings_hero_colors_hint">Цвета с обложки слайдера по алгоритму UltraBlur. Выключено — обычный фон темы.</string>
     <string name="settings_hero_page">На всю главную</string>
@@ -387,7 +392,7 @@
     <string name="update_check_failed">Не удалось проверить</string>
     <string name="changelog_added">Добавлено</string>
     <string name="changelog_fixed">Исправлено</string>
-    <string name="changelog_more">Показать ещё</string>
+    <string name="changelog_more">Развернуть остальные</string>
     <string name="changelog_collapse">Свернуть</string>
     <string name="update_title">Доступна новая версия</string>
     <string name="update_action">Обновить</string>

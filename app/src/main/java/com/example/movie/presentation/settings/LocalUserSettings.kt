@@ -76,4 +76,6 @@ private object DefaultUserSettings : UserSettingsRepository {
     override fun setCountFromStart(enabled: Boolean) = Unit
 
     override fun setQualityHintSeen(seen: Boolean) = Unit
+
+    override fun setNetworkTimeoutSec(seconds: Int) = Unit
 }

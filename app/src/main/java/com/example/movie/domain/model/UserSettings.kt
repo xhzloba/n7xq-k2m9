@@ -47,6 +47,8 @@ data class UserSettings(
     val countFromStart: Boolean = false,
     /** Подсказка про колокольчик на фильме в TS уже показана. */
     val qualityHintSeen: Boolean = false,
+    /** Потолок ожидания карточки, секунды. Быстрый ответ не ждёт этот срок. */
+    val networkTimeoutSec: Int = DefaultNetworkTimeoutSec,
 ) {
     val progressStartMs: Long
         get() = if (countFromStart) 0L else DefaultProgressStartMs
@@ -138,4 +140,12 @@ interface UserSettingsRepository {
     fun setCountFromStart(enabled: Boolean)
 
     fun setQualityHintSeen(seen: Boolean)
+
+    fun setNetworkTimeoutSec(seconds: Int)
 }
+
+const val DefaultNetworkTimeoutSec = 4
+const val MinNetworkTimeoutSec = 4
+const val MaxNetworkTimeoutSec = 20
+
+fun Int.normalizedNetworkTimeout(): Int = coerceIn(MinNetworkTimeoutSec, MaxNetworkTimeoutSec)
