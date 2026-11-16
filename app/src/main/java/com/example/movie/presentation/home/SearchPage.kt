@@ -79,6 +79,8 @@ import com.example.movie.presentation.common.PosterImage
 import com.example.movie.domain.model.DataError
 import com.example.movie.domain.model.Movie
 import com.example.movie.presentation.haptic.HapticOnAppend
+import com.example.movie.domain.model.HapticSlot
+import com.example.movie.presentation.haptic.rememberHaptic
 import com.example.movie.presentation.haptic.rememberHapticTick
 import kotlinx.coroutines.flow.distinctUntilChanged
 import com.example.movie.presentation.home.components.CategoryTabFontSize
@@ -312,6 +314,7 @@ private fun SearchIdle(
     onMoviePeek: (Movie) -> Unit,
 ) {
     val tick = rememberHapticTick()
+    val poster = rememberHaptic(HapticSlot.Poster)
     val showTitles = posterTitlesOn()
     val watched = rememberWatchedIds()
     val favorites = rememberFavoriteIds()
@@ -441,7 +444,7 @@ private fun SearchIdle(
                                     onProgress = { holdProgress = it },
                                     onPressed = { pressed = it },
                                     onClick = {
-                                        tick?.invoke()
+                                        poster?.invoke()
                                         onMovieClick(movie.id)
                                     },
                                     wave = wave,
@@ -531,6 +534,7 @@ private fun SearchResults(
     onMoviePeek: (Movie) -> Unit,
 ) {
     val tick = rememberHapticTick()
+    val poster = rememberHaptic(HapticSlot.Poster)
     val showTitles = posterTitlesOn()
     val watched = rememberWatchedIds()
     val favorites = rememberFavoriteIds()
@@ -586,7 +590,7 @@ private fun SearchResults(
                                 onProgress = { holdProgress = it },
                                 onPressed = { pressed = it },
                                 onClick = {
-                                    tick?.invoke()
+                                    poster?.invoke()
                                     onMovieClick(movie.id)
                                 },
                                 wave = wave,

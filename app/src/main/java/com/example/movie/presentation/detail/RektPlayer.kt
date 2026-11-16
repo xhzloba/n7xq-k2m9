@@ -56,6 +56,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -111,6 +112,8 @@ import com.example.movie.data.player.nextPlayableManifest
 import com.example.movie.data.player.preferPlayableManifest
 import com.example.movie.data.player.selectManifest
 import com.example.movie.data.player.withCodec
+import com.example.movie.domain.model.HapticSlot
+import com.example.movie.presentation.haptic.rememberHaptic
 import com.example.movie.presentation.settings.LocalUserSettings
 import com.example.movie.presentation.shell.ShellIcons
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -183,6 +186,20 @@ internal fun RektPlayer(
             .setSeekParameters(SeekParameters.CLOSEST_SYNC)
             .build()
             .apply { playWhenReady = true }
+    }
+    val playBuzz = rememberHaptic(HapticSlot.Play)
+    val playNow = rememberUpdatedState(playBuzz)
+    DisposableEffect(player, current.url) {
+        var armed = true
+        val listener = object : Player.Listener {
+            override fun onPlaybackStateChanged(state: Int) {
+                if (!armed || state != Player.STATE_READY) return
+                armed = false
+                playNow.value?.invoke()
+            }
+        }
+        player.addListener(listener)
+        onDispose { player.removeListener(listener) }
     }
     var pendingStart by remember(playback) { mutableLongStateOf(startPositionMs) }
     val resolveDownload = remember(downloadIdOf) { downloadIdOf }

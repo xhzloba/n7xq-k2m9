@@ -83,6 +83,8 @@ import com.example.movie.presentation.common.NoticeShelfWatched
 import com.example.movie.presentation.common.BookmarkOutline
 import com.example.movie.presentation.common.ImdbScore
 import com.example.movie.presentation.common.KpScore
+import com.example.movie.domain.model.HapticSlot
+import com.example.movie.presentation.haptic.rememberHaptic
 import com.example.movie.presentation.haptic.rememberHapticTick
 import com.example.movie.presentation.settings.LocalUserSettings
 import com.example.movie.presentation.common.appBackground
@@ -175,6 +177,8 @@ private fun MovieMenu(
     val resume by LocalAppContainer.current.resume.items.collectAsStateWithLifecycle()
     val continued = resume.firstOrNull { it.id == movie.id }
     val tick = rememberHapticTick()
+    val watchBuzz = rememberHaptic(HapticSlot.Watch)
+    val favoriteBuzz = rememberHaptic(HapticSlot.Favorite)
     val notices = LocalShelfNotices.current
     val addedFavorite = stringResource(
         if (movie.seriesTitle()) R.string.notice_favorite_series else R.string.notice_favorite_movie,
@@ -197,7 +201,7 @@ private fun MovieMenu(
                 icon = PlayIcon,
                 label = stringResource(if (continued == null) R.string.menu_watch else R.string.section_continue),
                 onClick = {
-                    tick?.invoke()
+                    watchBuzz?.invoke()
                     if (continued != null && onContinue != null) onContinue() else onWatch()
                 },
             )
@@ -224,7 +228,7 @@ private fun MovieMenu(
                 icon = if (saved) BookmarkFilled else BookmarkOutline,
                 label = stringResource(if (saved) R.string.menu_favorite_remove else R.string.menu_favorite_add),
                 onClick = {
-                    tick?.invoke()
+                    favoriteBuzz?.invoke()
                     val adding = !saved
                     favorites.toggle(movie.toSaved())
                     if (adding) watched.remove(movie.id)

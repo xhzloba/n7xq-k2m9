@@ -3,7 +3,11 @@ package com.example.movie.data.settings
 import android.content.Context
 import com.example.movie.domain.model.DefaultHiddenHomeRails
 import com.example.movie.domain.model.DefaultWatchedPercent
+import com.example.movie.domain.model.DefaultHapticProfile
 import com.example.movie.domain.model.DefaultNetworkTimeoutSec
+import com.example.movie.domain.model.HapticFeel
+import com.example.movie.domain.model.HapticSlot
+import com.example.movie.domain.model.withHapticFeel
 import com.example.movie.domain.model.UserSettings
 import com.example.movie.domain.model.UserSettingsRepository
 import com.example.movie.domain.model.normalizedNetworkTimeout
@@ -117,6 +121,16 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
         it.copy(networkTimeoutSec = seconds.normalizedNetworkTimeout())
     }
 
+    override fun setHapticFeel(slot: String, feel: String) = write { current ->
+        val known = HapticSlot.entries.firstOrNull { it.name.equals(slot, ignoreCase = true) }
+        val parsed = HapticFeel.entries.firstOrNull { it.name.equals(feel, ignoreCase = true) }
+        if (known == null || parsed == null) {
+            current
+        } else {
+            current.copy(hapticProfile = current.hapticProfile.withHapticFeel(known, parsed))
+        }
+    }
+
     private fun write(transform: (UserSettings) -> UserSettings) {
         val next = transform(state.value)
         prefs.edit()
@@ -154,6 +168,7 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
             .putBoolean(KEY_COUNT_FROM_START, next.countFromStart)
             .putBoolean(KEY_QUALITY_HINT, next.qualityHintSeen)
             .putInt(KEY_NETWORK_TIMEOUT, next.networkTimeoutSec)
+            .putString(KEY_HAPTIC_PROFILE, next.hapticProfile)
             .commit()
         state.value = next
     }
@@ -233,6 +248,7 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
         countFromStart = prefs.getBoolean(KEY_COUNT_FROM_START, false),
         qualityHintSeen = prefs.getBoolean(KEY_QUALITY_HINT, false),
         networkTimeoutSec = prefs.getInt(KEY_NETWORK_TIMEOUT, DefaultNetworkTimeoutSec).normalizedNetworkTimeout(),
+        hapticProfile = prefs.getString(KEY_HAPTIC_PROFILE, DefaultHapticProfile).orEmpty().ifBlank { DefaultHapticProfile },
         )
     }
 
@@ -275,5 +291,6 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
         const val KEY_COUNT_FROM_START = "count_from_start"
         const val KEY_QUALITY_HINT = "quality_hint_seen"
         const val KEY_NETWORK_TIMEOUT = "network_timeout_sec"
+        const val KEY_HAPTIC_PROFILE = "haptic_profile"
     }
 }

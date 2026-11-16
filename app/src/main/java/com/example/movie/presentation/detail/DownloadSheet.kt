@@ -96,6 +96,8 @@ import com.example.movie.presentation.common.inProgress
 import com.example.movie.presentation.common.offlineProgressTitle
 import com.example.movie.presentation.common.offlineSizeLabel
 import com.example.movie.domain.model.normalizedPlayerCodec
+import com.example.movie.domain.model.HapticSlot
+import com.example.movie.presentation.haptic.rememberHaptic
 import com.example.movie.presentation.haptic.rememberHapticTick
 import com.example.movie.presentation.settings.LocalUserSettings
 import com.example.movie.ui.theme.CinemaMuted
@@ -129,6 +131,7 @@ internal fun DownloadSheet(
     val offline = container.offline
     val scope = rememberCoroutineScope()
     val tick = rememberHapticTick()
+    val downloadBuzz = rememberHaptic(HapticSlot.Download)
     val notices = LocalShelfNotices.current
     val queued = stringResource(R.string.notice_download_queued)
     val failed = stringResource(R.string.download_failed)
@@ -437,7 +440,7 @@ internal fun DownloadSheet(
                 onClick = {
                     if (!canStart) return@Button
                     val franchise = watchId ?: return@Button
-                    tick?.invoke()
+                    downloadBuzz?.invoke()
                     applying = true
                     error = null
                     scope.launch {

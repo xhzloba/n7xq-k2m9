@@ -49,6 +49,8 @@ data class UserSettings(
     val qualityHintSeen: Boolean = false,
     /** Потолок ожидания карточки, секунды. Быстрый ответ не ждёт этот срок. */
     val networkTimeoutSec: Int = DefaultNetworkTimeoutSec,
+    /** Отклик по действиям: poster=tick,watch=click,… */
+    val hapticProfile: String = DefaultHapticProfile,
 ) {
     val progressStartMs: Long
         get() = if (countFromStart) 0L else DefaultProgressStartMs
@@ -142,6 +144,8 @@ interface UserSettingsRepository {
     fun setQualityHintSeen(seen: Boolean)
 
     fun setNetworkTimeoutSec(seconds: Int)
+
+    fun setHapticFeel(slot: String, feel: String)
 }
 
 const val DefaultNetworkTimeoutSec = 4

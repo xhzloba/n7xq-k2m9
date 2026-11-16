@@ -6,6 +6,8 @@ import android.graphics.Bitmap
 import android.graphics.drawable.BitmapDrawable
 import com.example.movie.presentation.haptic.HapticOnAppend
 import com.example.movie.presentation.haptic.HapticOnChange
+import com.example.movie.domain.model.HapticSlot
+import com.example.movie.presentation.haptic.rememberHaptic
 import com.example.movie.presentation.haptic.rememberHapticTick
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -197,6 +199,7 @@ internal fun PosterCarousel(
     }
     val active = movies.getOrNull(activeIndex)
     val tick = rememberHapticTick()
+    val poster = rememberHaptic(HapticSlot.Poster)
     HapticOnChange(pagerState) { pagerState.currentPage }
     HapticOnAppend(movies.map { it.id })
     SettleEffect(pagerState, { pagerState.isScrollInProgress }, onSettled)
@@ -372,7 +375,7 @@ internal fun PosterCarousel(
                             onProgress = { holdProgress = it },
                             onPressed = { pressed = it },
                             onClick = {
-                                tick?.invoke()
+                                poster?.invoke()
                                 onMovieClick(movie.id)
                             },
                             wave = wave,

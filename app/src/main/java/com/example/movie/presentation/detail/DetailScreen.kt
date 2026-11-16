@@ -187,6 +187,8 @@ import com.example.movie.domain.model.isTsQuality
 import com.example.movie.domain.model.qualityAlert
 import com.example.movie.domain.model.releaseSnapshot
 import com.example.movie.presentation.haptic.HapticOnChange
+import com.example.movie.domain.model.HapticSlot
+import com.example.movie.presentation.haptic.rememberHaptic
 import com.example.movie.presentation.haptic.rememberHapticTick
 import com.example.movie.presentation.home.components.MovieLogoShadow
 import com.example.movie.presentation.home.components.PosterCaption
@@ -651,6 +653,10 @@ private fun DetailContent(
     val savedIds by favorites.ids.collectAsStateWithLifecycle()
     val watchedIds by watched.ids.collectAsStateWithLifecycle()
     val tick = rememberHapticTick()
+    val watchBuzz = rememberHaptic(HapticSlot.Watch)
+    val favoriteBuzz = rememberHaptic(HapticSlot.Favorite)
+    val cardBuzz = rememberHaptic(HapticSlot.Card)
+    LaunchedEffect(detail.id) { cardBuzz?.invoke() }
     val settings by LocalUserSettings.current.settings.collectAsStateWithLifecycle()
     val flat = PosterWash(CinemaBlack, CinemaBlack, CinemaBlack, CinemaBlack)
     val hidden = PosterWash(Color.Black, Color.Black, Color.Black, Color.Black)
@@ -1150,7 +1156,7 @@ private fun DetailContent(
                     }
                 },
                 onWatch = {
-                    tick?.invoke()
+                    watchBuzz?.invoke()
                     if (downloaded != null && downloadStatus?.phase == OfflinePhase.Ready) {
                         offlinePlay = true
                         return@WatchBar
@@ -1178,7 +1184,7 @@ private fun DetailContent(
                         circled = true,
                         circle = ActionCircle,
                         onClick = {
-                            tick?.invoke()
+                            favoriteBuzz?.invoke()
                             val adding = detail.id !in savedIds
                             favorites.toggle(detail.toSaved())
                             if (adding) watched.remove(detail.id)
@@ -2583,7 +2589,7 @@ private fun MovieStrip(
     onMoviePeek: (Movie) -> Unit,
 ) {
     val listState = rememberLazyListState()
-    val tick = rememberHapticTick()
+    val tick = rememberHaptic(HapticSlot.Poster)
     val showTitles = posterTitlesOn()
     val posterWidth = posterSize(108.dp)
     val aspect = posterAspect()

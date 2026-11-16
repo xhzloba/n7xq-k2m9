@@ -111,6 +111,8 @@ import com.example.movie.domain.model.progressCaption
 import com.example.movie.domain.model.toMovie
 import com.example.movie.domain.model.toSaved
 import com.example.movie.presentation.haptic.HapticOnChange
+import com.example.movie.domain.model.HapticSlot
+import com.example.movie.presentation.haptic.rememberHaptic
 import com.example.movie.presentation.haptic.rememberHapticTick
 import com.example.movie.presentation.home.components.BrandLogoBleed
 import com.example.movie.presentation.home.components.BrandTopInset
@@ -907,7 +909,7 @@ private fun FavoritePoster(
     onMovieClick: (String) -> Unit,
     onMoviePeek: (Movie) -> Unit,
 ) {
-    val tick = rememberHapticTick()
+    val tick = rememberHaptic(HapticSlot.Poster)
     var holdProgress by remember(item.id) { mutableFloatStateOf(0f) }
     var pressed by remember(item.id) { mutableStateOf(false) }
     val pressScale = rememberPressScale(pressed)

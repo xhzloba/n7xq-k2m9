@@ -70,14 +70,20 @@ import androidx.compose.ui.unit.sp
 import kotlin.math.roundToInt
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import android.os.VibratorManager
 import android.view.HapticFeedbackConstants
 import com.example.movie.BuildConfig
 import com.example.movie.R
+import com.example.movie.domain.model.HapticFeel
+import com.example.movie.domain.model.HapticSlot
 import com.example.movie.domain.model.MaxNetworkTimeoutSec
+import com.example.movie.domain.model.hapticFeel
+import com.example.movie.domain.model.nextHapticFeel
 import com.example.movie.domain.model.MinNetworkTimeoutSec
 import com.example.movie.domain.model.UserSettings
 import com.example.movie.domain.model.normalizedNetworkTimeout
 import com.example.movie.domain.model.normalizedPlayerCodec
+import com.example.movie.presentation.haptic.play
 import com.example.movie.presentation.haptic.rememberHapticTick
 import com.example.movie.presentation.home.components.BrandLogoBleed
 import com.example.movie.presentation.home.components.BrandTopInset
@@ -523,6 +529,7 @@ private fun SettingsLeaf(
                         ),
                     ),
                 )
+                HapticFeelRows(profile = settings.hapticProfile)
             }
         SettingsPage.About -> AboutPage(modifier.padding(top = 18.dp))
     }
@@ -533,6 +540,92 @@ private fun leafScroll(modifier: Modifier): Modifier =
     modifier
         .verticalScroll(rememberScrollState())
         .padding(top = 18.dp, bottom = 96.dp)
+
+@Composable
+private fun HapticFeelRows(profile: String) {
+    val repository = LocalUserSettings.current
+    val context = LocalContext.current
+    val vibrator = remember(context) {
+        context.getSystemService(VibratorManager::class.java)?.defaultVibrator
+    }
+    Spacer(Modifier.height(22.dp))
+    Text(
+        text = stringResource(R.string.settings_haptic_actions),
+        modifier = Modifier.padding(start = PosterGridInset + 4.dp, end = PosterGridInset, bottom = 8.dp),
+        color = CinemaMuted,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 13.sp,
+        lineHeight = 16.sp,
+        letterSpacing = 0.4.sp,
+    )
+    Column(
+        modifier = Modifier
+            .padding(horizontal = PosterGridInset)
+            .clip(RoundedCornerShape(14.dp))
+            .background(settingsPanel()),
+    ) {
+        HapticSlot.entries.forEach { slot ->
+            val feel = profile.hapticFeel(slot)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 52.dp)
+                    .clickable(
+                        interactionSource = remember(slot) { MutableInteractionSource() },
+                        indication = null,
+                        onClick = {
+                            val next = nextHapticFeel(slot, feel)
+                            repository.setHapticFeel(slot.name, next.name)
+                            vibrator?.play(next)
+                        },
+                    )
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = stringResource(slot.label()),
+                    modifier = Modifier.weight(1f),
+                    color = Color.White,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = stringResource(feel.label()),
+                    color = CinemaMuted,
+                    fontSize = 15.sp,
+                    maxLines = 1,
+                )
+            }
+        }
+    }
+}
+
+private fun HapticSlot.label(): Int = when (this) {
+    HapticSlot.Poster -> R.string.settings_haptic_poster
+    HapticSlot.Watch -> R.string.settings_haptic_watch
+    HapticSlot.Favorite -> R.string.settings_haptic_favorite
+    HapticSlot.Download -> R.string.settings_haptic_download
+    HapticSlot.Menu -> R.string.settings_haptic_menu
+    HapticSlot.Scroll -> R.string.settings_haptic_scroll
+    HapticSlot.Page -> R.string.settings_haptic_page
+    HapticSlot.Hold -> R.string.settings_haptic_hold
+    HapticSlot.Card -> R.string.settings_haptic_card
+    HapticSlot.Play -> R.string.settings_haptic_play
+}
+
+private fun HapticFeel.label(): Int = when (this) {
+    HapticFeel.Off -> R.string.settings_haptic_off
+    HapticFeel.Tick -> R.string.settings_haptic_tick
+    HapticFeel.Click -> R.string.settings_haptic_click
+    HapticFeel.Heavy -> R.string.settings_haptic_heavy
+    HapticFeel.Double -> R.string.settings_haptic_double
+    HapticFeel.Texture -> R.string.settings_haptic_texture
+    HapticFeel.Pop -> R.string.settings_haptic_pop
+    HapticFeel.Thud -> R.string.settings_haptic_thud
+    HapticFeel.Hold -> R.string.settings_haptic_hold_feel
+}
 
 @Composable
 private fun AboutPage(modifier: Modifier = Modifier) {
@@ -674,34 +767,8 @@ private fun AboutPage(modifier: Modifier = Modifier) {
             }
         }
         Spacer(Modifier.height(28.dp))
-        val releases = Changelog.releases
-        var historyOpen by rememberSaveable { mutableStateOf(false) }
-        val shown = if (historyOpen) releases else releases.take(5)
-        shown.forEach { release ->
+        Changelog.releases.firstOrNull()?.let { release ->
             ReleaseNotes(release)
-            Spacer(Modifier.height(20.dp))
-        }
-        if (releases.size > 5) {
-            Text(
-                text = stringResource(
-                    if (historyOpen) R.string.changelog_collapse else R.string.changelog_more,
-                ),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = {
-                            tick?.invoke()
-                            historyOpen = !historyOpen
-                        },
-                    )
-                    .padding(horizontal = PosterGridInset, vertical = 8.dp),
-                color = VersionBlue,
-                fontWeight = FontWeight.Medium,
-                fontSize = 15.sp,
-                lineHeight = 22.sp,
-            )
             Spacer(Modifier.height(20.dp))
         }
     }
@@ -1049,7 +1116,8 @@ private fun SettingsBar(
 /** Чуть над графитовым фоном, без прежнего #2A2E38. */
 private val GraphitePanel = Color(0xFF22262E)
 
-private val WatchedPercentSteps = (50..100 step 5).toList()
+private val WatchedPercentSteps =
+    (50..85 step 5).toList() + (87..99 step 2).toList() + listOf(100)
 
 private fun stepWatchedPercent(current: Int, delta: Int): Int {
     val nearest = WatchedPercentSteps.minBy { kotlin.math.abs(it - current) }

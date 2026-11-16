@@ -78,4 +78,6 @@ private object DefaultUserSettings : UserSettingsRepository {
     override fun setQualityHintSeen(seen: Boolean) = Unit
 
     override fun setNetworkTimeoutSec(seconds: Int) = Unit
+
+    override fun setHapticFeel(slot: String, feel: String) = Unit
 }

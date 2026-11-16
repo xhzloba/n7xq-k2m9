@@ -64,6 +64,8 @@ import com.example.movie.di.LocalAppContainer
 import com.example.movie.domain.model.DataError
 import com.example.movie.domain.model.Movie
 import com.example.movie.presentation.haptic.HapticOnAppend
+import com.example.movie.domain.model.HapticSlot
+import com.example.movie.presentation.haptic.rememberHaptic
 import com.example.movie.presentation.haptic.rememberHapticTick
 import com.example.movie.presentation.home.components.BrandTopInset
 import com.example.movie.presentation.home.components.PosterGridInset
@@ -489,7 +491,7 @@ private fun PosterCell(
     onMoviePeek: (Movie) -> Unit,
     mark: PosterMark? = null,
 ) {
-    val tick = rememberHapticTick()
+    val tick = rememberHaptic(HapticSlot.Poster)
     var holdProgress by remember(movie.id) { mutableFloatStateOf(0f) }
     var pressed by remember(movie.id) { mutableStateOf(false) }
     val pressScale = rememberPressScale(pressed)

@@ -77,6 +77,8 @@ import com.example.movie.presentation.home.pressToOpen
 import com.example.movie.presentation.home.rememberPressScale
 import com.example.movie.presentation.haptic.HapticOnAppend
 import com.example.movie.presentation.haptic.HapticOnChange
+import com.example.movie.domain.model.HapticSlot
+import com.example.movie.presentation.haptic.rememberHaptic
 import com.example.movie.presentation.haptic.rememberHapticTick
 import com.example.movie.presentation.shell.ShellIcons
 import com.example.movie.ui.theme.PosterShape
@@ -240,6 +242,7 @@ private fun RecommendationPager(
         if (stickToStart && head != null) listState.scrollToItem(0)
     }
     val tick = rememberHapticTick()
+    val poster = rememberHaptic(HapticSlot.Poster)
     val settings by LocalUserSettings.current.settings.collectAsStateWithLifecycle()
     // UltraBlur на главной красит фон — боковая ретушь полок тогда выкл.
     val sideRetouch = settings.sliderShade && !settings.heroPosterColors
@@ -378,7 +381,7 @@ private fun RecommendationPager(
                                     onProgress = { holdProgress = it },
                                     onPressed = { pressed = it },
                                     onClick = {
-                                        tick?.invoke()
+                                        poster?.invoke()
                                         onMovieClick(movie.id)
                                     },
                                     wave = wave,
