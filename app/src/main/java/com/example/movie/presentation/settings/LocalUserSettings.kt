@@ -80,4 +80,6 @@ private object DefaultUserSettings : UserSettingsRepository {
     override fun setNetworkTimeoutSec(seconds: Int) = Unit
 
     override fun setHapticFeel(slot: String, feel: String) = Unit
+
+    override fun setHeaderFill(enabled: Boolean) = Unit
 }

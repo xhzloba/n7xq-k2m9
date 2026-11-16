@@ -98,9 +98,11 @@ import com.example.movie.presentation.common.appChrome
 import com.example.movie.data.download.OfflineItem
 import com.example.movie.di.LocalAppContainer
 import com.example.movie.presentation.common.LocalShelfNotices
-import com.example.movie.presentation.common.TopScrimBrand
-import com.example.movie.presentation.common.TopScrimTail
+import com.example.movie.presentation.common.drawTopScrim
+import com.example.movie.presentation.common.headerThemeBrush
+import com.example.movie.presentation.common.headerFillOn
 import com.example.movie.presentation.common.topScrimFade
+import com.example.movie.presentation.common.topScrimHeight
 import com.example.movie.presentation.common.topScrimPalette
 import com.example.movie.presentation.detail.OfflinePlayer
 import com.example.movie.ui.theme.PlayBlue
@@ -446,13 +448,15 @@ private fun LibraryBrand(
 private fun LibraryScrim(progress: Float, modifier: Modifier = Modifier) {
     val top = WindowInsets.safeDrawing.asPaddingValues().calculateTopPadding()
     val palette = topScrimPalette()
+    val fill = headerFillOn()
+    val plate = headerThemeBrush()
     Box(
         modifier
             .fillMaxWidth()
-            .height(top + BrandTopInset + TopScrimBrand + TopScrimTail)
+            .height(topScrimHeight(top))
             .topScrimFade(progress)
             .drawBehind {
-                drawRect(brush = palette.verticalBrush())
+                drawTopScrim(fill, plate, null, palette) {
                 val y = top.toPx() + BrandTopInset.toPx() + 20.dp.toPx()
                 val radius = 140.dp.toPx()
                 val logoWidth = 36.dp.toPx() * (754f / 186f)
@@ -475,6 +479,7 @@ private fun LibraryScrim(progress: Float, modifier: Modifier = Modifier) {
                 }
                 pool(Offset(logoX, y))
                 pool(Offset(menuX, y))
+                }
             },
     )
 }

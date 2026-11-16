@@ -121,6 +121,8 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
         it.copy(networkTimeoutSec = seconds.normalizedNetworkTimeout())
     }
 
+    override fun setHeaderFill(enabled: Boolean) = write { it.copy(headerFill = enabled) }
+
     override fun setHapticFeel(slot: String, feel: String) = write { current ->
         val known = HapticSlot.entries.firstOrNull { it.name.equals(slot, ignoreCase = true) }
         val parsed = HapticFeel.entries.firstOrNull { it.name.equals(feel, ignoreCase = true) }
@@ -169,6 +171,7 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
             .putBoolean(KEY_QUALITY_HINT, next.qualityHintSeen)
             .putInt(KEY_NETWORK_TIMEOUT, next.networkTimeoutSec)
             .putString(KEY_HAPTIC_PROFILE, next.hapticProfile)
+            .putBoolean(KEY_HEADER_FILL, next.headerFill)
             .commit()
         state.value = next
     }
@@ -249,6 +252,7 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
         qualityHintSeen = prefs.getBoolean(KEY_QUALITY_HINT, false),
         networkTimeoutSec = prefs.getInt(KEY_NETWORK_TIMEOUT, DefaultNetworkTimeoutSec).normalizedNetworkTimeout(),
         hapticProfile = prefs.getString(KEY_HAPTIC_PROFILE, DefaultHapticProfile).orEmpty().ifBlank { DefaultHapticProfile },
+        headerFill = prefs.getBoolean(KEY_HEADER_FILL, false),
         )
     }
 
@@ -292,5 +296,6 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
         const val KEY_QUALITY_HINT = "quality_hint_seen"
         const val KEY_NETWORK_TIMEOUT = "network_timeout_sec"
         const val KEY_HAPTIC_PROFILE = "haptic_profile"
+        const val KEY_HEADER_FILL = "header_fill"
     }
 }

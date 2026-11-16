@@ -87,9 +87,11 @@ import com.example.movie.presentation.common.THEME_BLACK
 import com.example.movie.presentation.common.THEME_GRAPHITE
 import com.example.movie.presentation.common.appBackground
 import com.example.movie.presentation.common.drawGraphite
-import com.example.movie.presentation.common.TopScrimBrand
-import com.example.movie.presentation.common.TopScrimTail
+import com.example.movie.presentation.common.headerThemeBrush
+import com.example.movie.presentation.common.drawTopScrim
+import com.example.movie.presentation.common.headerFillOn
 import com.example.movie.presentation.common.topScrimFade
+import com.example.movie.presentation.common.topScrimHeight
 import com.example.movie.presentation.common.topScrimPalette
 import com.example.movie.presentation.palette.PosterWash
 import com.example.movie.presentation.shell.ShellIcons
@@ -581,6 +583,7 @@ fun HomeScreen(
                     }
                 },
                 wash = if (playTintOn) paintedWash ?: heroWash else null,
+                fillWash = if (pageWashOn) paintedWash ?: heroWash else null,
                 modifier = Modifier.align(Alignment.TopCenter),
             )
             BrandRow(
@@ -629,19 +632,22 @@ fun HomeScreen(
 private fun BrandScrim(
     progress: () -> Float,
     wash: PosterWash? = null,
+    fillWash: PosterWash? = null,
     modifier: Modifier = Modifier,
 ) {
     val top = WindowInsets.safeDrawing.asPaddingValues().calculateTopPadding()
     val theme = topScrimPalette()
     val washBase = wash?.let { lerp(it.topLeft, it.topRight, 0.5f) }
     val palette = if (washBase != null) topScrimPalette(washBase) else theme
+    val fill = headerFillOn()
+    val plate = headerThemeBrush()
     Box(
         modifier
             .fillMaxWidth()
-            .height(top + BrandTopInset + TopScrimBrand + TopScrimTail)
+            .height(topScrimHeight(top))
             .topScrimFade(progress)
             .drawBehind {
-                drawRect(brush = palette.verticalBrush())
+                drawTopScrim(fill, plate, fillWash, palette) {
                 val y = top.toPx() + BrandTopInset.toPx() + 20.dp.toPx()
                 val radius = 140.dp.toPx()
                 val logoWidth = 36.dp.toPx() * (754f / 186f)
@@ -665,6 +671,7 @@ private fun BrandScrim(
                 pool(Offset(logoX, y))
                 pool(Offset(searchX - 40.dp.toPx(), y))
                 pool(Offset(searchX, y))
+                }
             },
     )
 }

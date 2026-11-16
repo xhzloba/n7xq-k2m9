@@ -366,6 +366,8 @@ private fun SettingsLeaf(
                 .padding(top = 18.dp, bottom = 96.dp),
         ) {
             ThemeGroup(selected = settings.appTheme, onSelect = onAppTheme)
+            Spacer(Modifier.height(22.dp))
+            HeaderFillSwitch()
         }
         SettingsPage.Posters -> Column(leafScroll(modifier)) {
                 SettingGroup(
@@ -1332,6 +1334,22 @@ private fun MaxCodecControl(selected: String) {
         color = CinemaMuted,
         fontSize = 13.sp,
         lineHeight = 18.sp,
+    )
+}
+
+@Composable
+private fun HeaderFillSwitch() {
+    val repository = LocalUserSettings.current
+    val settings by repository.settings.collectAsStateWithLifecycle()
+    SettingGroup(
+        items = listOf(
+            SettingItem(
+                title = stringResource(R.string.settings_header_fill),
+                hint = stringResource(R.string.settings_header_fill_hint),
+                checked = settings.headerFill,
+                onChecked = repository::setHeaderFill,
+            ),
+        ),
     )
 }
 

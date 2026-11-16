@@ -9,6 +9,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.BlurEffect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.TileMode
@@ -21,6 +22,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.movie.presentation.home.components.BrandTopInset
+import com.example.movie.presentation.palette.PosterWash
 import com.example.movie.presentation.settings.LocalUserSettings
 import com.example.movie.ui.theme.CinemaBlack
 
@@ -136,6 +139,9 @@ internal fun appChrome(): Color {
 internal val TopScrimBrand = 40.dp
 internal val TopScrimTail = 96.dp
 
+/** Снизу плашки столько же, сколько BrandTopInset сверху строки. */
+private val HeaderFillLip = 16.dp
+
 /** Цвета затемнения шапки (AmigoPlay / back / меню) при скролле. */
 internal data class TopScrimPalette(
     val top: Color,
@@ -173,13 +179,63 @@ internal fun topScrimPalette(): TopScrimPalette {
 }
 
 @Composable
+internal fun headerFillOn(): Boolean {
+    val settings by LocalUserSettings.current.settings.collectAsStateWithLifecycle()
+    return settings.headerFill
+}
+
+@Composable
+internal fun topScrimHeight(top: Dp): Dp {
+    val tail = if (headerFillOn()) HeaderFillLip else TopScrimTail
+    return top + BrandTopInset + TopScrimBrand + tail
+}
+
+@Composable
+internal fun headerThemeBrush(): Brush {
+    val settings by LocalUserSettings.current.settings.collectAsStateWithLifecycle()
+    return when (settings.appTheme) {
+        THEME_GRAPHITE -> Brush.horizontalGradient(listOf(GraphiteTopLeft, GraphiteTopRight))
+        THEME_BLACK -> SolidColor(Color.Black)
+        else -> SolidColor(CinemaBlack)
+    }
+}
+
+internal fun DrawScope.drawTopScrim(
+    fill: Boolean,
+    theme: Brush,
+    wash: PosterWash?,
+    palette: TopScrimPalette,
+    pools: DrawScope.() -> Unit,
+) {
+    if (!fill) {
+        drawRect(brush = palette.verticalBrush())
+        pools()
+        return
+    }
+    val plate = if (wash != null) {
+        Brush.horizontalGradient(
+            0f to wash.topLeft.copy(alpha = 1f),
+            1f to wash.topRight.copy(alpha = 1f),
+        )
+    } else {
+        theme
+    }
+    drawRect(brush = plate)
+}
+
+@Composable
 internal fun Modifier.topScrimFade(progress: Float): Modifier = topScrimFade { progress }
 
 @Composable
 internal fun Modifier.topScrimFade(progress: () -> Float): Modifier {
+    val solid = headerFillOn()
     val blurPx = with(LocalDensity.current) { topScrimPalette().blur.toPx() }
     return graphicsLayer {
-        alpha = progress()
+        alpha = if (solid) {
+            if (progress() > 0f) 1f else 0f
+        } else {
+            progress()
+        }
         renderEffect = if (blurPx > 0f) {
             BlurEffect(blurPx, blurPx, TileMode.Clamp)
         } else {

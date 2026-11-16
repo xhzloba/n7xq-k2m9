@@ -51,6 +51,8 @@ data class UserSettings(
     val networkTimeoutSec: Int = DefaultNetworkTimeoutSec,
     /** Отклик по действиям: poster=tick,watch=click,… */
     val hapticProfile: String = DefaultHapticProfile,
+    /** Шапка при прокрутке: сплошная заливка темы вместо растушёвки. */
+    val headerFill: Boolean = false,
 ) {
     val progressStartMs: Long
         get() = if (countFromStart) 0L else DefaultProgressStartMs
@@ -146,6 +148,8 @@ interface UserSettingsRepository {
     fun setNetworkTimeoutSec(seconds: Int)
 
     fun setHapticFeel(slot: String, feel: String)
+
+    fun setHeaderFill(enabled: Boolean)
 }
 
 const val DefaultNetworkTimeoutSec = 4

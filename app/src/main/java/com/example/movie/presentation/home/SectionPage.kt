@@ -88,9 +88,11 @@ import com.example.movie.presentation.home.posterWave
 import com.example.movie.presentation.home.rememberPressScale
 import com.example.movie.presentation.shell.ShellIcons
 import com.example.movie.presentation.common.appBackground
-import com.example.movie.presentation.common.TopScrimBrand
-import com.example.movie.presentation.common.TopScrimTail
+import com.example.movie.presentation.common.drawTopScrim
+import com.example.movie.presentation.common.headerThemeBrush
+import com.example.movie.presentation.common.headerFillOn
 import com.example.movie.presentation.common.topScrimFade
+import com.example.movie.presentation.common.topScrimHeight
 import com.example.movie.presentation.common.topScrimPalette
 import com.example.movie.ui.theme.PosterShape
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -453,13 +455,15 @@ internal fun PosterGrid(
 internal fun SectionScrim(progress: Float, modifier: Modifier = Modifier) {
     val top = WindowInsets.safeDrawing.asPaddingValues().calculateTopPadding()
     val palette = topScrimPalette()
+    val fill = headerFillOn()
+    val plate = headerThemeBrush()
     Box(
         modifier
             .fillMaxWidth()
-            .height(top + BrandTopInset + TopScrimBrand + TopScrimTail)
+            .height(topScrimHeight(top))
             .topScrimFade(progress)
             .drawBehind {
-                drawRect(brush = palette.verticalBrush())
+                drawTopScrim(fill, plate, null, palette) {
                 val y = top.toPx() + BrandTopInset.toPx() + 18.dp.toPx()
                 val radius = 140.dp.toPx()
                 val backX = PosterGridInset.toPx() + 4.dp.toPx()
@@ -480,6 +484,7 @@ internal fun SectionScrim(progress: Float, modifier: Modifier = Modifier) {
                 }
                 pool(Offset(backX, y))
                 pool(Offset(backX + 160.dp.toPx(), y))
+                }
             },
     )
 }
