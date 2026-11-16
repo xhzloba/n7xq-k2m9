@@ -84,4 +84,8 @@ private object DefaultUserSettings : UserSettingsRepository {
     override fun setHapticFeel(slot: String, feel: String) = Unit
 
     override fun setHeaderFill(enabled: Boolean) = Unit
+
+    override fun setHints(enabled: Boolean) = Unit
+
+    override fun setHomeHintSeen(seen: Boolean) = Unit
 }

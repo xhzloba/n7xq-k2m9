@@ -8,10 +8,15 @@ import androidx.annotation.StringRes
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -24,6 +29,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -32,6 +38,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
@@ -54,13 +61,19 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathFillType
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
@@ -68,9 +81,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -115,6 +132,7 @@ import com.example.movie.presentation.common.appBackground
 import com.example.movie.presentation.common.appChrome
 import kotlin.math.abs
 import kotlin.math.roundToInt
+import kotlinx.coroutines.delay
 
 private enum class AppTab(@StringRes val label: Int, val color: Color) {
     Home(R.string.nav_home, Color(0xFF3B6EF5)),
@@ -552,9 +570,25 @@ fun AppShell(
             animationSpec = tween(220),
             label = "barHide",
         )
+        var homeAnchor by remember { mutableStateOf<Rect?>(null) }
+        val hintSettings by LocalUserSettings.current.settings.collectAsStateWithLifecycle()
+        val showHomeHint = hintSettings.hints &&
+            !hintSettings.homeHintSeen &&
+            tab == AppTab.Home &&
+            sectionShown == null &&
+            !homeNavMenu &&
+            !homeCoverAlive &&
+            resumePlayback == null &&
+            peek == null &&
+            !searchShown &&
+            !alertsShown &&
+            barAlpha > 0.5f &&
+            hide < 0.5f
         if (barAlpha > 0.02f) {
             val fromHome = sectionShown != null
-            val settings by LocalUserSettings.current.settings.collectAsStateWithLifecycle()
+            val settings = hintSettings
+            val hintRepository = LocalUserSettings.current
+            val hintScope = rememberCoroutineScope()
             val onHome = tab == AppTab.Home && sectionShown == null
             val shelvesOff = HomeRails.All.none { settings.homeRailVisible(it.id) }
             val washBar = settings.heroPosterColors &&
@@ -568,7 +602,18 @@ fun AppShell(
                     if (fromHome && next == AppTab.Home) sectionName = null
                     else onTabChange(next.name)
                 },
-                onHomeHold = { homeNavMenu = !homeNavMenu },
+                onHomeHold = {
+                    if (!homeNavMenu && showHomeHint) {
+                        hintRepository.setHomeHintSeen(true)
+                        hintScope.launch {
+                            delay(180)
+                            homeNavMenu = true
+                        }
+                    } else {
+                        homeNavMenu = !homeNavMenu
+                    }
+                },
+                onHomeAnchor = { homeAnchor = it },
                 washLeft = homeDockLeft.takeIf { washBar },
                 washRight = homeDockRight.takeIf { washBar },
                 washAlpha = if (washBar) homeDockAlpha else 0f,
@@ -578,6 +623,12 @@ fun AppShell(
                     .onSizeChanged { barHeight = it.height }
                     .offset { IntOffset(0, (barHeight * hide).toInt()) }
                     .graphicsLayer { alpha = barAlpha },
+            )
+        }
+        homeAnchor?.let { anchor ->
+            HomeHoldHint(
+                anchor = anchor,
+                active = showHomeHint,
             )
         }
         val flyoutSettings by LocalUserSettings.current.settings.collectAsStateWithLifecycle()
@@ -734,6 +785,7 @@ private fun AppBottomBar(
     selected: AppTab?,
     onSelect: (AppTab) -> Unit,
     onHomeHold: () -> Unit,
+    onHomeAnchor: (Rect) -> Unit,
     washLeft: Color? = null,
     washRight: Color? = null,
     washAlpha: Float = 1f,
@@ -840,7 +892,10 @@ private fun AppBottomBar(
             Box(
                 modifier = Modifier
                     .weight(1f)
-                    .padding(horizontal = 6.dp),
+                    .padding(horizontal = 6.dp)
+                    .onGloballyPositioned { coords ->
+                        if (tab == AppTab.Home) onHomeAnchor(coords.boundsInRoot())
+                    },
             ) {
                 Column(
                     modifier = Modifier
@@ -904,3 +959,161 @@ private fun AppBottomBar(
         }
     }
 }
+
+@Composable
+private fun HomeHoldHint(
+    anchor: Rect,
+    active: Boolean,
+) {
+    val open = remember { Animatable(0f) }
+    LaunchedEffect(active) {
+        if (active) {
+            delay(420)
+            open.animateTo(1f, tween(560, easing = FastOutSlowInEasing))
+        } else {
+            open.animateTo(0f, tween(180, easing = FastOutSlowInEasing))
+        }
+    }
+    val progress = open.value
+    if (progress <= 0.001f) return
+    val density = LocalDensity.current
+    var origin by remember { mutableStateOf(Offset.Zero) }
+    BoxWithConstraints(
+        Modifier
+            .fillMaxSize()
+            .onGloballyPositioned { origin = it.positionInRoot() },
+    ) {
+        val center = Offset(
+            anchor.left - origin.x + anchor.width / 2f,
+            anchor.top - origin.y + anchor.height / 2f,
+        )
+        val radius = with(density) { 30.dp.toPx() }
+        val veil = appChrome().copy(alpha = 0.9f * progress)
+        val pulseTransition = rememberInfiniteTransition(label = "home-hint-glow")
+        val pulse by pulseTransition.animateFloat(
+            initialValue = 0f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(1200, easing = FastOutSlowInEasing),
+                repeatMode = RepeatMode.Reverse,
+            ),
+            label = "home-hint-pulse",
+        )
+        Canvas(Modifier.fillMaxSize()) {
+            val path = Path().apply {
+                fillType = PathFillType.EvenOdd
+                addRect(Rect(0f, 0f, size.width, size.height))
+                addOval(
+                    Rect(
+                        center.x - radius,
+                        center.y - radius,
+                        center.x + radius,
+                        center.y + radius,
+                    ),
+                )
+            }
+            drawPath(path, veil)
+            if (progress > 0.05f) {
+                val spread = 10.dp.toPx() + 12.dp.toPx() * pulse
+                val glow = (0.1f + 0.16f * pulse) * progress
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        0.5f to Color.White.copy(alpha = glow),
+                        1f to Color.Transparent,
+                        center = center,
+                        radius = radius + spread,
+                    ),
+                    radius = radius + spread,
+                    center = center,
+                )
+                drawCircle(
+                    color = Color.White.copy(alpha = glow),
+                    radius = radius + spread * 0.35f,
+                    center = center,
+                    style = Stroke(width = 3.dp.toPx()),
+                )
+                drawCircle(
+                    color = Color.White.copy(alpha = 0.72f * progress),
+                    radius = radius,
+                    center = center,
+                    style = Stroke(width = 1.5.dp.toPx()),
+                )
+            }
+        }
+        val textAlpha = progress
+        if (textAlpha > 0f) {
+            val above = with(density) {
+                (constraints.maxHeight - (center.y - radius) + 16.dp.toPx()).toDp()
+            }
+            Text(
+                text = stringResource(R.string.home_hold_hint),
+                color = Color.White.copy(alpha = textAlpha),
+                fontSize = 16.sp,
+                lineHeight = 21.sp,
+                fontWeight = FontWeight.SemiBold,
+                textAlign = TextAlign.Center,
+                style = TextStyle(
+                    shadow = Shadow(
+                        color = Color.Black.copy(alpha = 0.85f),
+                        offset = Offset(0f, 1f),
+                        blurRadius = 12f,
+                    ),
+                ),
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(start = 32.dp, end = 32.dp, bottom = above)
+                    .fillMaxWidth()
+                    .graphicsLayer { translationY = (1f - textAlpha) * 12.dp.toPx() },
+            )
+        }
+        val top = (center.y - radius).coerceAtLeast(0f)
+        val bottom = (constraints.maxHeight - center.y - radius).coerceAtLeast(0f)
+        val left = (center.x - radius).coerceAtLeast(0f)
+        val right = (constraints.maxWidth - center.x - radius).coerceAtLeast(0f)
+        val band = (radius * 2f).coerceAtMost((constraints.maxHeight - top).coerceAtLeast(0f))
+        if (top > 1f) {
+            Box(
+                Modifier
+                    .align(Alignment.TopStart)
+                    .fillMaxWidth()
+                    .height(with(density) { top.toDp() })
+                    .eatClick(),
+            )
+        }
+        if (bottom > 1f) {
+            Box(
+                Modifier
+                    .align(Alignment.BottomStart)
+                    .fillMaxWidth()
+                    .height(with(density) { bottom.toDp() })
+                    .eatClick(),
+            )
+        }
+        if (left > 1f && band > 1f) {
+            Box(
+                Modifier
+                    .offset { IntOffset(0, top.roundToInt()) }
+                    .width(with(density) { left.toDp() })
+                    .height(with(density) { band.toDp() })
+                    .eatClick(),
+            )
+        }
+        if (right > 1f && band > 1f) {
+            Box(
+                Modifier
+                    .align(Alignment.TopEnd)
+                    .offset { IntOffset(0, top.roundToInt()) }
+                    .width(with(density) { right.toDp() })
+                    .height(with(density) { band.toDp() })
+                    .eatClick(),
+            )
+        }
+    }
+}
+
+@Composable
+private fun Modifier.eatClick(): Modifier = this.clickable(
+    interactionSource = remember { MutableInteractionSource() },
+    indication = null,
+    onClick = {},
+)

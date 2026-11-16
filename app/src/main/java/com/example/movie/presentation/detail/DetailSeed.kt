@@ -16,23 +16,20 @@ internal object DetailSeed {
     fun get(id: String): Movie? = synchronized(movies) { movies[id] }
 }
 
-internal fun Movie.toPreviewDetail(): MovieDetail {
-    val still = backdropUrl?.takeIf { it.isNotBlank() } ?: posterUrl?.takeIf { it.isNotBlank() }
-    return MovieDetail(
-        id = id,
-        title = title,
-        logoUrl = logoUrl,
-        posterUrl = posterUrl,
-        year = year,
-        runtimeMinutes = null,
-        age = age,
-        genres = genres.split(',').map { it.trim() }.filter { it.isNotEmpty() },
-        overview = overview,
-        ratingKp = ratingKp,
-        ratingImdb = ratingImdb,
-        backdrops = listOfNotNull(still),
-        type = type,
-        director = director,
-        country = country,
-    )
-}
+internal fun Movie.toPreviewDetail(): MovieDetail = MovieDetail(
+    id = id,
+    title = title,
+    logoUrl = logoUrl,
+    posterUrl = posterUrl,
+    year = year,
+    runtimeMinutes = null,
+    age = age,
+    genres = genres.split(',').map { it.trim() }.filter { it.isNotEmpty() },
+    overview = overview,
+    ratingKp = ratingKp,
+    ratingImdb = ratingImdb,
+    backdrops = emptyList(),
+    type = type,
+    director = director,
+    country = country,
+)

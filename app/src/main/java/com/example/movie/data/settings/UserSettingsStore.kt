@@ -84,6 +84,15 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
 
     override fun setDetailIris(enabled: Boolean) = write { it.copy(detailIris = enabled) }
 
+    override fun setHints(enabled: Boolean) = write { current ->
+        current.copy(
+            hints = enabled,
+            homeHintSeen = if (enabled) false else current.homeHintSeen,
+        )
+    }
+
+    override fun setHomeHintSeen(seen: Boolean) = write { it.copy(homeHintSeen = seen) }
+
     override fun setBackdropDissolve(enabled: Boolean) = write { it.copy(backdropDissolve = enabled) }
 
     override fun setHideRailsLookHint(hidden: Boolean) = write { it.copy(hideRailsLookHint = hidden) }
@@ -175,6 +184,8 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
             .putInt(KEY_NETWORK_TIMEOUT, next.networkTimeoutSec)
             .putString(KEY_HAPTIC_PROFILE, next.hapticProfile)
             .putBoolean(KEY_HEADER_FILL, next.headerFill)
+            .putBoolean(KEY_HINTS, next.hints)
+            .putBoolean(KEY_HOME_HINT, next.homeHintSeen)
             .commit()
         state.value = next
     }
@@ -257,6 +268,8 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
         networkTimeoutSec = prefs.getInt(KEY_NETWORK_TIMEOUT, DefaultNetworkTimeoutSec).normalizedNetworkTimeout(),
         hapticProfile = prefs.getString(KEY_HAPTIC_PROFILE, DefaultHapticProfile).orEmpty().ifBlank { DefaultHapticProfile },
         headerFill = prefs.getBoolean(KEY_HEADER_FILL, false),
+        hints = prefs.getBoolean(KEY_HINTS, false),
+        homeHintSeen = prefs.getBoolean(KEY_HOME_HINT, false),
         )
     }
 
@@ -302,5 +315,7 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
         const val KEY_NETWORK_TIMEOUT = "network_timeout_sec"
         const val KEY_HAPTIC_PROFILE = "haptic_profile"
         const val KEY_HEADER_FILL = "header_fill"
+        const val KEY_HINTS = "hints"
+        const val KEY_HOME_HINT = "home_hint_seen"
     }
 }

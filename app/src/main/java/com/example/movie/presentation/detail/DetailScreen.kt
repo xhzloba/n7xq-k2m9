@@ -664,7 +664,7 @@ private fun DetailContent(
     val pagerState = rememberPagerState { backdrops.size.coerceAtLeast(1) }
     val scope = rememberCoroutineScope()
     var frame by remember(detail.id, backdrops) { mutableIntStateOf(0) }
-    var frameReady by remember(detail.id, frame) { mutableStateOf(false) }
+    var frameReady by remember(detail.id, frame, backdrops) { mutableStateOf(false) }
     var wantTrailer by remember(detail.id) { mutableStateOf(false) }
     var trailerSheet by remember(detail.id) { mutableStateOf(false) }
     var trailerUrl by remember(detail.id) { mutableStateOf<String?>(null) }
@@ -991,7 +991,7 @@ private fun DetailContent(
                 } else if (settings.backdropDissolve) {
                     DissolveBackdrop(
                         url = backdrops[frame],
-                        resetKey = detail.id,
+                        resetKey = backdrops,
                         height = heroHeight,
                         dim = if (colored) 0f else shade,
                         onReady = {
@@ -1010,6 +1010,7 @@ private fun DetailContent(
                         },
                     )
                 } else {
+                    key(backdrops) {
                     Crossfade(
                         targetState = backdrops[frame],
                         animationSpec = tween(durationMillis = 900),
@@ -1034,6 +1035,7 @@ private fun DetailContent(
                                 }
                             },
                         )
+                    }
                     }
                 }
                 }

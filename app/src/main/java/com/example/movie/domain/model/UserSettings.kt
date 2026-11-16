@@ -55,6 +55,10 @@ data class UserSettings(
     val hapticProfile: String = DefaultHapticProfile,
     /** Шапка при прокрутке: сплошная заливка темы вместо растушёвки. */
     val headerFill: Boolean = false,
+    /** Подсказки на экранах. По умолчанию выключены. */
+    val hints: Boolean = false,
+    /** Подсказка про долгое нажатие на «Главную» уже пройдена. */
+    val homeHintSeen: Boolean = false,
 ) {
     val progressStartMs: Long
         get() = if (countFromStart) 0L else DefaultProgressStartMs
@@ -154,6 +158,10 @@ interface UserSettingsRepository {
     fun setHapticFeel(slot: String, feel: String)
 
     fun setHeaderFill(enabled: Boolean)
+
+    fun setHints(enabled: Boolean)
+
+    fun setHomeHintSeen(seen: Boolean)
 }
 
 const val DefaultNetworkTimeoutSec = 4

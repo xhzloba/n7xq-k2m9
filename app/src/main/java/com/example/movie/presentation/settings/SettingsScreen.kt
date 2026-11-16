@@ -413,6 +413,12 @@ private fun SettingsLeaf(
                 SettingGroup(
                     items = listOf(
                         SettingItem(
+                            title = stringResource(R.string.settings_hints),
+                            hint = stringResource(R.string.settings_hints_hint),
+                            checked = settings.hints,
+                            onChecked = LocalUserSettings.current::setHints,
+                        ),
+                        SettingItem(
                             title = stringResource(R.string.settings_nav_labels),
                             hint = stringResource(R.string.settings_nav_labels_hint),
                             checked = settings.navLabels,
