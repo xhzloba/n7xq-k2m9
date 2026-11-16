@@ -227,6 +227,14 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
         if (prefs.getBoolean(KEY_COLORS, false)) {
             prefs.edit().putBoolean(KEY_COLORS, false).commit()
         }
+        val armHints = !prefs.contains(KEY_HINTS_ARMED)
+        if (armHints) {
+            prefs.edit()
+                .putBoolean(KEY_HINTS, true)
+                .putBoolean(KEY_HOME_HINT, false)
+                .putBoolean(KEY_HINTS_ARMED, true)
+                .apply()
+        }
         return UserSettings(
         extractBackdrop = prefs.getBoolean(KEY_BACKDROP_COLORS, false),
         extractPlex = prefs.getBoolean(KEY_PLEX, true),
@@ -268,8 +276,8 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
         networkTimeoutSec = prefs.getInt(KEY_NETWORK_TIMEOUT, DefaultNetworkTimeoutSec).normalizedNetworkTimeout(),
         hapticProfile = prefs.getString(KEY_HAPTIC_PROFILE, DefaultHapticProfile).orEmpty().ifBlank { DefaultHapticProfile },
         headerFill = prefs.getBoolean(KEY_HEADER_FILL, false),
-        hints = prefs.getBoolean(KEY_HINTS, false),
-        homeHintSeen = prefs.getBoolean(KEY_HOME_HINT, false),
+        hints = if (armHints) true else prefs.getBoolean(KEY_HINTS, true),
+        homeHintSeen = if (armHints) false else prefs.getBoolean(KEY_HOME_HINT, false),
         )
     }
 
@@ -317,5 +325,6 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
         const val KEY_HEADER_FILL = "header_fill"
         const val KEY_HINTS = "hints"
         const val KEY_HOME_HINT = "home_hint_seen"
+        const val KEY_HINTS_ARMED = "hints_armed"
     }
 }

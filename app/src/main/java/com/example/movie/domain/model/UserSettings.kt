@@ -55,8 +55,8 @@ data class UserSettings(
     val hapticProfile: String = DefaultHapticProfile,
     /** Шапка при прокрутке: сплошная заливка темы вместо растушёвки. */
     val headerFill: Boolean = false,
-    /** Подсказки на экранах. По умолчанию выключены. */
-    val hints: Boolean = false,
+    /** Подсказки на экранах. По умолчанию включены и гаснут после первого показа. */
+    val hints: Boolean = true,
     /** Подсказка про долгое нажатие на «Главную» уже пройдена. */
     val homeHintSeen: Boolean = false,
 ) {

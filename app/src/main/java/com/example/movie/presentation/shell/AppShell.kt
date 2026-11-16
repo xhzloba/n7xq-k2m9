@@ -572,9 +572,9 @@ fun AppShell(
         )
         var homeAnchor by remember { mutableStateOf<Rect?>(null) }
         val hintSettings by LocalUserSettings.current.settings.collectAsStateWithLifecycle()
-        val showHomeHint = hintSettings.hints &&
-            !hintSettings.homeHintSeen &&
-            tab == AppTab.Home &&
+        val hintRepository = LocalUserSettings.current
+        var hintLive by remember { mutableStateOf(false) }
+        val homeQuiet = tab == AppTab.Home &&
             sectionShown == null &&
             !homeNavMenu &&
             !homeCoverAlive &&
@@ -584,10 +584,18 @@ fun AppShell(
             !alertsShown &&
             barAlpha > 0.5f &&
             hide < 0.5f
+        LaunchedEffect(hintSettings.hints, homeQuiet) {
+            if (hintSettings.hints && homeQuiet && !hintLive) {
+                hintLive = true
+                hintRepository.setHints(false)
+            } else if (!homeQuiet && hintLive) {
+                hintLive = false
+            }
+        }
+        val showHomeHint = hintLive && homeQuiet
         if (barAlpha > 0.02f) {
             val fromHome = sectionShown != null
             val settings = hintSettings
-            val hintRepository = LocalUserSettings.current
             val hintScope = rememberCoroutineScope()
             val onHome = tab == AppTab.Home && sectionShown == null
             val shelvesOff = HomeRails.All.none { settings.homeRailVisible(it.id) }
@@ -1048,9 +1056,9 @@ private fun HomeHoldHint(
             Text(
                 text = stringResource(R.string.home_hold_hint),
                 color = Color.White.copy(alpha = textAlpha),
-                fontSize = 16.sp,
-                lineHeight = 21.sp,
-                fontWeight = FontWeight.SemiBold,
+                fontSize = 13.sp,
+                lineHeight = 17.sp,
+                fontWeight = FontWeight.Medium,
                 textAlign = TextAlign.Center,
                 style = TextStyle(
                     shadow = Shadow(
