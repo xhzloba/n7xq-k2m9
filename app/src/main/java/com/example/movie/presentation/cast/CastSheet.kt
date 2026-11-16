@@ -58,8 +58,11 @@ import com.example.movie.domain.model.FranchiseEpisode
 import com.example.movie.domain.model.FranchiseSeason
 import com.example.movie.domain.model.ResumeItem
 import com.example.movie.domain.model.isUnreleased
+import com.example.movie.domain.model.normalizedPlayerCodec
 import com.example.movie.presentation.common.HandleSheet
 import com.example.movie.presentation.detail.resumeWatchUrl
+import com.example.movie.presentation.haptic.rememberHapticTick
+import com.example.movie.presentation.settings.LocalUserSettings
 import com.example.movie.ui.theme.PlayBlue
 
 @Composable
@@ -74,6 +77,10 @@ internal fun CastSheet(
     onDismiss: () -> Unit,
 ) {
     val context = LocalContext.current
+    val tick = rememberHapticTick()
+    val settingsRepository = LocalUserSettings.current
+    val settings by settingsRepository.settings.collectAsStateWithLifecycle()
+    val codec = settings.playerCodec.normalizedPlayerCodec()
     val state by TvCastHub.state.collectAsStateWithLifecycle()
     var opened by remember { mutableStateOf<String?>(null) }
     val series = watchId != null && seasons.isNotEmpty()
@@ -171,6 +178,15 @@ internal fun CastSheet(
             }
             if (!pageUrl.isNullOrBlank()) {
                 Spacer(Modifier.height(16.dp))
+                ValueRow(
+                    text = stringResource(R.string.download_codec_value, codecCeilingLabel(codec)),
+                    enabled = !state.busy && !resolving,
+                ) {
+                    tick?.invoke()
+                    settingsRepository.setPlayerCodec(stepCodec(codec, 1))
+                    if (state.running) TvCastService.applyCodec(context)
+                }
+                Spacer(Modifier.height(10.dp))
                 if (!state.running) {
                     CastRow(
                         text = stringResource(R.string.cast_start),
@@ -414,6 +430,23 @@ private fun TvDrop(
         }
     }
 }
+
+private val CodecOrder = listOf("auto", "av1", "vp9", "h264")
+
+private fun stepCodec(current: String, delta: Int): String {
+    val index = CodecOrder.indexOf(current.normalizedPlayerCodec()).let { if (it < 0) 0 else it }
+    return CodecOrder[(index + delta).mod(CodecOrder.size)]
+}
+
+@Composable
+private fun codecCeilingLabel(codec: String): String = stringResource(
+    when (codec.normalizedPlayerCodec()) {
+        "av1" -> R.string.settings_max_codec_av1
+        "vp9" -> R.string.settings_max_codec_vp9
+        "h264" -> R.string.settings_max_codec_h264
+        else -> R.string.settings_max_codec_auto
+    },
+)
 
 @Composable
 private fun ValueRow(

@@ -26,10 +26,13 @@ import com.example.movie.data.cast.TvPairing
 import com.example.movie.data.cast.openTvBrowser
 import com.example.movie.data.cast.playOnRenderer
 import com.example.movie.data.cast.stopRenderer
+import com.example.movie.data.player.CodecCeiling
 import com.example.movie.data.player.WatchKind
-import com.example.movie.data.player.fetchLiftStream
+import com.example.movie.data.player.fetchLiftWatch
 import com.example.movie.data.player.playlistHeights
-import com.example.movie.data.player.preferRicherManifest
+import com.example.movie.data.player.preferPlayableManifest
+import com.example.movie.data.settings.UserSettingsStore
+import com.example.movie.domain.model.normalizedPlayerCodec
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import java.util.concurrent.Executors
 import java.util.concurrent.RejectedExecutionException
@@ -80,6 +83,7 @@ class TvCastService : Service() {
                         ACTION_SEARCH -> search()
                         ACTION_QUALITY -> chooseQuality(quality)
                         ACTION_AUDIO -> chooseAudio(audio)
+                        ACTION_CODEC -> rebindCodec()
                         ACTION_PLAY -> {
                             retarget(page, title)
                             play(name, control)
@@ -154,7 +158,10 @@ class TvCastService : Service() {
     }
 
     private fun bindStream(current: CastProxy, pageUrl: String, title: String, emulator: Boolean) {
-        val stream = fetchLiftStream(pageUrl).stream.preferRicherManifest()
+        val stream = fetchLiftWatch(pageUrl).stream.preferPlayableManifest(
+            displayHdr = true,
+            ceiling = codecCeiling(),
+        )
         current.referer = pageUrl.toHttpUrlOrNull()?.let { "${it.scheme}://${it.host}/" }
         current.title = title.ifBlank { mediaTitle.ifBlank { getString(R.string.cast_notification_title) } }
         mediaTitle = current.title
@@ -189,6 +196,22 @@ class TvCastService : Service() {
                 },
             )
         }
+    }
+
+    private fun rebindCodec() {
+        val page = preparedPage ?: return
+        val current = proxy ?: return
+        TvCastHub.update { it.copy(busy = true, message = getString(R.string.cast_preparing)) }
+        bindStream(current, page, mediaTitle, runningOnEmulator())
+    }
+
+    private fun codecCeiling(): CodecCeiling = when (
+        UserSettingsStore(this).settings.value.playerCodec.normalizedPlayerCodec()
+    ) {
+        "av1" -> CodecCeiling.Av1
+        "vp9" -> CodecCeiling.Vp9
+        "h264" -> CodecCeiling.H264
+        else -> CodecCeiling.Auto
     }
 
     private fun chooseQuality(height: Int) {
@@ -353,6 +376,7 @@ class TvCastService : Service() {
         const val ACTION_SEARCH = "search"
         const val ACTION_QUALITY = "quality"
         const val ACTION_AUDIO = "audio"
+        const val ACTION_CODEC = "codec"
         const val ACTION_PLAY = "play"
         const val ACTION_BROWSER = "browser"
         const val ACTION_STOP = "stop"
@@ -393,6 +417,8 @@ class TvCastService : Service() {
                 putExtra(EXTRA_AUDIO, index)
             }
         }
+
+        fun applyCodec(context: Context) = send(context, ACTION_CODEC)
 
         fun play(context: Context, name: String, controlUrl: String, pageUrl: String? = null, title: String? = null) {
             send(context, ACTION_PLAY) {
