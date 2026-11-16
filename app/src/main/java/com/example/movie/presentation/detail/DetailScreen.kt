@@ -215,6 +215,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import androidx.compose.ui.util.lerp
+import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
@@ -517,24 +519,17 @@ fun DetailScreen(
 ) {
     val detail = state.detail
     when {
-        detail != null -> {
-            val logoInk = rememberLogoInk(detail)
-            if (logoInk == null) {
-                DetailArrival(modifier)
-            } else {
-                DetailContent(
-                    detail = detail,
-                    franchiseReady = state.franchiseReady,
-                    unavailable = state.unavailable,
-                    logoInk = logoInk,
-                    onResolveWatch = onResolveWatch,
-                    onOpenMovie = onOpenMovie,
-                    onMoviePeek = onMoviePeek,
-                    onBack = onBack,
-                    modifier = modifier,
-                )
-            }
-        }
+        detail != null -> DetailContent(
+            detail = detail,
+            franchiseReady = state.franchiseReady,
+            unavailable = state.unavailable,
+            logoInk = 0.dp,
+            onResolveWatch = onResolveWatch,
+            onOpenMovie = onOpenMovie,
+            onMoviePeek = onMoviePeek,
+            onBack = onBack,
+            modifier = modifier,
+        )
         state.phase is DetailPhase.Failed -> DetailMessage(
             message = state.phase.reason.message(),
             onRetry = onRetry,
@@ -959,18 +954,61 @@ private fun DetailContent(
                     HorizontalPager(
                         state = pagerState,
                         userScrollEnabled = false,
-                        modifier = Modifier.fillMaxSize(),
+                        beyondViewportPageCount = if (settings.backdropDissolve) 1 else 0,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clipToBounds(),
                     ) { page ->
-                        BackdropStill(
-                            url = backdrops[page],
-                            height = heroHeight,
-                            dim = if (colored) 0f else shade,
-                            onReady = {
-                                loadedStills[backdrops[page]] = true
-                                if (backdrops[page] == shownBackdrop) backdropColorReady = true
-                            },
-                        )
+                        val still = @Composable {
+                            BackdropStill(
+                                url = backdrops[page],
+                                height = heroHeight,
+                                dim = if (colored) 0f else shade,
+                                onReady = {
+                                    loadedStills[backdrops[page]] = true
+                                    if (backdrops[page] == shownBackdrop) backdropColorReady = true
+                                },
+                            )
+                        }
+                        if (settings.backdropDissolve) {
+                            val drift = (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
+                            Box(
+                                Modifier
+                                    .fillMaxSize()
+                                    .graphicsLayer {
+                                        val clamped = drift.coerceIn(-1f, 1f)
+                                        val distance = abs(clamped)
+                                        translationX = clamped * size.width * 0.82f
+                                        scaleX = lerp(1f, 1.08f, distance)
+                                        scaleY = lerp(1f, 1.08f, distance)
+                                        alpha = 1f - distance
+                                    },
+                            ) { still() }
+                        } else {
+                            still()
+                        }
                     }
+                } else if (settings.backdropDissolve) {
+                    DissolveBackdrop(
+                        url = backdrops[frame],
+                        resetKey = detail.id,
+                        height = heroHeight,
+                        dim = if (colored) 0f else shade,
+                        onReady = {
+                            loadedStills[backdrops[frame]] = true
+                            frameReady = true
+                            if (backdrops[frame] == shownBackdrop) backdropColorReady = true
+                        },
+                        onError = {
+                            val failed = backdrops.getOrNull(frame) ?: return@DissolveBackdrop
+                            scope.launch {
+                                delay(1_000)
+                                if (failed == backdrops.getOrNull(frame)) {
+                                    frame = (frame + 1) % backdrops.size
+                                }
+                            }
+                        },
+                    )
                 } else {
                     Crossfade(
                         targetState = backdrops[frame],
@@ -1975,31 +2013,46 @@ private fun LogoOrTitle(detail: MovieDetail) {
     var failed by remember(detail.id, detail.logoUrl) {
         mutableStateOf(detail.logoUrl.isNullOrBlank())
     }
+    val context = LocalContext.current
+    var art by remember(detail.id, detail.logoUrl) { mutableStateOf<android.graphics.Bitmap?>(null) }
+    LaunchedEffect(detail.id, detail.logoUrl) {
+        val url = detail.logoUrl ?: return@LaunchedEffect
+        val result = context.imageLoader.execute(
+            ImageRequest.Builder(context)
+                .data(url)
+                .allowHardware(false)
+                .build(),
+        )
+        val raw = ((result as? SuccessResult)?.drawable as? BitmapDrawable)?.bitmap
+        if (raw == null) {
+            failed = true
+        } else {
+            art = withContext(Dispatchers.Default) { raw.opaqueCrop() }
+        }
+    }
     if (settings.showLogos && !failed) {
-        var ready by remember(detail.id, detail.logoUrl) { mutableStateOf(false) }
         Box(
             modifier = Modifier
                 .height(DetailLogoHeight)
                 .width(DetailLogoWidth),
-            contentAlignment = Alignment.Center,
+            contentAlignment = Alignment.BottomCenter,
         ) {
-            if (!ready) DetailLogoSkeleton()
+            if (art == null) DetailLogoSkeleton()
             MovieLogoShadow(
-                model = detail.logoUrl,
-                visible = ready,
+                model = art,
+                visible = art != null,
+                alignment = Alignment.BottomCenter,
                 modifier = Modifier.fillMaxSize(),
             )
-            AsyncImage(
-                model = detail.logoUrl,
-                contentDescription = stringResource(R.string.logo_content_description, detail.title),
-                contentScale = ContentScale.Fit,
-                alignment = Alignment.Center,
-                onSuccess = { ready = true },
-                onError = { failed = true },
-                modifier = Modifier
-                    .fillMaxSize()
-                    .graphicsLayer { alpha = if (ready) 1f else 0f },
-            )
+            if (art != null) {
+                AsyncImage(
+                    model = art,
+                    contentDescription = stringResource(R.string.logo_content_description, detail.title),
+                    contentScale = ContentScale.Fit,
+                    alignment = Alignment.BottomCenter,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
         }
     } else {
         Text(
@@ -2182,54 +2235,43 @@ private fun DetailLogoSkeleton() {
     )
 }
 
-/** Пустота под непрозрачными пикселями лого в слоте 300×84. Считается до первой раскладки меты. */
-@Composable
-private fun rememberLogoInk(detail: MovieDetail): Dp? {
-    val settings by LocalUserSettings.current.settings.collectAsStateWithLifecycle()
-    val url = detail.logoUrl
-    if (!settings.showLogos || url.isNullOrBlank()) return 0.dp
-    val context = LocalContext.current
-    val density = LocalDensity.current
-    var ink by remember(detail.id, url) { mutableStateOf<Dp?>(null) }
-    LaunchedEffect(detail.id, url) {
-        val result = context.imageLoader.execute(
-            ImageRequest.Builder(context)
-                .data(url)
-                .allowHardware(false)
-                .build(),
-        )
-        val raw = ((result as? SuccessResult)?.drawable as? BitmapDrawable)?.bitmap
-        ink = if (raw == null) {
-            0.dp
-        } else {
-            withContext(Dispatchers.Default) { raw.logoInkBelow(density, DetailLogoWidth, DetailLogoHeight) }
-        }
-    }
-    return ink
-}
-
-private fun android.graphics.Bitmap.logoInkBelow(density: Density, maxWidth: Dp, maxHeight: Dp): Dp {
+private fun android.graphics.Bitmap.opaqueCrop(): android.graphics.Bitmap {
     val bitmap = if (config == android.graphics.Bitmap.Config.HARDWARE) {
-        copy(android.graphics.Bitmap.Config.ARGB_8888, false) ?: return 0.dp
+        copy(android.graphics.Bitmap.Config.ARGB_8888, false) ?: return this
     } else {
         this
     }
     val width = bitmap.width
     val height = bitmap.height
-    if (width <= 0 || height <= 0) return 0.dp
+    if (width <= 1 || height <= 1) return bitmap
     val row = IntArray(width)
+    var top = 0
     var bottom = height - 1
-    while (bottom > 0) {
+    while (top < bottom) {
+        bitmap.getPixels(row, 0, width, 0, top, width, 1)
+        if (row.any { it ushr 24 > 24 }) break
+        top++
+    }
+    while (bottom > top) {
         bitmap.getPixels(row, 0, width, 0, bottom, width, 1)
         if (row.any { it ushr 24 > 24 }) break
         bottom--
     }
-    val maxW = with(density) { maxWidth.toPx() }
-    val maxH = with(density) { maxHeight.toPx() }
-    val scale = min(maxW / width.toFloat(), maxH / height.toFloat())
-    val scaledHeight = height * scale
-    val below = (maxH - scaledHeight) / 2f + (height - 1 - bottom) * scale
-    return with(density) { below.toDp() }.coerceAtLeast(0.dp)
+    val column = IntArray(height)
+    var left = 0
+    var right = width - 1
+    while (left < right) {
+        bitmap.getPixels(column, 0, 1, left, 0, 1, height)
+        if (column.any { it ushr 24 > 24 }) break
+        left++
+    }
+    while (right > left) {
+        bitmap.getPixels(column, 0, 1, right, 0, 1, height)
+        if (column.any { it ushr 24 > 24 }) break
+        right--
+    }
+    if (left == 0 && top == 0 && right == width - 1 && bottom == height - 1) return bitmap
+    return android.graphics.Bitmap.createBitmap(bitmap, left, top, right - left + 1, bottom - top + 1)
 }
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -2629,6 +2671,7 @@ private fun MovieStrip(
                             onPressed = { pressed = it },
                             onClick = {
                                 tick?.invoke()
+                                DetailSeed.put(movie)
                                 onOpenMovie(movie.id)
                             },
                             wave = wave,
@@ -2809,6 +2852,65 @@ private fun TrailerEdgeFade(
             blendMode = BlendMode.DstIn,
         )
         drawContext.canvas.restore()
+    }
+}
+
+@Composable
+private fun DissolveBackdrop(
+    url: String,
+    resetKey: Any,
+    height: Dp,
+    dim: Float,
+    onReady: () -> Unit,
+    onError: () -> Unit,
+) {
+    var front by remember(resetKey) { mutableStateOf(url) }
+    var back by remember(resetKey) { mutableStateOf<String?>(null) }
+    val blend = remember(resetKey) { Animatable(1f) }
+    LaunchedEffect(url) {
+        if (url == front) return@LaunchedEffect
+        back = front
+        front = url
+        blend.snapTo(0f)
+        blend.animateTo(1f, tween(900, easing = FastOutSlowInEasing))
+        back = null
+    }
+    val progress = blend.value
+    Box(Modifier.fillMaxSize().clipToBounds()) {
+        val leaving = back
+        if (leaving != null) {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        translationX = -progress * size.width * 0.18f
+                        scaleX = lerp(1f, 1.08f, progress)
+                        scaleY = lerp(1f, 1.08f, progress)
+                        alpha = 1f - progress
+                    },
+            ) {
+                BackdropStill(url = leaving, height = height, dim = dim)
+            }
+        }
+        Box(
+            Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    val distance = 1f - progress
+                    translationX = distance * size.width * 0.18f
+                    scaleX = lerp(1f, 1.08f, distance)
+                    scaleY = lerp(1f, 1.08f, distance)
+                    alpha = progress
+                },
+        ) {
+            BackdropStill(
+                url = front,
+                height = height,
+                dim = dim,
+                onReady = { if (front == url) onReady() },
+                onError = { if (front == url) onError() },
+            )
+        }
     }
 }
 

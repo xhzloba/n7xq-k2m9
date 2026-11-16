@@ -304,7 +304,11 @@
     <string name="settings_menu_posters">Размер, ретушь, названия и отметки.</string>
     <string name="settings_menu_navigation">Подписи нижнего меню и скрытие при скролле.</string>
     <string name="settings_menu_color">UltraBlur на главной и цвета карточки.</string>
-    <string name="settings_menu_detail">Переход, логотипы, кадры и свечение.</string>
+    <string name="settings_menu_detail">Логотипы, кадры и свечение.</string>
+    <string name="settings_group_motion">Анимации</string>
+    <string name="settings_menu_motion">Переход в фильм и смена кадров.</string>
+    <string name="settings_backdrop_dissolve">Кадры растворением</string>
+    <string name="settings_backdrop_dissolve_hint">В деталке свайп кадров растворяет картинку и чуть увеличивает её. Выключено — обычный сдвиг вбок.</string>
     <string name="settings_group_player">Плеер</string>
     <string name="settings_menu_player">Кодек и когда фильм уходит в «Просмотренное».</string>
     <string name="settings_max_codec">Максимальный видеокодек</string>

@@ -78,6 +78,7 @@ import com.example.movie.R
 import com.example.movie.presentation.common.PosterImage
 import com.example.movie.domain.model.DataError
 import com.example.movie.domain.model.Movie
+import com.example.movie.presentation.detail.DetailSeed
 import com.example.movie.presentation.haptic.HapticOnAppend
 import com.example.movie.domain.model.HapticSlot
 import com.example.movie.presentation.haptic.rememberHaptic
@@ -445,6 +446,7 @@ private fun SearchIdle(
                                     onPressed = { pressed = it },
                                     onClick = {
                                         poster?.invoke()
+                                        DetailSeed.put(movie)
                                         onMovieClick(movie.id)
                                     },
                                     wave = wave,
@@ -591,6 +593,7 @@ private fun SearchResults(
                                 onPressed = { pressed = it },
                                 onClick = {
                                     poster?.invoke()
+                                    DetailSeed.put(movie)
                                     onMovieClick(movie.id)
                                 },
                                 wave = wave,

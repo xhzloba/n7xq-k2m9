@@ -101,6 +101,7 @@ import coil.request.ImageRequest
 import coil.request.SuccessResult
 import com.example.movie.R
 import com.example.movie.domain.model.Movie
+import com.example.movie.presentation.detail.DetailSeed
 import com.example.movie.presentation.common.PosterImage
 import com.example.movie.presentation.home.holdCue
 import com.example.movie.presentation.home.holdToPeek
@@ -376,6 +377,7 @@ internal fun PosterCarousel(
                             onPressed = { pressed = it },
                             onClick = {
                                 poster?.invoke()
+                                DetailSeed.put(movie)
                                 onMovieClick(movie.id)
                             },
                             wave = wave,

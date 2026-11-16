@@ -63,6 +63,7 @@ import com.example.movie.presentation.settings.LocalUserSettings
 import com.example.movie.di.LocalAppContainer
 import com.example.movie.domain.model.DataError
 import com.example.movie.domain.model.Movie
+import com.example.movie.presentation.detail.DetailSeed
 import com.example.movie.presentation.haptic.HapticOnAppend
 import com.example.movie.domain.model.HapticSlot
 import com.example.movie.presentation.haptic.rememberHaptic
@@ -532,6 +533,7 @@ private fun PosterCell(
                         onPressed = { pressed = it },
                         onClick = {
                             tick?.invoke()
+                            DetailSeed.put(movie)
                             onMovieClick(movie.id)
                         },
                         wave = wave,

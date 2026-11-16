@@ -66,6 +66,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.movie.R
 import com.example.movie.domain.model.Movie
+import com.example.movie.presentation.detail.DetailSeed
 import com.example.movie.presentation.common.PosterImage
 import com.example.movie.presentation.common.appChrome
 import com.example.movie.presentation.home.holdCue
@@ -382,6 +383,7 @@ private fun RecommendationPager(
                                     onPressed = { pressed = it },
                                     onClick = {
                                         poster?.invoke()
+                                        DetailSeed.put(movie)
                                         onMovieClick(movie.id)
                                     },
                                     wave = wave,

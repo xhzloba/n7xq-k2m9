@@ -104,6 +104,7 @@ import com.example.movie.presentation.common.headerFillOn
 import com.example.movie.presentation.common.topScrimFade
 import com.example.movie.presentation.common.topScrimHeight
 import com.example.movie.presentation.common.topScrimPalette
+import com.example.movie.presentation.detail.DetailSeed
 import com.example.movie.presentation.detail.OfflinePlayer
 import com.example.movie.ui.theme.PlayBlue
 import com.example.movie.domain.model.Movie
@@ -945,6 +946,7 @@ private fun FavoritePoster(
                             onPressed = { pressed = it },
                             onClick = {
                                 tick?.invoke()
+                                DetailSeed.put(item.toMovie())
                                 onMovieClick(item.id)
                             },
                             wave = wave,

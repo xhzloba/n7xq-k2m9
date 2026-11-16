@@ -17,7 +17,11 @@ class DetailViewModel(
     private val getMovieDetail: GetMovieDetailUseCase,
     private val watchCheck: suspend (String, String?, Int?) -> WatchCheck,
 ) : ViewModel() {
-    private val _state = MutableStateFlow(DetailUiState())
+    private val _state = MutableStateFlow(
+        DetailSeed.get(movieId)?.toPreviewDetail()?.let { preview ->
+            DetailUiState(detail = preview, phase = DetailPhase.Loading)
+        } ?: DetailUiState(),
+    )
     val state: StateFlow<DetailUiState> = _state.asStateFlow()
     private var watchJob: Job? = null
 
@@ -35,14 +39,18 @@ class DetailViewModel(
     private fun load() {
         watchJob?.cancel()
         viewModelScope.launch {
-            _state.value = DetailUiState(phase = DetailPhase.Loading)
+            if (_state.value.detail == null) {
+                _state.value = DetailUiState(phase = DetailPhase.Loading)
+            }
             getMovieDetail(movieId)
                 .onSuccess { detail ->
                     _state.value = DetailUiState(detail = detail, phase = DetailPhase.Ready)
                     resolveWatch(detail)
                 }
                 .onFailure { error ->
-                    _state.value = DetailUiState(phase = DetailPhase.Failed(error.asDataError()))
+                    if (_state.value.detail == null) {
+                        _state.value = DetailUiState(phase = DetailPhase.Failed(error.asDataError()))
+                    }
                 }
         }
     }

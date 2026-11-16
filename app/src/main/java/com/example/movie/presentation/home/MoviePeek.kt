@@ -73,6 +73,7 @@ import com.example.movie.di.LocalAppContainer
 import coil.compose.AsyncImage
 import com.example.movie.domain.model.ContentKind
 import com.example.movie.domain.model.Movie
+import com.example.movie.presentation.detail.DetailSeed
 import com.example.movie.domain.model.ResumeItem
 import com.example.movie.domain.model.resumeClock
 import com.example.movie.domain.model.toSaved
@@ -134,7 +135,10 @@ internal fun MoviePeek(
             onDismiss = {
                 if (!suppressDismiss) onDismiss()
             },
-            onWatch = { onOpen(shown.id) },
+            onWatch = {
+                DetailSeed.put(shown)
+                onOpen(shown.id)
+            },
             onContinue = onContinue?.let { continueWatch -> { continueWatch(shown.id) } },
             onSummary = {
                 suppressDismiss = true
@@ -152,7 +156,10 @@ internal fun MoviePeek(
         PeekPage.Summary -> OverviewPopup(
             movie = shown,
             onDismiss = onDismiss,
-            onOpen = { onOpen(shown.id) },
+            onOpen = {
+                DetailSeed.put(shown)
+                onOpen(shown.id)
+            },
         )
     }
 }

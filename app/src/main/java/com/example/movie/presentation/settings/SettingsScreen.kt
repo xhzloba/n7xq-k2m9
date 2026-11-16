@@ -113,6 +113,7 @@ private enum class SettingsPage {
     Navigation,
     Color,
     Detail,
+    Motion,
     Player,
     Sensors,
     Network,
@@ -127,6 +128,7 @@ private enum class SettingsPage {
             Navigation -> R.string.settings_group_navigation
             Color -> R.string.settings_group_color
             Detail -> R.string.settings_group_detail
+            Motion -> R.string.settings_group_motion
             Player -> R.string.settings_group_player
             Sensors -> R.string.settings_sensors
             Network -> R.string.settings_group_network
@@ -141,6 +143,7 @@ private enum class SettingsPage {
             Navigation -> R.string.settings_menu_navigation
             Color -> R.string.settings_menu_color
             Detail -> R.string.settings_menu_detail
+            Motion -> R.string.settings_menu_motion
             Player -> R.string.settings_menu_player
             Sensors -> R.string.settings_menu_sensors
             Network -> R.string.settings_menu_network
@@ -155,6 +158,7 @@ private enum class SettingsPage {
             Navigation -> ShellIcons.navigate
             Color -> ShellIcons.palette
             Detail -> ShellIcons.movie
+            Motion -> ShellIcons.motion
             Player -> ShellIcons.play
             Sensors -> ShellIcons.vibrate
             Network -> ShellIcons.network
@@ -471,12 +475,6 @@ private fun SettingsLeaf(
                 SettingGroup(
                     items = listOf(
                         SettingItem(
-                            title = stringResource(R.string.settings_detail_iris),
-                            hint = stringResource(R.string.settings_detail_iris_hint),
-                            checked = settings.detailIris,
-                            onChecked = onDetailIris,
-                        ),
-                        SettingItem(
                             title = stringResource(R.string.settings_logos),
                             hint = stringResource(R.string.settings_logos_hint),
                             checked = settings.showLogos,
@@ -495,8 +493,26 @@ private fun SettingsLeaf(
                             onChecked = onWatchGlow,
                         ),
                     ),
-                )
-            }
+            )
+        }
+        SettingsPage.Motion -> Column(leafScroll(modifier)) {
+            SettingGroup(
+                items = listOf(
+                    SettingItem(
+                        title = stringResource(R.string.settings_detail_iris),
+                        hint = stringResource(R.string.settings_detail_iris_hint),
+                        checked = settings.detailIris,
+                        onChecked = onDetailIris,
+                    ),
+                    SettingItem(
+                        title = stringResource(R.string.settings_backdrop_dissolve),
+                        hint = stringResource(R.string.settings_backdrop_dissolve_hint),
+                        checked = settings.backdropDissolve,
+                        onChecked = LocalUserSettings.current::setBackdropDissolve,
+                    ),
+                ),
+            )
+        }
         SettingsPage.Player -> Column(leafScroll(modifier)) {
             MaxCodecControl(selected = settings.playerCodec)
             Spacer(Modifier.height(22.dp))
