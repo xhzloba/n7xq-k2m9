@@ -11,8 +11,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -26,6 +27,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.movie.R
 import com.example.movie.presentation.shell.ShellIcons
+import java.io.IOException
 
 @Composable
 internal fun PosterImage(
@@ -37,23 +39,30 @@ internal fun PosterImage(
     showLabel: Boolean = true,
     onSuccess: (() -> Unit)? = null,
 ) {
-    // LazyRow выбрасывает ячейку при скролле. remember сбрасывал failed,
-    // AsyncImage стартовал с пустого кадра и плейсхолдер мигал. Saveable
-    // держит уже решённый промах; новый url по-прежнему грузится с нуля.
-    var failed by rememberSaveable(url) { mutableStateOf(url.isNullOrBlank()) }
-    LaunchedEffect(failed) {
-        if (failed) onSuccess?.invoke()
+    // Один сетевой промах нельзя запоминать на весь заход: ячейка так и
+    // остаётся пустой, хотя тот же url на следующем заходе открывается.
+    // Два повтора на IO, потом плейсхолдер. Новый показ ячейки начинает сначала.
+    var attempt by remember(url) { mutableIntStateOf(0) }
+    val missing = url.isNullOrBlank()
+    val giveUp = missing || attempt > 2
+    LaunchedEffect(giveUp) {
+        if (giveUp) onSuccess?.invoke()
     }
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
-        if (!failed) {
-            AsyncImage(
-                model = url,
-                contentDescription = contentDescription,
-                contentScale = contentScale,
-                onError = { failed = true },
-                onSuccess = { onSuccess?.invoke() },
-                modifier = Modifier.fillMaxSize(),
-            )
+        if (!giveUp) {
+            key(attempt) {
+                AsyncImage(
+                    model = url,
+                    contentDescription = contentDescription,
+                    contentScale = contentScale,
+                    onError = { state ->
+                        val error = state.result.throwable
+                        attempt = if (error is IOException && attempt < 2) attempt + 1 else 3
+                    },
+                    onSuccess = { onSuccess?.invoke() },
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
         } else {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,

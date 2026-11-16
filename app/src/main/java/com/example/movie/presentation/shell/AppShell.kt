@@ -976,7 +976,7 @@ private fun HomeHoldHint(
     val open = remember { Animatable(0f) }
     LaunchedEffect(active) {
         if (active) {
-            delay(420)
+            delay(1_500)
             open.animateTo(1f, tween(560, easing = FastOutSlowInEasing))
         } else {
             open.animateTo(0f, tween(180, easing = FastOutSlowInEasing))

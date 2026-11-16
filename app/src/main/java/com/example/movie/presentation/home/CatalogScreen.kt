@@ -322,23 +322,49 @@ internal fun CatalogListRoute(
     modifier: Modifier = Modifier,
 ) {
     val container = LocalAppContainer.current
-    val viewModel: CatalogListViewModel = viewModel(key = "$type:$sort:${genre.orEmpty()}") {
+    val sorting = genre != null
+    var picked by rememberSaveable(type, genre) { mutableStateOf(sort) }
+    var sortOpen by rememberSaveable { mutableStateOf(false) }
+    val querySort = if (sorting) picked else sort
+    val viewModel: CatalogListViewModel = viewModel(key = "$type:$querySort:${genre.orEmpty()}") {
         CatalogListViewModel(
-            query = CatalogQuery(sort = sort, type = type, genre = genre),
+            query = CatalogQuery(sort = querySort, type = type, genre = genre),
             getShelfMovies = container.getShelfMovies,
         )
     }
     val state by viewModel.state.collectAsStateWithLifecycle()
-    SectionPage(
-        title = title,
-        state = state,
-        onBack = onBack,
-        onLoadMore = viewModel::loadMore,
-        onRetry = viewModel::retry,
-        onMovieClick = onMovieClick,
-        onMoviePeek = onMoviePeek,
-        onHideBar = onHideBar,
-        modifier = modifier,
-    )
+    key(querySort) {
+        SectionPage(
+            title = title,
+            state = state,
+            onBack = onBack,
+            onLoadMore = viewModel::loadMore,
+            onRetry = viewModel::retry,
+            onMovieClick = onMovieClick,
+            onMoviePeek = onMoviePeek,
+            onSort = if (sorting) {
+                { sortOpen = true }
+            } else {
+                null
+            },
+            sortLabel = if (sorting) {
+                stringResource(
+                    (GenreSort.entries.firstOrNull { it.sort == picked } ?: GenreSort.Default).title,
+                )
+            } else {
+                null
+            },
+            onHideBar = onHideBar,
+            modifier = modifier,
+        )
+    }
+    if (sortOpen) {
+        CoverPopup(onDismiss = { sortOpen = false }) {
+            GenreSortSheet(selected = picked) { next ->
+                picked = next
+                sortOpen = false
+            }
+        }
+    }
 }
 

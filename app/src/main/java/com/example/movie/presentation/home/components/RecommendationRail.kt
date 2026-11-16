@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -58,7 +59,10 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.PlatformTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
@@ -136,16 +140,20 @@ internal fun RailTitle(
             color = color,
             fontWeight = if (white) FontWeight.Bold else FontWeight.Normal,
             fontSize = titleSize,
-            lineHeight = if (white) TextUnit.Unspecified else CategoryTabLineHeight,
+            lineHeight = titleSize,
             letterSpacing = if (white) TextUnit.Unspecified else CategoryTabLetterSpacing,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false)),
         )
         if (onClick != null) {
-            Spacer(Modifier.width(4.dp))
             Icon(
-                imageVector = ShellIcons.chevron,
+                imageVector = if (white) ShellIcons.chevronBold else ShellIcons.chevron,
                 contentDescription = null,
                 tint = color,
-                modifier = Modifier.size(iconSize),
+                modifier = Modifier
+                    .size(iconSize)
+                    .offset(x = -(iconSize * 9f / 24f) + 8.dp),
             )
         }
     }
@@ -538,13 +546,15 @@ private fun RailSeeAllCard(
                     text = stringResource(R.string.rail_see_all),
                     color = Color.White.copy(alpha = 0.92f),
                     fontSize = 16.sp,
+                    lineHeight = 16.sp,
                     fontWeight = FontWeight.SemiBold,
+                    style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false)),
                 )
                 Icon(
                     imageVector = ShellIcons.chevron,
                     contentDescription = null,
                     tint = Color.White.copy(alpha = 0.92f),
-                    modifier = Modifier.size(18.dp),
+                    modifier = Modifier.size(16.dp),
                 )
             }
         }

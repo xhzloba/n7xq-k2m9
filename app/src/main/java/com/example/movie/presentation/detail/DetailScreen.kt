@@ -1499,6 +1499,7 @@ private fun DetailContent(
             val franchise = detail.franchise
             CastSheet(
                 title = detail.title,
+                movieId = detail.id,
                 pageUrl = page,
                 resolving = !franchiseReady,
                 seasons = if (franchise?.series == true) franchise.seasons else emptyList(),

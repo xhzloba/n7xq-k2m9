@@ -96,6 +96,31 @@ class LiftEmbedTest {
     }
 
     @Test
+    fun playlistInfosCropTheActivePicture() {
+        val raw = """
+            {
+              "streams":{"hls":"https://cdn.example/master.m3u8","dash_av1":"https://cdn.example/av1.mpd"},
+              "infos":{
+                "hls":{
+                  "720":{"width":"1280","height":"720","active_x":"0","active_y":"94","active_width":"1280","active_height":"532","active_has_crop":"1"},
+                  "eng4":{"bitrate":"1","audio_codec":"aac"}
+                },
+                "dash_av1":{
+                  "1080":{"width":"1920","height":"1080","active_x":"0","active_y":"140","active_width":"1920","active_height":"800","active_has_crop":"1"},
+                  "4K":{"width":"3840","height":"2160","active_x":"0","active_y":"280","active_width":"3840","active_height":"1600","active_has_crop":"0"}
+                }
+              }
+            }
+        """.trimIndent()
+
+        val stream = parseLiftPlaylist(raw)?.stream
+        assertEquals(532, stream?.frameCrop(720)?.activeHeight)
+        val av1 = stream?.selectManifest(WatchManifest("https://cdn.example/av1.mpd", WatchKind.Dash, WatchCodec.Av1))
+        assertEquals(800, av1?.frameCrop(1080)?.activeHeight)
+        assertEquals(800, av1?.frameCrop(2160)?.activeHeight)
+    }
+
+    @Test
     fun playlistApiSeriesEpisodeStreams() {
         val raw = """
             {

@@ -26,6 +26,10 @@ internal object ShellIcons {
     val search: ImageVector = icon(filled = false) { magnifier() }
     val bell: ImageVector = icon(filled = false) { bell() }
     val genres: ImageVector = genreTag()
+    val sort: ImageVector = filled24(
+        "sort",
+        "M3,18h6v-2H3v2zM3,6v2h18V6H3zM3,13h12v-2H3v2z",
+    )
     val mic: ImageVector = icon(filled = false) { mic() }
     val close: ImageVector = icon(filled = false) { cross() }
     /** Material History — часы со стрелкой назад. */
@@ -92,6 +96,7 @@ internal object ShellIcons {
         "M12,2C6.48,2 2,6.48 2,12s4.48,10 10,10 10,-4.48 10,-10S17.52,2 12,2zM13,17h-2v-6h2v6zM13,9h-2V7h2v2z",
     )
     val chevron: ImageVector = chevron(forward = true)
+    val chevronBold: ImageVector = chevron(forward = true, width = 2.8f)
     val back: ImageVector = chevron(forward = false)
     val person: ImageVector = person()
     val gear: ImageVector = gearIcon()
@@ -175,7 +180,7 @@ private fun PathBuilder.media() {
     close()
 }
 
-private fun chevron(forward: Boolean): ImageVector = ImageVector.Builder(
+private fun chevron(forward: Boolean, width: Float = 1.7f): ImageVector = ImageVector.Builder(
     name = if (forward) "chevron" else "back",
     defaultWidth = 24.dp,
     defaultHeight = 24.dp,
@@ -184,7 +189,7 @@ private fun chevron(forward: Boolean): ImageVector = ImageVector.Builder(
 ).apply {
     path(
         stroke = SolidColor(Color.Black),
-        strokeLineWidth = 1.7f,
+        strokeLineWidth = width,
         strokeLineCap = StrokeCap.Round,
         strokeLineJoin = StrokeJoin.Round,
     ) {

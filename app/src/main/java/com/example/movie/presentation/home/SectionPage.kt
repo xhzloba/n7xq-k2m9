@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridState
@@ -68,6 +69,7 @@ import com.example.movie.presentation.haptic.HapticOnAppend
 import com.example.movie.domain.model.HapticSlot
 import com.example.movie.presentation.haptic.rememberHaptic
 import com.example.movie.presentation.haptic.rememberHapticTick
+import com.example.movie.ui.theme.CinemaMuted
 import com.example.movie.presentation.home.components.BrandTopInset
 import com.example.movie.presentation.home.components.PosterGridInset
 import com.example.movie.presentation.home.components.PosterCaption
@@ -151,6 +153,8 @@ internal fun SectionPage(
     onMovieClick: (String) -> Unit,
     onMoviePeek: (Movie) -> Unit,
     onClear: (() -> Unit)? = null,
+    onSort: (() -> Unit)? = null,
+    sortLabel: String? = null,
     onHideBar: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
@@ -205,6 +209,8 @@ internal fun SectionPage(
             title = title,
             onBack = onBack,
             onClear = onClear?.let { { confirmClear = true } },
+            onSort = onSort,
+            sortLabel = sortLabel,
             modifier = Modifier.align(Alignment.TopCenter),
         )
         if (confirmClear && onClear != null) {
@@ -226,6 +232,8 @@ private fun SectionBar(
     title: String,
     onBack: () -> Unit,
     onClear: (() -> Unit)?,
+    onSort: (() -> Unit)?,
+    sortLabel: String?,
     modifier: Modifier = Modifier,
 ) {
     val tick = rememberHapticTick()
@@ -273,42 +281,114 @@ private fun SectionBar(
                         ),
                 )
             }
+        } else if (onSort != null) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .padding(start = PosterGridInset - 7.dp)
+                        .size(36.dp)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = {
+                                tick?.invoke()
+                                onBack()
+                            },
+                        ),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = ShellIcons.back,
+                        contentDescription = stringResource(R.string.section_back),
+                        tint = Color.White,
+                        modifier = Modifier.size(22.dp),
+                    )
+                }
+                Text(
+                    text = title,
+                    color = Color.White,
+                    fontSize = 18.sp,
+                    lineHeight = 24.sp,
+                    fontWeight = FontWeight.Normal,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.Start,
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(start = 2.dp, end = 8.dp),
+                )
+                Row(
+                    modifier = Modifier
+                        .padding(end = PosterGridInset)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = {
+                                tick?.invoke()
+                                onSort()
+                            },
+                        ),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    if (!sortLabel.isNullOrBlank()) {
+                        Text(
+                            text = sortLabel,
+                            color = Color.White,
+                            fontSize = 14.sp,
+                            lineHeight = 18.sp,
+                            fontWeight = FontWeight.Medium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Spacer(Modifier.size(6.dp))
+                    }
+                    Icon(
+                        imageVector = ShellIcons.sort,
+                        contentDescription = stringResource(R.string.catalog_sort),
+                        tint = Color.White,
+                        modifier = Modifier.size(22.dp),
+                    )
+                }
+            }
         } else {
-        Text(
-            text = title,
-            color = Color.White,
-            fontSize = 18.sp,
-            lineHeight = 24.sp,
-            fontWeight = FontWeight.Normal,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            textAlign = TextAlign.Center,
-            modifier = Modifier
-                .align(Alignment.Center)
-                .padding(horizontal = 56.dp),
-        )
-        Box(
-            modifier = Modifier
-                .align(Alignment.CenterStart)
-                .padding(start = PosterGridInset - 7.dp)
-                .size(36.dp)
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = {
-                        tick?.invoke()
-                        onBack()
-                    },
-                ),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                imageVector = ShellIcons.back,
-                contentDescription = stringResource(R.string.section_back),
-                tint = Color.White,
-                modifier = Modifier.size(22.dp),
+            Text(
+                text = title,
+                color = Color.White,
+                fontSize = 18.sp,
+                lineHeight = 24.sp,
+                fontWeight = FontWeight.Normal,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .padding(horizontal = 56.dp),
             )
-        }
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .padding(start = PosterGridInset - 7.dp)
+                    .size(36.dp)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = {
+                            tick?.invoke()
+                            onBack()
+                        },
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = ShellIcons.back,
+                    contentDescription = stringResource(R.string.section_back),
+                    tint = Color.White,
+                    modifier = Modifier.size(22.dp),
+                )
+            }
         }
     }
 }
@@ -336,6 +416,51 @@ private fun HistoryBack(onBack: () -> Unit) {
             tint = Color.White,
             modifier = Modifier.size(22.dp),
         )
+    }
+}
+
+@Composable
+internal fun GenreSortSheet(
+    selected: String,
+    onPick: (String) -> Unit,
+) {
+    val tick = rememberHapticTick()
+    Column(Modifier.fillMaxWidth()) {
+        GenreSort.entries.forEach { option ->
+            val on = option.sort == selected
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = {
+                            tick?.invoke()
+                            onPick(option.sort)
+                        },
+                    )
+                    .padding(horizontal = 22.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = stringResource(option.title),
+                    modifier = Modifier.weight(1f),
+                    color = if (on) Color.White else CinemaMuted,
+                    fontSize = 16.sp,
+                    lineHeight = 21.sp,
+                    fontWeight = if (on) FontWeight.Medium else FontWeight.Normal,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                if (on) {
+                    Box(
+                        Modifier
+                            .size(8.dp)
+                            .background(Color.White, CircleShape),
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -420,8 +545,8 @@ internal fun PosterGrid(
     marks: Map<String, PosterMark> = emptyMap(),
 ) {
     HapticOnAppend(movies.map { it.id })
-    LaunchedEffect(state, movies.size, end, error, placeholder) {
-        if (placeholder || end || error != null) return@LaunchedEffect
+    LaunchedEffect(state, movies.size, end, error, placeholder, loadingMore) {
+        if (placeholder || end || error != null || loadingMore) return@LaunchedEffect
         snapshotFlow { state.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1 }
             .distinctUntilChanged()
             .collect { last ->

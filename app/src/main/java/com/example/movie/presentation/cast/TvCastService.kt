@@ -15,6 +15,7 @@ import android.os.IBinder
 import android.os.PowerManager
 import androidx.core.app.NotificationCompat
 import com.example.movie.R
+import com.example.movie.MainActivity
 import com.example.movie.data.cast.CastProxy
 import com.example.movie.data.cast.DlnaDevice
 import com.example.movie.data.cast.TvCastHub
@@ -43,6 +44,7 @@ class TvCastService : Service() {
     private var host: String? = null
     private var mediaUrl: String? = null
     private var mediaTitle: String = ""
+    private var movieId: String = ""
     private var preparedPage: String? = null
     private var hls: Boolean = false
     private var castRev: Int = 0
@@ -59,6 +61,7 @@ class TvCastService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         alive = true
         ensureChannel()
+        intent?.getStringExtra(EXTRA_MOVIE)?.takeIf { it.isNotBlank() }?.let { movieId = it }
         startForeground(
             NOTE_ID,
             note(mediaTitle),
@@ -299,6 +302,7 @@ class TvCastService : Service() {
         controlUrl = null
         mediaUrl = null
         preparedPage = null
+        movieId = ""
         castRev = 0
         if (control != null) runCatching { stopRenderer(control) }
         proxy?.stop()
@@ -358,10 +362,21 @@ class TvCastService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
         val headline = work.ifBlank { getString(R.string.cast_notification_title) }
+        val openMovie = movieId.takeIf { it.isNotBlank() }?.let { id ->
+            PendingIntent.getActivity(
+                this,
+                2,
+                Intent(this, MainActivity::class.java)
+                    .putExtra(MainActivity.EXTRA_MOVIE, id)
+                    .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP),
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            )
+        }
         return NotificationCompat.Builder(this, CHANNEL)
             .setSmallIcon(R.drawable.ic_stat_bell)
             .setContentTitle(headline)
             .setContentText(getString(R.string.cast_notification_text))
+            .setContentIntent(openMovie)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
@@ -382,6 +397,7 @@ class TvCastService : Service() {
         const val ACTION_STOP = "stop"
         const val EXTRA_PAGE = "page"
         const val EXTRA_TITLE = "title"
+        const val EXTRA_MOVIE = "movie"
         const val EXTRA_NAME = "name"
         const val EXTRA_CONTROL = "control"
         const val EXTRA_LOCATION = "location"
@@ -390,19 +406,21 @@ class TvCastService : Service() {
         private const val CHANNEL = "tv_cast"
         private const val NOTE_ID = 73
 
-        fun prepare(context: Context, pageUrl: String, title: String) {
+        fun prepare(context: Context, pageUrl: String, title: String, movieId: String) {
             send(context, ACTION_PREPARE) {
                 putExtra(EXTRA_PAGE, pageUrl)
                 putExtra(EXTRA_TITLE, title)
+                putExtra(EXTRA_MOVIE, movieId)
             }
         }
 
         fun search(context: Context) = send(context, ACTION_SEARCH)
 
-        fun retarget(context: Context, pageUrl: String, title: String) {
+        fun retarget(context: Context, pageUrl: String, title: String, movieId: String) {
             send(context, ACTION_PAGE) {
                 putExtra(EXTRA_PAGE, pageUrl)
                 putExtra(EXTRA_TITLE, title)
+                putExtra(EXTRA_MOVIE, movieId)
             }
         }
 
@@ -420,21 +438,37 @@ class TvCastService : Service() {
 
         fun applyCodec(context: Context) = send(context, ACTION_CODEC)
 
-        fun play(context: Context, name: String, controlUrl: String, pageUrl: String? = null, title: String? = null) {
+        fun play(
+            context: Context,
+            name: String,
+            controlUrl: String,
+            pageUrl: String? = null,
+            title: String? = null,
+            movieId: String = "",
+        ) {
             send(context, ACTION_PLAY) {
                 putExtra(EXTRA_NAME, name)
                 putExtra(EXTRA_CONTROL, controlUrl)
                 putExtra(EXTRA_PAGE, pageUrl)
                 putExtra(EXTRA_TITLE, title)
+                putExtra(EXTRA_MOVIE, movieId)
             }
         }
 
-        fun openBrowser(context: Context, name: String, location: String, pageUrl: String? = null, title: String? = null) {
+        fun openBrowser(
+            context: Context,
+            name: String,
+            location: String,
+            pageUrl: String? = null,
+            title: String? = null,
+            movieId: String = "",
+        ) {
             send(context, ACTION_BROWSER) {
                 putExtra(EXTRA_NAME, name)
                 putExtra(EXTRA_LOCATION, location)
                 putExtra(EXTRA_PAGE, pageUrl)
                 putExtra(EXTRA_TITLE, title)
+                putExtra(EXTRA_MOVIE, movieId)
             }
         }
 

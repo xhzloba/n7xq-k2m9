@@ -88,6 +88,7 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.TrackSelectionParameters.AudioOffloadPreferences
+import androidx.media3.common.VideoSize
 import androidx.media3.common.Tracks
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.DefaultRenderersFactory
@@ -97,6 +98,7 @@ import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.exoplayer.audio.DefaultAudioSink
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
+import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import com.example.movie.R
 import com.example.movie.data.download.MediaCache
@@ -107,6 +109,8 @@ import com.example.movie.data.player.WatchKind
 import com.example.movie.data.player.WatchManifest
 import com.example.movie.data.player.WatchPlayback
 import com.example.movie.data.player.WatchStream
+import com.example.movie.data.player.frameCrop
+import com.example.movie.data.player.FrameCrop
 import com.example.movie.data.player.fallbackManifest
 import com.example.movie.data.player.nextPlayableManifest
 import com.example.movie.data.player.preferPlayableManifest
@@ -251,6 +255,7 @@ internal fun RektPlayer(
     var page by remember(player) { mutableStateOf<PlayerPage?>(null) }
     var fromSettings by remember(player) { mutableStateOf(false) }
     var picture by remember(player) { mutableStateOf(settings.playerPicture.toPictureMode()) }
+    var videoHeight by remember(player) { mutableIntStateOf(player.videoSize.height) }
     var chrome by remember(player) { mutableStateOf(true) }
     var locked by remember(player) { mutableStateOf(false) }
     var poke by remember(player) { mutableIntStateOf(0) }
@@ -344,6 +349,10 @@ internal fun RektPlayer(
         val listener = object : Player.Listener {
             override fun onTracksChanged(currentTracks: Tracks) {
                 tracks = currentTracks
+            }
+
+            override fun onVideoSizeChanged(videoSize: VideoSize) {
+                videoHeight = videoSize.height
             }
 
             override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -443,6 +452,9 @@ internal fun RektPlayer(
             else -> onDismiss()
         }
     }
+    val barsCrop = remember { BarsCrop() }
+    val activeCrop = if (picture == PictureMode.Bars) current.frameCrop(videoHeight) else null
+    barsCrop.crop = activeCrop
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         AndroidView(
             modifier = Modifier
@@ -456,17 +468,29 @@ internal fun RektPlayer(
                     this.player = player
                     useController = false
                     keepScreenOn = true
+                    clipChildren = true
                     layoutParams = FrameLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
                         ViewGroup.LayoutParams.MATCH_PARENT,
                     )
+                    addOnLayoutChangeListener { view, _, _, _, _, _, _, _, _ ->
+                        (view as PlayerView).applyBars(barsCrop.crop)
+                    }
                 }
             },
             update = {
                 it.player = player
-                it.resizeMode = picture.resizeMode
+                it.resizeMode = when {
+                    picture != PictureMode.Bars -> picture.resizeMode
+                    activeCrop != null || videoHeight <= 0 -> AspectRatioFrameLayout.RESIZE_MODE_FIT
+                    else -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                }
+                it.applyBars(activeCrop)
             },
-            onRelease = { it.player = null },
+            onRelease = {
+                it.videoSurfaceView?.resetPictureScale()
+                it.player = null
+            },
         )
         if (buffering && !inPip && !chrome) {
             CircularProgressIndicator(
@@ -1182,6 +1206,45 @@ private fun WatchStream.sameSource(other: WatchStream): Boolean {
     val left = listOfNotNull(url, alternateUrl)
     val right = listOfNotNull(other.url, other.alternateUrl)
     return left.any { it in right }
+}
+
+private class BarsCrop {
+    var crop: FrameCrop? = null
+}
+
+private fun View.resetPictureScale() {
+    scaleX = 1f
+    scaleY = 1f
+    translationX = 0f
+    translationY = 0f
+}
+
+@OptIn(UnstableApi::class)
+private fun PlayerView.applyBars(crop: FrameCrop?) {
+    post {
+        val surface = videoSurfaceView ?: return@post
+        (surface.parent as? ViewGroup)?.clipChildren = true
+        clipChildren = true
+        if (crop == null || width <= 0 || height <= 0 || surface.width <= 0 || surface.height <= 0) {
+            surface.resetPictureScale()
+            return@post
+        }
+        val contentW = crop.activeWidth.toFloat() / crop.width * surface.width
+        val contentH = crop.activeHeight.toFloat() / crop.height * surface.height
+        if (contentW <= 0f || contentH <= 0f) {
+            surface.resetPictureScale()
+            return@post
+        }
+        val scale = maxOf(width / contentW, height / contentH).coerceAtLeast(1f)
+        val centerX = (crop.activeX + crop.activeWidth / 2f) / crop.width * surface.width
+        val centerY = (crop.activeY + crop.activeHeight / 2f) / crop.height * surface.height
+        surface.pivotX = width / 2f
+        surface.pivotY = height / 2f
+        surface.scaleX = scale
+        surface.scaleY = scale
+        surface.translationX = width / 2f - (surface.left + centerX)
+        surface.translationY = height / 2f - (surface.top + centerY)
+    }
 }
 
 private fun formatPlayerTime(ms: Long): String {

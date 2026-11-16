@@ -14,6 +14,12 @@
     <string name="catalog_popular">Популярное</string>
     <string name="catalog_new">Новинки</string>
     <string name="catalog_updates">Обновления</string>
+    <string name="catalog_sort">Сортировка</string>
+    <string name="catalog_sort_default">По умолчанию</string>
+    <string name="catalog_sort_popular">По популярности</string>
+    <string name="catalog_sort_updates">По дате обновления</string>
+    <string name="catalog_sort_added">По дате добавления</string>
+    <string name="catalog_sort_rating">По рейтингу</string>
     <string name="catalog_genres">Жанры</string>
     <string name="poster_content_description">Постер «%1$s»</string>
     <string name="no_poster">No poster</string>
@@ -58,6 +64,7 @@
     <string name="player_picture">Масштаб</string>
     <string name="player_fit">По размеру</string>
     <string name="player_zoom">Заполнить</string>
+    <string name="player_bars">Убрать полосы</string>
     <string name="player_fill">Растянуть</string>
     <string name="player_unavailable">Нет дорожек</string>
     <string name="player_exit">Выйти из плеера</string>

@@ -32,6 +32,7 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -425,7 +426,7 @@ private fun MenuHeading(movie: Movie) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(48.dp),
+                .height(28.dp),
             contentAlignment = Alignment.Center,
         ) {
             if (!logoReady) MenuLogoSkeleton()
@@ -438,9 +439,8 @@ private fun MenuHeading(movie: Movie) {
                     onSuccess = { logoReady = true },
                     onError = { logoFailed = true },
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 56.dp)
-                        .height(48.dp)
+                        .widthIn(max = 168.dp)
+                        .height(28.dp)
                         .graphicsLayer { alpha = if (logoReady) 1f else 0f },
                 )
             }
@@ -524,8 +524,8 @@ private fun MenuLogoSkeleton() {
     )
     Box(
         Modifier
-            .width(148.dp)
-            .height(16.dp)
+            .width(112.dp)
+            .height(12.dp)
             .clip(RoundedCornerShape(6.dp))
             .background(Color.White.copy(alpha = pulse)),
     )

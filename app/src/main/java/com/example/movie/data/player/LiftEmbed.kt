@@ -39,7 +39,31 @@ internal data class WatchStream(
     val alternateKind: WatchKind? = null,
     val manifests: List<WatchManifest> = emptyList(),
     val manifestPicked: Boolean = false,
+    val crops: Map<String, List<FrameCrop>> = emptyMap(),
 )
+
+/** Активная картинка внутри кадра: полосы сверху и снизу уже вшиты в пиксели. */
+internal data class FrameCrop(
+    val width: Int,
+    val height: Int,
+    val activeX: Int,
+    val activeY: Int,
+    val activeWidth: Int,
+    val activeHeight: Int,
+)
+
+internal fun WatchStream.frameCrop(videoHeight: Int): FrameCrop? {
+    if (videoHeight <= 0 || crops.isEmpty()) return null
+    val manifest = manifests.firstOrNull { it.url == url }
+    val key = when {
+        (manifest?.kind ?: kind) == WatchKind.Hls -> "hls"
+        manifest?.codec == WatchCodec.Av1 -> "dash_av1"
+        manifest?.codec == WatchCodec.Vp9 -> "dash_vp9"
+        else -> "dash"
+    }
+    val pool = crops[key].orEmpty().ifEmpty { crops.values.flatten() }
+    return pool.minByOrNull { kotlin.math.abs(it.height - videoHeight) }
+}
 
 internal data class WatchEpisode(
     val season: Int,
@@ -231,6 +255,7 @@ private fun JsonObject.stream(): WatchStream? {
         subs = subs,
         names = names,
         order = order,
+        crops = frameCrops(),
     )
 }
 
@@ -262,6 +287,7 @@ private fun buildStream(
     subs: List<WatchSubtitle>,
     names: List<String>,
     order: List<Int>,
+    crops: Map<String, List<FrameCrop>> = emptyMap(),
 ): WatchStream? {
     val manifests = buildList {
         if (hls != null) add(WatchManifest(hls, WatchKind.Hls, WatchCodec.H264))
@@ -282,7 +308,42 @@ private fun buildStream(
         alternateUrl = alternate?.url,
         alternateKind = alternate?.kind,
         manifests = manifests,
+        crops = crops,
     )
+}
+
+private fun JsonObject.frameCrops(): Map<String, List<FrameCrop>> {
+    val infos = this["infos"] as? JsonObject ?: return emptyMap()
+    return buildMap {
+        infos.forEach { (codec, node) ->
+            val rows = node as? JsonObject ?: return@forEach
+            val crops = rows.values.mapNotNull { (it as? JsonObject)?.frameCrop() }
+            if (crops.isNotEmpty()) put(codec, crops)
+        }
+    }
+}
+
+private fun JsonObject.frameCrop(): FrameCrop? {
+    val width = looseInt("width") ?: return null
+    val height = looseInt("height") ?: return null
+    val activeX = looseInt("active_x") ?: return null
+    val activeY = looseInt("active_y") ?: return null
+    val activeWidth = looseInt("active_width") ?: return null
+    val activeHeight = looseInt("active_height") ?: return null
+    if (width <= 0 || height <= 0 || activeWidth <= 0 || activeHeight <= 0) return null
+    val flag = (this["active_has_crop"] as? JsonPrimitive)?.contentOrNull?.lowercase()
+    val enabled = when (flag) {
+        "1", "true", "yes" -> true
+        "0", "false", "no" -> false
+        else -> activeWidth < width || activeHeight < height
+    }
+    if (!enabled || (activeWidth >= width && activeHeight >= height)) return null
+    return FrameCrop(width, height, activeX, activeY, activeWidth, activeHeight)
+}
+
+private fun JsonObject.looseInt(key: String): Int? {
+    val prim = this[key] as? JsonPrimitive ?: return null
+    return prim.intOrNull ?: prim.contentOrNull?.substringBefore('.')?.toIntOrNull()
 }
 
 /**

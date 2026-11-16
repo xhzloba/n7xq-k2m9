@@ -53,12 +53,14 @@ internal fun PictureMode.stored(): String = name.lowercase()
 internal fun String.toPictureMode(): PictureMode = when (this) {
     "zoom" -> PictureMode.Zoom
     "fill" -> PictureMode.Fill
+    "bars" -> PictureMode.Bars
     else -> PictureMode.Fit
 }
 
 internal enum class PictureMode(val resizeMode: Int, val label: Int) {
     Fit(AspectRatioFrameLayout.RESIZE_MODE_FIT, R.string.player_fit),
     Zoom(AspectRatioFrameLayout.RESIZE_MODE_ZOOM, R.string.player_zoom),
+    Bars(AspectRatioFrameLayout.RESIZE_MODE_FIT, R.string.player_bars),
     Fill(AspectRatioFrameLayout.RESIZE_MODE_FILL, R.string.player_fill),
 }
 

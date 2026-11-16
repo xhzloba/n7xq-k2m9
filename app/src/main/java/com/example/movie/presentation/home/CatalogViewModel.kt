@@ -17,6 +17,14 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+internal enum class GenreSort(val sort: String, @StringRes val title: Int) {
+    Default("", R.string.catalog_sort_default),
+    Popular("popular", R.string.catalog_sort_popular),
+    Updates("updatings", R.string.catalog_sort_updates),
+    Added("new", R.string.catalog_sort_added),
+    Rating("rating", R.string.catalog_sort_rating),
+}
+
 internal enum class CatalogSort(val sort: String, @StringRes val title: Int) {
     Watching("watching", R.string.section_watching),
     Popular("popular", R.string.catalog_popular),
@@ -110,6 +118,7 @@ internal class CatalogListViewModel(
 ) : ViewModel() {
     private val pages = ShelfPages()
     private var busy = false
+    private var queued = false
     private val _state = MutableStateFlow(SectionUiState())
     val state: StateFlow<SectionUiState> = _state.asStateFlow()
 
@@ -127,8 +136,13 @@ internal class CatalogListViewModel(
 
     fun loadMore(force: Boolean = false) {
         val current = _state.value
-        if (busy || current.end) return
+        if (current.end) return
         if (!force && current.error != null) return
+        if (busy) {
+            queued = true
+            return
+        }
+        queued = false
         busy = true
         val first = current.movies.isEmpty()
         _state.value = current.copy(loading = first, loadingMore = !first, error = null)
@@ -180,6 +194,12 @@ internal class CatalogListViewModel(
                 }
             } finally {
                 busy = false
+                if (queued && !_state.value.end && _state.value.error == null) {
+                    queued = false
+                    loadMore()
+                } else {
+                    queued = false
+                }
             }
         }
     }

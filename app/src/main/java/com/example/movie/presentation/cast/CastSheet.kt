@@ -68,6 +68,7 @@ import com.example.movie.ui.theme.PlayBlue
 @Composable
 internal fun CastSheet(
     title: String,
+    movieId: String,
     pageUrl: String?,
     resolving: Boolean,
     seasons: List<FranchiseSeason> = emptyList(),
@@ -107,6 +108,7 @@ internal fun CastSheet(
             device = device,
             page = pageFor(season, episode),
             shown = shownTitle(season, episode),
+            movieId = movieId,
         )
     }
     HandleSheet(onDismiss = onDismiss) {
@@ -194,7 +196,7 @@ internal fun CastSheet(
                         filled = true,
                         onClick = {
                             val page = pageFor(seasonNumber, episodeNumber) ?: pageUrl
-                            TvCastService.prepare(context, page, shownTitle(seasonNumber, episodeNumber))
+                            TvCastService.prepare(context, page, shownTitle(seasonNumber, episodeNumber), movieId)
                         },
                     )
                 }
@@ -208,6 +210,7 @@ internal fun CastSheet(
                             busy = state.busy,
                             qualities = state.qualities,
                             quality = state.quality,
+                            codec = codec,
                             audios = state.audios,
                             audio = state.audio,
                             seasons = if (series) seasons else emptyList(),
@@ -218,6 +221,11 @@ internal fun CastSheet(
                                 opened = if (opened == device.location) null else device.location
                             },
                             onQuality = { height -> TvCastService.quality(context, height) },
+                            onCodec = {
+                                tick?.invoke()
+                                settingsRepository.setPlayerCodec(stepCodec(codec, 1))
+                                if (state.running) TvCastService.applyCodec(context)
+                            },
                             onAudio = { index -> TvCastService.audio(context, index) },
                             onSeason = { number ->
                                 val id = watchId ?: return@TvDrop
@@ -225,7 +233,7 @@ internal fun CastSheet(
                                 val episode = next.aired(null)?.number ?: return@TvDrop
                                 seasonNumber = number
                                 episodeNumber = episode
-                                TvCastService.retarget(context, resumeWatchUrl(id, number, episode), shownTitle(number, episode))
+                                TvCastService.retarget(context, resumeWatchUrl(id, number, episode), shownTitle(number, episode), movieId)
                             },
                             onEpisode = { number ->
                                 episodeNumber = number
@@ -234,6 +242,7 @@ internal fun CastSheet(
                                     context,
                                     resumeWatchUrl(id, seasonNumber, number),
                                     shownTitle(seasonNumber, number),
+                                    movieId,
                                 )
                             },
                             onBrowser = { launch(CastTarget.Browser, device) },
@@ -269,10 +278,11 @@ private fun launchOn(
     device: DlnaDevice,
     page: String?,
     shown: String,
+    movieId: String,
 ) {
     when (target) {
-        CastTarget.Browser -> TvCastService.openBrowser(context, device.name, device.location, page, shown)
-        CastTarget.Player -> TvCastService.play(context, device.name, device.controlUrl, page, shown)
+        CastTarget.Browser -> TvCastService.openBrowser(context, device.name, device.location, page, shown, movieId)
+        CastTarget.Player -> TvCastService.play(context, device.name, device.controlUrl, page, shown, movieId)
     }
 }
 
@@ -284,6 +294,7 @@ private fun TvDrop(
     busy: Boolean,
     qualities: List<Int>,
     quality: Int?,
+    codec: String,
     audios: List<String>,
     audio: Int,
     seasons: List<FranchiseSeason>,
@@ -292,6 +303,7 @@ private fun TvDrop(
     episodeNumber: Int,
     onToggle: () -> Unit,
     onQuality: (Int?) -> Unit,
+    onCodec: () -> Unit,
     onAudio: (Int) -> Unit,
     onSeason: (Int) -> Unit,
     onEpisode: (Int) -> Unit,
@@ -368,6 +380,12 @@ private fun TvDrop(
                 shrinkVertically(tween(240, easing = FastOutSlowInEasing), shrinkTowards = Alignment.Top),
         ) {
             Column(Modifier.padding(start = 14.dp, end = 14.dp, bottom = 14.dp)) {
+                ValueRow(
+                    text = stringResource(R.string.download_codec_value, codecCeilingLabel(codec)),
+                    enabled = !busy,
+                    onClick = onCodec,
+                )
+                Spacer(Modifier.height(8.dp))
                 if (qualities.isNotEmpty()) {
                     val auto = stringResource(R.string.player_quality_auto)
                     val ladder = listOf<Int?>(null) + qualities
