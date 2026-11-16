@@ -521,6 +521,7 @@ fun DetailScreen(
     when {
         detail != null -> DetailContent(
             detail = detail,
+            contentReady = state.phase is DetailPhase.Ready,
             franchiseReady = state.franchiseReady,
             unavailable = state.unavailable,
             logoInk = 0.dp,
@@ -573,6 +574,7 @@ private data class WatchRequest(
 @Composable
 private fun DetailContent(
     detail: MovieDetail,
+    contentReady: Boolean,
     franchiseReady: Boolean,
     unavailable: Boolean,
     logoInk: Dp,
@@ -651,7 +653,7 @@ private fun DetailContent(
     val watchBuzz = rememberHaptic(HapticSlot.Watch)
     val favoriteBuzz = rememberHaptic(HapticSlot.Favorite)
     val cardBuzz = rememberHaptic(HapticSlot.Card)
-    LaunchedEffect(detail.id) { cardBuzz?.invoke() }
+    var logoReady by remember(detail.id, detail.logoUrl) { mutableStateOf(false) }
     val settings by LocalUserSettings.current.settings.collectAsStateWithLifecycle()
     val flat = PosterWash(CinemaBlack, CinemaBlack, CinemaBlack, CinemaBlack)
     val hidden = PosterWash(Color.Black, Color.Black, Color.Black, Color.Black)
@@ -733,6 +735,14 @@ private fun DetailContent(
     }
     val washCache = remember(detail.id) { HashMap<String, PosterWash>() }
     val loadedStills = remember(detail.id) { mutableStateMapOf<String, Boolean>() }
+    val stillReady = shownBackdrop == null || loadedStills[shownBackdrop] == true
+    var cardPlayed by remember(detail.id) { mutableStateOf(false) }
+    LaunchedEffect(detail.id, contentReady, logoReady, stillReady) {
+        if (!cardPlayed && contentReady && logoReady && stillReady) {
+            cardPlayed = true
+            cardBuzz?.invoke()
+        }
+    }
     LaunchedEffect(
         detail.id,
         shownBackdrop,
@@ -1098,7 +1108,7 @@ private fun DetailContent(
             Layout(
                 content = {
                     Box(Modifier.graphicsLayer { alpha = 1f - barIn }) {
-                        LogoOrTitle(detail)
+                        LogoOrTitle(detail, onSettled = { logoReady = true })
                     }
                     MetaRow(detail)
                 },
@@ -2010,7 +2020,7 @@ private fun MovieDetail.releaseSub(awaiting: Boolean): SeriesSub {
 }
 
 @Composable
-private fun LogoOrTitle(detail: MovieDetail) {
+private fun LogoOrTitle(detail: MovieDetail, onSettled: () -> Unit) {
     val settings by LocalUserSettings.current.settings.collectAsStateWithLifecycle()
     var failed by remember(detail.id, detail.logoUrl) {
         mutableStateOf(detail.logoUrl.isNullOrBlank())
@@ -2031,6 +2041,10 @@ private fun LogoOrTitle(detail: MovieDetail) {
         } else {
             art = withContext(Dispatchers.Default) { raw.opaqueCrop() }
         }
+    }
+    val settled = !settings.showLogos || failed || art != null
+    LaunchedEffect(settled) {
+        if (settled) onSettled()
     }
     if (settings.showLogos && !failed) {
         Box(
