@@ -30,8 +30,7 @@ import com.example.movie.data.cast.stopRenderer
 import com.example.movie.data.player.CodecCeiling
 import com.example.movie.data.player.WatchKind
 import com.example.movie.data.player.fetchLiftWatch
-import com.example.movie.data.player.playlistHeights
-import com.example.movie.data.player.preferPlayableManifest
+import com.example.movie.data.player.forCast
 import com.example.movie.data.settings.UserSettingsStore
 import com.example.movie.domain.model.normalizedPlayerCodec
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
@@ -161,10 +160,8 @@ class TvCastService : Service() {
     }
 
     private fun bindStream(current: CastProxy, pageUrl: String, title: String, emulator: Boolean) {
-        val stream = fetchLiftWatch(pageUrl).stream.preferPlayableManifest(
-            displayHdr = true,
-            ceiling = codecCeiling(),
-        )
+        val requested = current.qualityHeight
+        val (stream, heights) = fetchLiftWatch(pageUrl).stream.forCast(codecCeiling(), requested)
         current.referer = pageUrl.toHttpUrlOrNull()?.let { "${it.scheme}://${it.host}/" }
         current.title = title.ifBlank { mediaTitle.ifBlank { getString(R.string.cast_notification_title) } }
         mediaTitle = current.title
@@ -177,11 +174,16 @@ class TvCastService : Service() {
         hls = stream.kind == WatchKind.Hls
         preparedPage = pageUrl
         val names = stream.audioNames
-        val heights = playlistHeights(stream.url)
-        val keepQuality = TvCastHub.state.value.quality?.takeIf { it in heights }
+        val keepQuality = requested?.takeIf { it in heights }
+        val keptAudio = names.indexOfFirst { it.equals(current.audioName, ignoreCase = true) }
+        val audioIndex = if (keptAudio >= 0) {
+            keptAudio
+        } else {
+            current.audioIndex.coerceIn(0, (names.size - 1).coerceAtLeast(0))
+        }
         current.qualityHeight = keepQuality
-        current.audioIndex = 0
-        current.audioName = names.firstOrNull()
+        current.audioIndex = audioIndex
+        current.audioName = names.getOrNull(audioIndex)
         TvCastHub.update {
             it.copy(
                 busy = false,
@@ -192,7 +194,7 @@ class TvCastService : Service() {
                 qualities = heights,
                 audios = names,
                 quality = keepQuality,
-                audio = 0,
+                audio = audioIndex,
                 message = when {
                     emulator -> getString(R.string.cast_emulator, current.origin + "/")
                     else -> getString(R.string.cast_ready)
@@ -218,10 +220,11 @@ class TvCastService : Service() {
     }
 
     private fun chooseQuality(height: Int) {
-        val picked = height.takeIf { it > 0 }
-        proxy?.qualityHeight = picked
-        val next = publish(mediaUrl)
-        TvCastHub.update { it.copy(quality = picked, streamUrl = next ?: it.streamUrl) }
+        val current = proxy ?: return
+        val page = preparedPage ?: return
+        current.qualityHeight = height.takeIf { it > 0 }
+        TvCastHub.update { it.copy(busy = true, message = getString(R.string.cast_preparing)) }
+        bindStream(current, page, mediaTitle, runningOnEmulator())
     }
 
     private fun chooseAudio(index: Int) {

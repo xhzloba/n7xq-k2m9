@@ -321,6 +321,34 @@ class LiftEmbedTest {
     }
 
     @Test
+    fun castAutoStaysOnH264UntilTheHeightNeedsAnotherCodec() {
+        val manifests = listOf(
+            WatchManifest("https://cdn.example/av1.mpd", WatchKind.Dash, WatchCodec.Av1),
+            WatchManifest("https://cdn.example/h264.mpd", WatchKind.Dash, WatchCodec.H264),
+            WatchManifest("https://cdn.example/vp9.mpd", WatchKind.Dash, WatchCodec.Vp9),
+        )
+        val heights = mapOf(
+            "https://cdn.example/av1.mpd" to setOf(2160, 1080),
+            "https://cdn.example/h264.mpd" to setOf(1080, 720),
+            "https://cdn.example/vp9.mpd" to setOf(2160, 1080),
+        )
+        val tier = { _: WatchManifest -> DecoderTier.Hardware }
+        val of = { manifest: WatchManifest -> heights.getValue(manifest.url) }
+        assertEquals(
+            "https://cdn.example/h264.mpd",
+            pickCastManifest(manifests, CodecCeiling.Auto, null, of, tier)?.url,
+        )
+        assertEquals(
+            "https://cdn.example/h264.mpd",
+            pickCastManifest(manifests, CodecCeiling.Auto, 1080, of, tier)?.url,
+        )
+        assertEquals(
+            "https://cdn.example/vp9.mpd",
+            pickCastManifest(manifests, CodecCeiling.Auto, 2160, of, tier)?.url,
+        )
+    }
+
+    @Test
     fun ignoresPageWithoutManifest() {
         assertNull(parseLiftEmbed("<html>no player</html>"))
     }

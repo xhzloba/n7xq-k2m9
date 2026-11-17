@@ -187,8 +187,17 @@ internal fun narrowDash(xml: String, height: Int?): String {
         }
         index = end
     }
-    return if (kept || !dropped) out.toString() else xml
+    val chosen = if (kept || !dropped) out.toString() else xml
+    if (chosen == xml) return xml
+    return adaptationSet.replace(chosen) { match ->
+        if (match.value.contains("<Representation", ignoreCase = true)) match.value else ""
+    }
 }
+
+private val adaptationSet = Regex(
+    """<AdaptationSet\b[^>]*>.*?</AdaptationSet>""",
+    setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL),
+)
 
 private fun pickAudio(lines: List<String>, name: String?, index: Int): String? {
     if (lines.isEmpty()) return null

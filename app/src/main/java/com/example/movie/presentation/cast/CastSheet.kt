@@ -180,15 +180,6 @@ internal fun CastSheet(
             }
             if (!pageUrl.isNullOrBlank()) {
                 Spacer(Modifier.height(16.dp))
-                ValueRow(
-                    text = stringResource(R.string.download_codec_value, codecCeilingLabel(codec)),
-                    enabled = !state.busy && !resolving,
-                ) {
-                    tick?.invoke()
-                    settingsRepository.setPlayerCodec(stepCodec(codec, 1))
-                    if (state.running) TvCastService.applyCodec(context)
-                }
-                Spacer(Modifier.height(10.dp))
                 if (!state.running) {
                     CastRow(
                         text = stringResource(R.string.cast_start),

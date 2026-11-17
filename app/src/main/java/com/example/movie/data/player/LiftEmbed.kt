@@ -426,6 +426,44 @@ internal fun manifestRange(text: String): ManifestRange = when {
     else -> ManifestRange(sdr = true, hdr = false)
 }
 
+internal fun pickCastManifest(
+    manifests: List<WatchManifest>,
+    ceiling: CodecCeiling,
+    height: Int?,
+    heightsOf: (WatchManifest) -> Set<Int>,
+    tier: (WatchManifest) -> DecoderTier,
+): WatchManifest? {
+    if (manifests.isEmpty()) return null
+    val safe = if (ceiling == CodecCeiling.Auto) CodecCeiling.H264 else ceiling
+    val preferred = manifests.underCeiling(safe, tier).ifEmpty { manifests }
+    if (height == null) return preferred.firstOrNull()
+    preferred.firstOrNull { height in heightsOf(it) }?.let { return it }
+    if (ceiling != CodecCeiling.Auto) return preferred.firstOrNull()
+    return manifests.sortedBy { codecRank(it) }.firstOrNull { height in heightsOf(it) }
+        ?: preferred.firstOrNull()
+}
+
+internal fun WatchStream.forCast(ceiling: CodecCeiling, height: Int?): Pair<WatchStream, List<Int>> {
+    val tier = { manifest: WatchManifest -> manifest.decoderTier() }
+    val measured = manifests.distinctBy { it.url }.map { it to fetchHeights(it.url) }
+    val heightsOf = { manifest: WatchManifest ->
+        measured.firstOrNull { it.first.url == manifest.url }?.second ?: emptySet()
+    }
+    val picked = pickCastManifest(manifests, ceiling, height, heightsOf, tier)
+    val allowed = if (ceiling == CodecCeiling.Auto) {
+        manifests
+    } else {
+        manifests.underCeiling(ceiling, tier)
+    }
+    val heights = measured
+        .filter { row -> allowed.any { it.url == row.first.url } }
+        .flatMap { it.second }
+        .filter { it > 0 }
+        .distinct()
+        .sortedDescending()
+    return (if (picked == null) this else selectManifest(picked)) to heights
+}
+
 internal fun WatchStream.preferPlayableManifest(
     displayHdr: Boolean,
     ceiling: CodecCeiling = CodecCeiling.Auto,

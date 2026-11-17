@@ -53,6 +53,22 @@ class PlaylistRewriteTest {
     }
 
     @Test
+    fun dropsEmptyDashSetsWhenHeightIsChosen() {
+        val xml = """
+            <MPD>
+            <AdaptationSet id="4k"><Representation height="2160" id="u"><BaseURL>u.m4s</BaseURL></Representation></AdaptationSet>
+            <AdaptationSet id="fhd"><Representation height="1080" id="f"><BaseURL>f.m4s</BaseURL></Representation></AdaptationSet>
+            <AdaptationSet id="audio"><Representation id="a"><BaseURL>a.m4s</BaseURL></Representation></AdaptationSet>
+            </MPD>
+        """.trimIndent()
+        val out = narrowDash(xml, 1080)
+        assertFalse(out.contains("id=\"4k\""))
+        assertFalse(out.contains("2160"))
+        assertTrue(out.contains("f.m4s"))
+        assertTrue(out.contains("a.m4s"))
+    }
+
+    @Test
     fun dropsOtherDashHeights() {
         val xml = """
             <MPD>
