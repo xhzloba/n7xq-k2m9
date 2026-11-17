@@ -32,6 +32,10 @@ class WatchedStore(context: Context) {
         write(listOf(item) + itemsState.value)
     }
 
+    fun replace(next: List<SavedTitle>) {
+        write(next.filter { it.id.isNotBlank() }.distinctBy { it.id })
+    }
+
     fun remove(id: String) {
         if (id.isBlank() || !idsState.value.contains(id)) return
         write(itemsState.value.filterNot { it.id == id })

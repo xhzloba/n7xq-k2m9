@@ -10,8 +10,11 @@ import com.example.movie.domain.model.HapticSlot
 import com.example.movie.domain.model.withHapticFeel
 import com.example.movie.domain.model.UserSettings
 import com.example.movie.domain.model.UserSettingsRepository
+import com.example.movie.domain.model.BarScrollAuto
+import com.example.movie.domain.model.BarScrollOff
 import com.example.movie.domain.model.DefaultImageParallel
 import com.example.movie.domain.model.PosterQualityFull
+import com.example.movie.domain.model.normalizedBarScroll
 import com.example.movie.domain.model.PosterQualityLight
 import com.example.movie.domain.model.normalizedImageParallel
 import com.example.movie.domain.model.normalizedNetworkTimeout
@@ -89,7 +92,7 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
 
     override fun setWhiteTitles(enabled: Boolean) = write { it.copy(whiteTitles = enabled) }
 
-    override fun setHideBottomBarOnScroll(enabled: Boolean) = write { it.copy(hideBottomBarOnScroll = enabled) }
+    override fun setBarScroll(mode: String) = write { it.copy(barScroll = mode.normalizedBarScroll()) }
 
     override fun setNavLabels(enabled: Boolean) = write { it.copy(navLabels = enabled) }
 
@@ -105,6 +108,22 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
     }
 
     override fun setHomeHintSeen(seen: Boolean) = write { it.copy(homeHintSeen = seen) }
+
+    override fun replace(settings: UserSettings) = write {
+        settings.copy(
+            playerCodec = settings.playerCodec.normalizedPlayerCodec(),
+            posterQuality = settings.posterQuality.normalizedPosterQuality(),
+            barScroll = settings.barScroll.normalizedBarScroll(),
+            imageParallel = settings.imageParallel.normalizedImageParallel(),
+            networkTimeoutSec = settings.networkTimeoutSec.normalizedNetworkTimeout(),
+            watchedPercent = settings.watchedPercent.coerceIn(50, 100),
+            appTheme = when (settings.appTheme) {
+                "graphite" -> "graphite"
+                "black" -> "black"
+                else -> "cinema"
+            },
+        )
+    }
 
     override fun setBackdropDissolve(enabled: Boolean) = write { it.copy(backdropDissolve = enabled) }
 
@@ -185,7 +204,8 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
             .putString(KEY_PLAYER_CODEC, next.playerCodec)
             .putBoolean(KEY_WATCHED_BADGE, next.watchedBadge)
             .putBoolean(KEY_WHITE_TITLES, next.whiteTitles)
-            .putBoolean(KEY_HIDE_BAR, next.hideBottomBarOnScroll)
+            .putString(KEY_BAR_SCROLL, next.barScroll)
+            .putBoolean(KEY_HIDE_BAR, next.barScroll != BarScrollOff)
             .putBoolean(KEY_NAV_LABELS, next.navLabels)
             .putBoolean(KEY_SLIDER_SHADE, next.sliderShade)
             .putBoolean(KEY_DETAIL_IRIS, next.detailIris)
@@ -280,7 +300,12 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
         playerCodec = prefs.getString(KEY_PLAYER_CODEC, "auto").orEmpty().normalizedPlayerCodec(),
         watchedBadge = prefs.getBoolean(KEY_WATCHED_BADGE, true),
         whiteTitles = prefs.getBoolean(KEY_WHITE_TITLES, true),
-        hideBottomBarOnScroll = prefs.getBoolean(KEY_HIDE_BAR, true),
+        barScroll = when {
+            prefs.contains(KEY_BAR_SCROLL) ->
+                prefs.getString(KEY_BAR_SCROLL, BarScrollAuto).orEmpty().normalizedBarScroll()
+            prefs.contains(KEY_HIDE_BAR) && !prefs.getBoolean(KEY_HIDE_BAR, true) -> BarScrollOff
+            else -> BarScrollAuto
+        },
         navLabels = prefs.getBoolean(KEY_NAV_LABELS, false),
         sliderShade = prefs.getBoolean(KEY_SLIDER_SHADE, false),
         detailIris = prefs.getBoolean(KEY_DETAIL_IRIS, false),
@@ -335,6 +360,7 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
         const val KEY_WATCHED_BADGE = "watched_badge"
         const val KEY_WHITE_TITLES = "white_titles"
         const val KEY_HIDE_BAR = "hide_bottom_bar_scroll"
+        const val KEY_BAR_SCROLL = "bar_scroll"
         const val KEY_NAV_LABELS = "nav_labels"
         const val KEY_SLIDER_SHADE = "slider_shade"
         const val KEY_DETAIL_IRIS = "detail_iris"

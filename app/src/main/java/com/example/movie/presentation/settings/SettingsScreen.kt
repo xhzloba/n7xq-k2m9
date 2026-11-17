@@ -74,7 +74,11 @@ import android.os.VibratorManager
 import android.view.HapticFeedbackConstants
 import com.example.movie.BuildConfig
 import com.example.movie.R
+import com.example.movie.domain.model.BarScrollAuto
+import com.example.movie.domain.model.BarScrollOff
+import com.example.movie.domain.model.BarScrollScroll
 import com.example.movie.domain.model.HapticFeel
+import com.example.movie.domain.model.normalizedBarScroll
 import com.example.movie.domain.model.HapticSlot
 import com.example.movie.domain.model.ImageParallelChoices
 import com.example.movie.domain.model.MaxNetworkTimeoutSec
@@ -123,6 +127,7 @@ private enum class SettingsPage {
     Player,
     Sensors,
     Network,
+    Data,
     About,
     ;
 
@@ -138,6 +143,7 @@ private enum class SettingsPage {
             Player -> R.string.settings_group_player
             Sensors -> R.string.settings_sensors
             Network -> R.string.settings_group_network
+            Data -> R.string.settings_group_data
             About -> R.string.settings_about
         }
 
@@ -153,6 +159,7 @@ private enum class SettingsPage {
             Player -> R.string.settings_menu_player
             Sensors -> R.string.settings_menu_sensors
             Network -> R.string.settings_menu_network
+            Data -> R.string.settings_menu_data
             About -> R.string.settings_version_value
         }
 
@@ -168,6 +175,7 @@ private enum class SettingsPage {
             Player -> ShellIcons.play
             Sensors -> ShellIcons.vibrate
             Network -> ShellIcons.network
+            Data -> ShellIcons.storage
             About -> ShellIcons.info
         }
 }
@@ -187,7 +195,6 @@ fun SettingsRoute() {
         onWatchedBadge = repository::setWatchedBadge,
         onShowPosterTitles = repository::setShowPosterTitles,
         onWhiteTitles = repository::setWhiteTitles,
-        onHideBottomBarOnScroll = repository::setHideBottomBarOnScroll,
         onNavLabels = repository::setNavLabels,
         onSliderShade = repository::setSliderShade,
         onLargePosters = repository::setLargePosters,
@@ -213,7 +220,6 @@ private fun SettingsScreen(
     onWatchedBadge: (Boolean) -> Unit,
     onShowPosterTitles: (Boolean) -> Unit,
     onWhiteTitles: (Boolean) -> Unit,
-    onHideBottomBarOnScroll: (Boolean) -> Unit,
     onNavLabels: (Boolean) -> Unit,
     onSliderShade: (Boolean) -> Unit,
     onLargePosters: (Boolean) -> Unit,
@@ -317,7 +323,6 @@ private fun SettingsScreen(
                     onWatchedBadge = onWatchedBadge,
                     onShowPosterTitles = onShowPosterTitles,
                     onWhiteTitles = onWhiteTitles,
-                    onHideBottomBarOnScroll = onHideBottomBarOnScroll,
                     onNavLabels = onNavLabels,
                     onSliderShade = onSliderShade,
                     onLargePosters = onLargePosters,
@@ -355,7 +360,6 @@ private fun SettingsLeaf(
     onWatchedBadge: (Boolean) -> Unit,
     onShowPosterTitles: (Boolean) -> Unit,
     onWhiteTitles: (Boolean) -> Unit,
-    onHideBottomBarOnScroll: (Boolean) -> Unit,
     onNavLabels: (Boolean) -> Unit,
     onSliderShade: (Boolean) -> Unit,
     onLargePosters: (Boolean) -> Unit,
@@ -420,6 +424,8 @@ private fun SettingsLeaf(
                 )
             }
         SettingsPage.Navigation -> Column(leafScroll(modifier)) {
+                BarScrollControl(selected = settings.barScroll)
+                Spacer(Modifier.height(22.dp))
                 SettingGroup(
                     items = listOf(
                         SettingItem(
@@ -433,12 +439,6 @@ private fun SettingsLeaf(
                             hint = stringResource(R.string.settings_nav_labels_hint),
                             checked = settings.navLabels,
                             onChecked = onNavLabels,
-                        ),
-                        SettingItem(
-                            title = stringResource(R.string.settings_hide_bar_scroll),
-                            hint = stringResource(R.string.settings_hide_bar_scroll_hint),
-                            checked = settings.hideBottomBarOnScroll,
-                            onChecked = onHideBottomBarOnScroll,
                         ),
                     ),
                 )
@@ -565,6 +565,7 @@ private fun SettingsLeaf(
                 )
                 HapticFeelRows(profile = settings.hapticProfile)
             }
+        SettingsPage.Data -> DataPage(leafScroll(modifier))
         SettingsPage.About -> AboutPage(modifier.padding(top = 18.dp))
     }
 }
@@ -801,10 +802,11 @@ private fun AboutPage(modifier: Modifier = Modifier) {
             }
         }
         Spacer(Modifier.height(28.dp))
-        Changelog.releases.firstOrNull()?.let { release ->
-            ReleaseNotes(release)
-            Spacer(Modifier.height(20.dp))
+        Changelog.releases.take(5).forEachIndexed { index, release ->
+            if (index > 0) Spacer(Modifier.height(22.dp))
+            ReleaseNotes(release, fresh = index == 0)
         }
+        Spacer(Modifier.height(20.dp))
     }
     if (featuresOpen) {
         FeaturesSheet(onDismiss = { featuresOpen = false })
@@ -812,7 +814,7 @@ private fun AboutPage(modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun ReleaseNotes(release: Release) {
+private fun ReleaseNotes(release: Release, fresh: Boolean) {
     Text(
         text = release.version,
         modifier = Modifier.padding(horizontal = PosterGridInset),
@@ -824,8 +826,9 @@ private fun ReleaseNotes(release: Release) {
     )
     if (release.added.isNotEmpty()) {
         Spacer(Modifier.height(14.dp))
-        ChangeLabel(stringResource(R.string.changelog_added), VersionBlue)
-        release.added.forEach { ChangeLine(it, VersionBlue) }
+        val added = if (fresh) VersionBlue else ChangeText
+        ChangeLabel(stringResource(R.string.changelog_added), added)
+        release.added.forEach { ChangeLine(it, added) }
     }
     if (release.fixed.isNotEmpty()) {
         Spacer(Modifier.height(16.dp))
@@ -1280,6 +1283,30 @@ private fun NetworkTimeoutControl(seconds: Int) {
         color = CinemaMuted,
         fontSize = 13.sp,
         lineHeight = 18.sp,
+    )
+}
+
+private val BarScrollOrder = listOf(BarScrollOff, BarScrollScroll, BarScrollAuto)
+
+private fun stepBarScroll(current: String, delta: Int): String {
+    val normalized = current.normalizedBarScroll()
+    val index = BarScrollOrder.indexOf(normalized).let { if (it < 0) 0 else it }
+    return BarScrollOrder[(index + delta).mod(BarScrollOrder.size)]
+}
+
+@Composable
+private fun BarScrollControl(selected: String) {
+    val repository = LocalUserSettings.current
+    val label = when (selected.normalizedBarScroll()) {
+        BarScrollOff -> R.string.settings_bar_scroll_off
+        BarScrollAuto -> R.string.settings_bar_scroll_auto
+        else -> R.string.settings_bar_scroll_on
+    }
+    ChoiceStepper(
+        title = stringResource(R.string.settings_hide_bar_scroll),
+        value = stringResource(label),
+        hint = stringResource(R.string.settings_hide_bar_scroll_hint),
+        onStep = { delta -> repository.setBarScroll(stepBarScroll(selected, delta)) },
     )
 }
 

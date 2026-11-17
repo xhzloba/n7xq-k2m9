@@ -23,6 +23,14 @@ class ViewHistoryStore(context: Context) {
         write(next)
     }
 
+    fun replace(next: List<SavedTitle>) {
+        val clean = next
+            .filter { it.id.isNotBlank() && !it.posterUrl.isNullOrBlank() }
+            .distinctBy { it.id }
+            .take(CAP)
+        write(clean)
+    }
+
     fun clear() {
         write(emptyList())
     }

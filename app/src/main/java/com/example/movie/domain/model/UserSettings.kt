@@ -1,7 +1,9 @@
 package com.example.movie.domain.model
 
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.serialization.Serializable
 
+@Serializable
 data class UserSettings(
     val extractBackdrop: Boolean = false,
     val extractPlex: Boolean = true,
@@ -32,8 +34,11 @@ data class UserSettings(
     val playerCodec: String = "auto",
     val watchedBadge: Boolean = true,
     val whiteTitles: Boolean = true,
-    /** Прятать нижнее меню при скролле вниз (главная, каталог, полный список). */
-    val hideBottomBarOnScroll: Boolean = true,
+    /**
+     * Нижнее меню при скролле: off — всегда видно, scroll — прячется везде,
+     * auto — только полный список жанра и список со слайдера. По умолчанию auto.
+     */
+    val barScroll: String = BarScrollAuto,
     /** Подписи под иконками нижнего меню. */
     val navLabels: Boolean = false,
     /** Ретушь по бокам полок (слайдеров) на главной и в каталоге. */
@@ -139,7 +144,7 @@ interface UserSettingsRepository {
 
     fun setWhiteTitles(enabled: Boolean)
 
-    fun setHideBottomBarOnScroll(enabled: Boolean)
+    fun setBarScroll(mode: String)
 
     fun setNavLabels(enabled: Boolean)
 
@@ -170,6 +175,8 @@ interface UserSettingsRepository {
     fun setHints(enabled: Boolean)
 
     fun setHomeHintSeen(seen: Boolean)
+
+    fun replace(settings: UserSettings)
 }
 
 const val DefaultNetworkTimeoutSec = 4
@@ -192,3 +199,19 @@ const val DefaultImageParallel = 16
 val ImageParallelChoices: List<Int> = listOf(8, 16, 24, 32, 48)
 
 fun Int.normalizedImageParallel(): Int = if (this in ImageParallelChoices) this else DefaultImageParallel
+
+const val BarScrollOff = "off"
+const val BarScrollScroll = "scroll"
+const val BarScrollAuto = "auto"
+
+fun String.normalizedBarScroll(): String = when (this) {
+    BarScrollOff, BarScrollScroll, BarScrollAuto -> this
+    else -> BarScrollAuto
+}
+
+/** Скролл прячет меню на главной, в каталоге и в полном списке. Авто сюда не входит. */
+fun UserSettings.hidesBar(): Boolean = barScroll.normalizedBarScroll() == BarScrollScroll
+
+/** Авто: полный список жанра или список со слайдера открывается уже без меню. */
+fun UserSettings.pinsBarAway(fullList: Boolean): Boolean =
+    fullList && barScroll.normalizedBarScroll() == BarScrollAuto

@@ -135,6 +135,15 @@ class ResumeStore(context: Context) {
         writeKept(keptState.value - id)
     }
 
+    fun replace(items: List<ResumeItem>, marks: Map<String, List<EpisodeProgress>>) {
+        val clean = items
+            .filter { it.id.isNotBlank() && it.franchiseId > 0 && !it.posterUrl.isNullOrBlank() && it.played() }
+            .distinctBy { it.id }
+            .take(CAP)
+        write(clean)
+        writeKept(marks.filter { (id, list) -> id.isNotBlank() && list.isNotEmpty() })
+    }
+
     fun resetProgress(id: String) {
         if (id.isBlank()) return
         clearMarks(id)

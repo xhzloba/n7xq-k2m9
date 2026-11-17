@@ -62,6 +62,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import com.example.movie.R
 import com.example.movie.domain.model.CatalogQuery
+import com.example.movie.domain.model.hidesBar
 import com.example.movie.domain.model.ContentKind
 import com.example.movie.domain.model.DataError
 import com.example.movie.domain.model.Movie
@@ -343,7 +344,7 @@ fun HomeScreen(
             val playBlend = remember { androidx.compose.animation.core.Animatable(0f) }
             val listState = rememberLazyListState()
             HideBarOnScroll(
-                enabled = settings.hideBottomBarOnScroll,
+                enabled = settings.hidesBar(),
                 listState = listState,
                 onHideBar = onHideBar,
             )

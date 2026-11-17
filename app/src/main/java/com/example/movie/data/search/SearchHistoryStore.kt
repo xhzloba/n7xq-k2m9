@@ -17,8 +17,17 @@ class SearchHistoryStore(context: Context) {
         prefs.edit().putString(KEY, next.take(12).joinToString(SEPARATOR)).apply()
     }
 
+    fun replace(queries: List<String>) {
+        val next = queries
+            .map { it.trim() }
+            .filter { it.length >= 2 }
+            .distinctBy { it.lowercase() }
+            .take(12)
+        prefs.edit().putString(KEY, next.joinToString(SEPARATOR)).commit()
+    }
+
     fun clear() {
-        prefs.edit().remove(KEY).apply()
+        prefs.edit().remove(KEY).commit()
     }
 
     private companion object {

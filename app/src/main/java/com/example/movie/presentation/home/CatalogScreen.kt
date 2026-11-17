@@ -48,6 +48,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.movie.R
 import com.example.movie.di.LocalAppContainer
 import com.example.movie.domain.model.CatalogQuery
+import com.example.movie.domain.model.hidesBar
 import com.example.movie.domain.model.Movie
 import com.example.movie.domain.model.Shelf
 import com.example.movie.presentation.common.HideBarOnScroll
@@ -123,11 +124,10 @@ fun CatalogScreen(
         if (failed) {
             SectionError(viewModel::retry)
         } else {
-            key(tab.name) {
             val listState = rememberLazyListState()
             val settings by LocalUserSettings.current.settings.collectAsStateWithLifecycle()
             HideBarOnScroll(
-                enabled = settings.hideBottomBarOnScroll,
+                enabled = settings.hidesBar(),
                 listState = listState,
                 onHideBar = onHideBar,
             )
@@ -190,7 +190,6 @@ fun CatalogScreen(
                 },
                 modifier = Modifier.align(Alignment.TopCenter),
             )
-            }
             }
         }
         CatalogBrand(

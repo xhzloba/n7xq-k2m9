@@ -135,6 +135,18 @@ class ReleaseWatchStore(context: Context) {
         if (next != current) writeShelves(next)
     }
 
+    fun replace(
+        subs: List<SeriesSub>,
+        alerts: List<SeriesAlert>,
+        feed: FeedWatch,
+        shelves: List<FeedShelf>,
+    ) = synchronized(gate) {
+        writeSubs(subs.filter { it.id.isNotBlank() }.distinctBy { it.id })
+        writeAlerts(alerts.distinctBy { it.id }.take(40))
+        writeFeed(feed)
+        writeShelves(shelves)
+    }
+
     fun markShelvesRead() = synchronized(gate) {
         if (shelvesState.value.none { !it.read }) return
         writeShelves(shelvesState.value.map { if (it.read) it else it.copy(read = true) })

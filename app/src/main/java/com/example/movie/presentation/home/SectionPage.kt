@@ -63,6 +63,8 @@ import com.example.movie.presentation.common.PosterImage
 import com.example.movie.presentation.settings.LocalUserSettings
 import com.example.movie.di.LocalAppContainer
 import com.example.movie.domain.model.DataError
+import com.example.movie.domain.model.hidesBar
+import com.example.movie.domain.model.pinsBarAway
 import com.example.movie.domain.model.Movie
 import com.example.movie.presentation.detail.DetailSeed
 import com.example.movie.presentation.haptic.HapticOnAppend
@@ -163,12 +165,18 @@ internal fun SectionPage(
     val density = LocalDensity.current
     val settings by LocalUserSettings.current.settings.collectAsStateWithLifecycle()
     val top = WindowInsets.safeDrawing.asPaddingValues().calculateTopPadding()
-    val pageBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 88.dp
-    HideBarOnScroll(
-        enabled = settings.hideBottomBarOnScroll,
-        gridState = grid,
-        onHideBar = onHideBar,
-    )
+    val pinBar = settings.pinsBarAway(fullList = true)
+    val pageBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() +
+        if (pinBar) 12.dp else 88.dp
+    if (pinBar) {
+        LaunchedEffect(Unit) { onHideBar(true) }
+    } else {
+        HideBarOnScroll(
+            enabled = settings.hidesBar(),
+            gridState = grid,
+            onHideBar = onHideBar,
+        )
+    }
     val header = top + BrandTopInset + 36.dp + 18.dp
     val scrim = if (grid.firstVisibleItemIndex > 0) {
         1f

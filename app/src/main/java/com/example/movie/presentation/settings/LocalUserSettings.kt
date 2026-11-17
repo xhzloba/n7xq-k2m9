@@ -61,7 +61,7 @@ private object DefaultUserSettings : UserSettingsRepository {
 
     override fun setWhiteTitles(enabled: Boolean) = Unit
 
-    override fun setHideBottomBarOnScroll(enabled: Boolean) = Unit
+    override fun setBarScroll(mode: String) = Unit
 
     override fun setNavLabels(enabled: Boolean) = Unit
 
@@ -92,4 +92,6 @@ private object DefaultUserSettings : UserSettingsRepository {
     override fun setHints(enabled: Boolean) = Unit
 
     override fun setHomeHintSeen(seen: Boolean) = Unit
+
+    override fun replace(settings: UserSettings) = Unit
 }

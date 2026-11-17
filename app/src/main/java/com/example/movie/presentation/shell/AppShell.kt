@@ -14,6 +14,7 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
@@ -96,6 +97,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.movie.R
 import com.example.movie.di.LocalAppContainer
 import com.example.movie.domain.model.FranchiseSeason
+import com.example.movie.domain.model.pinsBarAway
 import com.example.movie.domain.model.Movie
 import com.example.movie.domain.model.ResumeItem
 import com.example.movie.domain.model.episodeFinished
@@ -564,10 +566,12 @@ fun AppShell(
         }
         val searchDim = if (tab == AppTab.Catalog) searchVeil.value else searchCover
         val barAlpha = (1f - searchDim) * (1f - genresAlpha) * (1f - alertsVeil.value)
-        LaunchedEffect(tab, sectionShown, listShown) { barHidden = false }
+        val barSettings by LocalUserSettings.current.settings.collectAsStateWithLifecycle()
+        val pinBar = barSettings.pinsBarAway(sectionShown != null || listShown != null)
+        LaunchedEffect(tab, sectionShown, listShown, pinBar) { barHidden = pinBar }
         val hide by animateFloatAsState(
             targetValue = if (barHidden) 1f else 0f,
-            animationSpec = tween(220),
+            animationSpec = if (pinBar) snap() else tween(220),
             label = "barHide",
         )
         var homeAnchor by remember { mutableStateOf<Rect?>(null) }
