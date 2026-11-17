@@ -16,6 +16,10 @@ data class UserSettings(
     val haptic: Boolean = true,
     val showPosterTitles: Boolean = true,
     val largePosters: Boolean = false,
+    /** full — полный постер, light — под ячейку, low — маленький файл. */
+    val posterQuality: String = PosterQualityFull,
+    /** Сколько обложек качать сразу с одного адреса. */
+    val imageParallel: Int = DefaultImageParallel,
     val playerLogo: Boolean = true,
     val playerSpeed: Float = 1f,
     val playerPicture: String = "fit",
@@ -109,6 +113,10 @@ interface UserSettingsRepository {
 
     fun setLargePosters(enabled: Boolean)
 
+    fun setPosterQuality(quality: String)
+
+    fun setImageParallel(count: Int)
+
     fun setPlayerLogo(enabled: Boolean)
 
     fun setPlayerSpeed(speed: Float)
@@ -169,3 +177,18 @@ const val MinNetworkTimeoutSec = 4
 const val MaxNetworkTimeoutSec = 20
 
 fun Int.normalizedNetworkTimeout(): Int = coerceIn(MinNetworkTimeoutSec, MaxNetworkTimeoutSec)
+
+const val PosterQualityFull = "full"
+const val PosterQualityLight = "light"
+const val PosterQualityLow = "low"
+
+fun String.normalizedPosterQuality(): String = when (this) {
+    PosterQualityLight, PosterQualityLow -> this
+    else -> PosterQualityFull
+}
+
+const val DefaultImageParallel = 16
+
+val ImageParallelChoices: List<Int> = listOf(8, 16, 24, 32, 48)
+
+fun Int.normalizedImageParallel(): Int = if (this in ImageParallelChoices) this else DefaultImageParallel

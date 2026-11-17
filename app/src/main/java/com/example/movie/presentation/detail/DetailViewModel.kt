@@ -59,7 +59,15 @@ class DetailViewModel(
         watchJob?.cancel()
         watchJob = viewModelScope.launch {
             _state.value = _state.value.copy(franchiseReady = false, unavailable = false)
-            val check = watchCheck(detail.id, detail.title, detail.year)
+            // Таймаут, обрыв сети и неответивший эмбед — это Unknown, не «плеера нет».
+            // Лоадер гас, качество не появлялось, второй тап по «Смотреть» проходил.
+            // Один повтор, пока лоадер ещё крутится. Второй Unknown оставляем как есть.
+            val first = watchCheck(detail.id, detail.title, detail.year)
+            val check = if (first is WatchCheck.Unknown) {
+                watchCheck(detail.id, detail.title, detail.year)
+            } else {
+                first
+            }
             val current = _state.value.detail
             if (current?.id != detail.id) return@launch
             val franchise = (check as? WatchCheck.Ready)?.franchise

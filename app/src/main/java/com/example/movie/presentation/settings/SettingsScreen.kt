@@ -76,13 +76,19 @@ import com.example.movie.BuildConfig
 import com.example.movie.R
 import com.example.movie.domain.model.HapticFeel
 import com.example.movie.domain.model.HapticSlot
+import com.example.movie.domain.model.ImageParallelChoices
 import com.example.movie.domain.model.MaxNetworkTimeoutSec
+import com.example.movie.domain.model.PosterQualityFull
+import com.example.movie.domain.model.PosterQualityLight
+import com.example.movie.domain.model.PosterQualityLow
 import com.example.movie.domain.model.hapticFeel
 import com.example.movie.domain.model.nextHapticFeel
 import com.example.movie.domain.model.MinNetworkTimeoutSec
 import com.example.movie.domain.model.UserSettings
+import com.example.movie.domain.model.normalizedImageParallel
 import com.example.movie.domain.model.normalizedNetworkTimeout
 import com.example.movie.domain.model.normalizedPlayerCodec
+import com.example.movie.domain.model.normalizedPosterQuality
 import com.example.movie.presentation.haptic.play
 import com.example.movie.presentation.haptic.rememberHapticTick
 import com.example.movie.presentation.home.components.BrandLogoBleed
@@ -374,6 +380,10 @@ private fun SettingsLeaf(
             HeaderFillSwitch()
         }
         SettingsPage.Posters -> Column(leafScroll(modifier)) {
+                PosterQualityControl(selected = settings.posterQuality)
+                Spacer(Modifier.height(22.dp))
+                ImageParallelControl(count = settings.imageParallel)
+                Spacer(Modifier.height(22.dp))
                 SettingGroup(
                     items = listOf(
                         SettingItem(
@@ -814,8 +824,8 @@ private fun ReleaseNotes(release: Release) {
     )
     if (release.added.isNotEmpty()) {
         Spacer(Modifier.height(14.dp))
-        ChangeLabel(stringResource(R.string.changelog_added))
-        release.added.forEach { ChangeLine(it) }
+        ChangeLabel(stringResource(R.string.changelog_added), VersionBlue)
+        release.added.forEach { ChangeLine(it, VersionBlue) }
     }
     if (release.fixed.isNotEmpty()) {
         Spacer(Modifier.height(16.dp))
@@ -951,11 +961,11 @@ private val VersionBlue = Color(0xFF7EC8FF)
 private val ChangeText = Color(0xFFD2D2D8)
 
 @Composable
-private fun ChangeLabel(text: String) {
+private fun ChangeLabel(text: String, color: Color = CinemaMuted) {
     Text(
         text = text,
         modifier = Modifier.padding(horizontal = PosterGridInset),
-        color = CinemaMuted,
+        color = color,
         fontWeight = FontWeight.Medium,
         fontSize = 12.sp,
         lineHeight = 16.sp,
@@ -964,20 +974,20 @@ private fun ChangeLabel(text: String) {
 }
 
 @Composable
-private fun ChangeLine(text: String) {
+private fun ChangeLine(text: String, color: Color = ChangeText) {
     Row(
         modifier = Modifier.padding(start = PosterGridInset, end = PosterGridInset, top = 8.dp),
     ) {
         Text(
             text = "—",
-            color = ChangeText,
+            color = color,
             fontSize = 15.sp,
             lineHeight = 22.sp,
         )
         Text(
             text = text,
             modifier = Modifier.padding(start = 8.dp),
-            color = ChangeText,
+            color = color,
             fontSize = 15.sp,
             lineHeight = 22.sp,
         )
@@ -1266,6 +1276,124 @@ private fun NetworkTimeoutControl(seconds: Int) {
     }
     Text(
         text = stringResource(R.string.settings_network_timeout_hint),
+        modifier = Modifier.padding(start = PosterGridInset + 4.dp, end = PosterGridInset, top = 8.dp),
+        color = CinemaMuted,
+        fontSize = 13.sp,
+        lineHeight = 18.sp,
+    )
+}
+
+private val PosterQualityOrder = listOf(PosterQualityFull, PosterQualityLight, PosterQualityLow)
+
+private fun stepPosterQuality(current: String, delta: Int): String {
+    val normalized = current.normalizedPosterQuality()
+    val index = PosterQualityOrder.indexOf(normalized).let { if (it < 0) 0 else it }
+    return PosterQualityOrder[(index + delta).mod(PosterQualityOrder.size)]
+}
+
+private fun stepImageParallel(current: Int, delta: Int): Int {
+    val normalized = current.normalizedImageParallel()
+    val index = ImageParallelChoices.indexOf(normalized).let { if (it < 0) 0 else it }
+    return ImageParallelChoices[(index + delta).mod(ImageParallelChoices.size)]
+}
+
+@Composable
+private fun PosterQualityControl(selected: String) {
+    val repository = LocalUserSettings.current
+    val label = when (selected.normalizedPosterQuality()) {
+        PosterQualityLight -> R.string.settings_poster_quality_light
+        PosterQualityLow -> R.string.settings_poster_quality_low
+        else -> R.string.settings_poster_quality_full
+    }
+    ChoiceStepper(
+        title = stringResource(R.string.settings_poster_quality),
+        value = stringResource(label),
+        hint = stringResource(R.string.settings_poster_quality_hint),
+        onStep = { delta -> repository.setPosterQuality(stepPosterQuality(selected, delta)) },
+    )
+}
+
+@Composable
+private fun ImageParallelControl(count: Int) {
+    val repository = LocalUserSettings.current
+    ChoiceStepper(
+        title = stringResource(R.string.settings_image_parallel),
+        value = count.normalizedImageParallel().toString(),
+        hint = stringResource(R.string.settings_image_parallel_hint),
+        onStep = { delta -> repository.setImageParallel(stepImageParallel(count, delta)) },
+    )
+}
+
+@Composable
+private fun ChoiceStepper(
+    title: String,
+    value: String,
+    hint: String,
+    onStep: (Int) -> Unit,
+) {
+    val tick = rememberHapticTick()
+    Text(
+        text = title,
+        modifier = Modifier.padding(start = PosterGridInset + 4.dp, end = PosterGridInset, bottom = 8.dp),
+        color = CinemaMuted,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 13.sp,
+        lineHeight = 16.sp,
+        letterSpacing = 0.4.sp,
+    )
+    Box(
+        modifier = Modifier
+            .padding(horizontal = PosterGridInset)
+            .fillMaxWidth()
+            .height(48.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(settingsPanel()),
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .padding(horizontal = 48.dp)
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = {
+                        tick?.invoke()
+                        onStep(1)
+                    },
+                ),
+        )
+        Text(
+            text = value,
+            modifier = Modifier.padding(horizontal = 52.dp),
+            color = Color.White,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Medium,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        ThemeKey(
+            glyph = "−",
+            raised = false,
+            modifier = Modifier.align(Alignment.CenterStart).padding(start = 6.dp),
+            onClick = {
+                tick?.invoke()
+                onStep(-1)
+            },
+        )
+        ThemeKey(
+            glyph = "+",
+            raised = false,
+            modifier = Modifier.align(Alignment.CenterEnd).padding(end = 6.dp),
+            onClick = {
+                tick?.invoke()
+                onStep(1)
+            },
+        )
+    }
+    Text(
+        text = hint,
         modifier = Modifier.padding(start = PosterGridInset + 4.dp, end = PosterGridInset, top = 8.dp),
         color = CinemaMuted,
         fontSize = 13.sp,

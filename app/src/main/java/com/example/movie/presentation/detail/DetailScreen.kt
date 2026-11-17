@@ -44,6 +44,7 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -2185,9 +2186,8 @@ private fun DetailLogoBar(
                 onError = { logoFailed = true },
                 modifier = Modifier
                     .align(Alignment.Center)
-                    .padding(horizontal = 64.dp)
-                    .height(28.dp)
-                    .fillMaxWidth(),
+                    .widthIn(max = 132.dp)
+                    .height(20.dp),
             )
         } else {
             Text(

@@ -178,8 +178,8 @@ private fun UpdateSheet(
                         .verticalScroll(rememberScrollState()),
                 ) {
                     if (notes.added.isNotEmpty()) {
-                        NoteLabel(stringResource(R.string.changelog_added))
-                        notes.added.forEach { NoteLine(it) }
+                        NoteLabel(stringResource(R.string.changelog_added), VersionBlue)
+                        notes.added.forEach { NoteLine(it, VersionBlue) }
                     }
                     if (notes.fixed.isNotEmpty()) {
                         Spacer(Modifier.height(16.dp))
@@ -270,10 +270,10 @@ private fun UpdateSheet(
 }
 
 @Composable
-private fun NoteLabel(text: String) {
+private fun NoteLabel(text: String, color: Color = CinemaMuted) {
     Text(
         text = text,
-        color = CinemaMuted,
+        color = color,
         fontWeight = FontWeight.Medium,
         fontSize = 12.sp,
         lineHeight = 16.sp,
@@ -282,18 +282,18 @@ private fun NoteLabel(text: String) {
 }
 
 @Composable
-private fun NoteLine(text: String) {
+private fun NoteLine(text: String, color: Color = NotesColor) {
     Row(modifier = Modifier.padding(top = 8.dp)) {
         Text(
             text = "—",
-            color = NotesColor,
+            color = color,
             fontSize = 15.sp,
             lineHeight = 22.sp,
         )
         Text(
             text = text,
             modifier = Modifier.padding(start = 8.dp),
-            color = NotesColor,
+            color = color,
             fontSize = 15.sp,
             lineHeight = 22.sp,
         )

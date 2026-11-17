@@ -10,8 +10,13 @@ import com.example.movie.domain.model.HapticSlot
 import com.example.movie.domain.model.withHapticFeel
 import com.example.movie.domain.model.UserSettings
 import com.example.movie.domain.model.UserSettingsRepository
+import com.example.movie.domain.model.DefaultImageParallel
+import com.example.movie.domain.model.PosterQualityFull
+import com.example.movie.domain.model.PosterQualityLight
+import com.example.movie.domain.model.normalizedImageParallel
 import com.example.movie.domain.model.normalizedNetworkTimeout
 import com.example.movie.domain.model.normalizedPlayerCodec
+import com.example.movie.domain.model.normalizedPosterQuality
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -53,6 +58,14 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
     override fun setShowPosterTitles(enabled: Boolean) = write { it.copy(showPosterTitles = enabled) }
 
     override fun setLargePosters(enabled: Boolean) = write { it.copy(largePosters = enabled) }
+
+    override fun setPosterQuality(quality: String) = write {
+        it.copy(posterQuality = quality.normalizedPosterQuality())
+    }
+
+    override fun setImageParallel(count: Int) = write {
+        it.copy(imageParallel = count.normalizedImageParallel())
+    }
 
     override fun setPlayerLogo(enabled: Boolean) = write { it.copy(playerLogo = enabled) }
 
@@ -159,6 +172,8 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
             .putBoolean(KEY_HAPTIC, next.haptic)
             .putBoolean(KEY_POSTER_TITLES, next.showPosterTitles)
             .putBoolean(KEY_LARGE_POSTERS, next.largePosters)
+            .putString(KEY_POSTER_QUALITY, next.posterQuality)
+            .putInt(KEY_IMAGE_PARALLEL, next.imageParallel)
             .putBoolean(KEY_PLAYER_LOGO, next.playerLogo)
             .putFloat(KEY_PLAYER_SPEED, next.playerSpeed)
             .putString(KEY_PLAYER_PICTURE, next.playerPicture)
@@ -247,6 +262,13 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
         haptic = prefs.getBoolean(KEY_HAPTIC, true),
         showPosterTitles = prefs.getBoolean(KEY_POSTER_TITLES, true),
         largePosters = prefs.getBoolean(KEY_LARGE_POSTERS, false),
+        posterQuality = when {
+            prefs.contains(KEY_POSTER_QUALITY) ->
+                prefs.getString(KEY_POSTER_QUALITY, PosterQualityFull).orEmpty().normalizedPosterQuality()
+            prefs.getBoolean(KEY_COMPACT_POSTERS, false) -> PosterQualityLight
+            else -> PosterQualityFull
+        },
+        imageParallel = prefs.getInt(KEY_IMAGE_PARALLEL, DefaultImageParallel).normalizedImageParallel(),
         playerLogo = prefs.getBoolean(KEY_PLAYER_LOGO, true),
         playerSpeed = prefs.getFloat(KEY_PLAYER_SPEED, 1f),
         playerPicture = prefs.getString(KEY_PLAYER_PICTURE, "fit") ?: "fit",
@@ -298,6 +320,9 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
         const val KEY_HAPTIC = "haptic"
         const val KEY_POSTER_TITLES = "poster_titles"
         const val KEY_LARGE_POSTERS = "large_posters"
+        const val KEY_COMPACT_POSTERS = "compact_posters"
+        const val KEY_POSTER_QUALITY = "poster_quality"
+        const val KEY_IMAGE_PARALLEL = "image_parallel"
         const val KEY_PLAYER_LOGO = "player_logo"
         const val KEY_PLAYER_SPEED = "player_speed"
         const val KEY_PLAYER_PICTURE = "player_picture"

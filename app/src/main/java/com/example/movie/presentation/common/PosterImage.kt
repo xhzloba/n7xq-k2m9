@@ -1,7 +1,7 @@
 package com.example.movie.presentation.common
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -15,6 +15,7 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -26,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.movie.R
+import com.example.movie.presentation.settings.LocalUserSettings
 import com.example.movie.presentation.shell.ShellIcons
 import java.io.IOException
 
@@ -39,6 +41,30 @@ internal fun PosterImage(
     showLabel: Boolean = true,
     onSuccess: (() -> Unit)? = null,
 ) {
+    val settings by LocalUserSettings.current.settings.collectAsStateWithLifecycle()
+    BoxWithConstraints(modifier = modifier, contentAlignment = Alignment.Center) {
+        val width = if (constraints.hasBoundedWidth) constraints.maxWidth else 0
+        val model = posterForCell(url, width, settings.posterQuality)
+        PosterBitmap(
+            url = model,
+            contentDescription = contentDescription,
+            contentScale = contentScale,
+            iconSize = iconSize,
+            showLabel = showLabel,
+            onSuccess = onSuccess,
+        )
+    }
+}
+
+@Composable
+private fun PosterBitmap(
+    url: String?,
+    contentDescription: String?,
+    contentScale: ContentScale,
+    iconSize: Dp,
+    showLabel: Boolean,
+    onSuccess: (() -> Unit)?,
+) {
     // Один сетевой промах нельзя запоминать на весь заход: ячейка так и
     // остаётся пустой, хотя тот же url на следующем заходе открывается.
     // Два повтора на IO, потом плейсхолдер. Новый показ ячейки начинает сначала.
@@ -48,43 +74,41 @@ internal fun PosterImage(
     LaunchedEffect(giveUp) {
         if (giveUp) onSuccess?.invoke()
     }
-    Box(modifier = modifier, contentAlignment = Alignment.Center) {
-        if (!giveUp) {
-            key(attempt) {
-                AsyncImage(
-                    model = url,
-                    contentDescription = contentDescription,
-                    contentScale = contentScale,
-                    onError = { state ->
-                        val error = state.result.throwable
-                        attempt = if (error is IOException && attempt < 2) attempt + 1 else 3
-                    },
-                    onSuccess = { onSuccess?.invoke() },
-                    modifier = Modifier.fillMaxSize(),
+    if (!giveUp) {
+        key(attempt) {
+            AsyncImage(
+                model = url,
+                contentDescription = contentDescription,
+                contentScale = contentScale,
+                onError = { state ->
+                    val error = state.result.throwable
+                    attempt = if (error is IOException && attempt < 2) attempt + 1 else 3
+                },
+                onSuccess = { onSuccess?.invoke() },
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+    } else {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = Modifier.padding(horizontal = 6.dp),
+        ) {
+            Icon(
+                imageVector = ShellIcons.trailers,
+                contentDescription = contentDescription,
+                tint = Color.White.copy(alpha = 0.45f),
+                modifier = Modifier.size(iconSize),
+            )
+            if (showLabel) {
+                Text(
+                    text = stringResource(R.string.no_poster),
+                    color = Color.White.copy(alpha = 0.4f),
+                    fontSize = 11.sp,
+                    lineHeight = 13.sp,
+                    textAlign = TextAlign.Center,
+                    maxLines = 1,
                 )
-            }
-        } else {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(6.dp),
-                modifier = Modifier.padding(horizontal = 6.dp),
-            ) {
-                Icon(
-                    imageVector = ShellIcons.trailers,
-                    contentDescription = contentDescription,
-                    tint = Color.White.copy(alpha = 0.45f),
-                    modifier = Modifier.size(iconSize),
-                )
-                if (showLabel) {
-                    Text(
-                        text = stringResource(R.string.no_poster),
-                        color = Color.White.copy(alpha = 0.4f),
-                        fontSize = 11.sp,
-                        lineHeight = 13.sp,
-                        textAlign = TextAlign.Center,
-                        maxLines = 1,
-                    )
-                }
             }
         }
     }

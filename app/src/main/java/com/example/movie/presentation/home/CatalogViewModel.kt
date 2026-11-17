@@ -19,9 +19,9 @@ import kotlinx.coroutines.launch
 
 internal enum class GenreSort(val sort: String, @StringRes val title: Int) {
     Default("", R.string.catalog_sort_default),
-    Popular("popular", R.string.catalog_sort_popular),
-    Updates("updatings", R.string.catalog_sort_updates),
     Added("new", R.string.catalog_sort_added),
+    Updates("updatings", R.string.catalog_sort_updates),
+    Popular("popular", R.string.catalog_sort_popular),
     Rating("rating", R.string.catalog_sort_rating),
 }
 

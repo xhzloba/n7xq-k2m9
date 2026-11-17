@@ -380,6 +380,13 @@
     <string name="settings_poster_titles_hint">Название и год под постером. Длинное название обрезается.</string>
     <string name="settings_large_posters">Крупные постеры</string>
     <string name="settings_large_posters_hint">Больше обложки в полках и в полном списке фильмов. Выключено — размер как сейчас.</string>
+    <string name="settings_poster_quality">Качество обложек</string>
+    <string name="settings_poster_quality_full">Хорошее</string>
+    <string name="settings_poster_quality_light">Лёгкие</string>
+    <string name="settings_poster_quality_low">Плохие</string>
+    <string name="settings_poster_quality_hint">Хорошее — наивысшее качество, полный постер. Лёгкие — картинка под размер ячейки, грузится быстрее. Плохие — маленькая картинка, ещё быстрее. Главный слайдер всегда в полном качестве.</string>
+    <string name="settings_image_parallel">Image</string>
+    <string name="settings_image_parallel_hint">Сколько обложек качать сразу с одного адреса. По умолчанию 16.</string>
     <string name="settings_slider_shade">Ретушь полок</string>
     <string name="settings_slider_shade_hint">При прокрутке полок ретушь только с той стороны, куда уходит контент: влево — слева, вправо — справа. При UltraBlur на главной не срабатывает. Выключено — без ретуши.</string>
     <string name="settings_watched_badge">Галочка просмотренного</string>

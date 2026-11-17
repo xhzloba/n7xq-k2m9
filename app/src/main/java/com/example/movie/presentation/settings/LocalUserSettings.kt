@@ -35,6 +35,10 @@ private object DefaultUserSettings : UserSettingsRepository {
 
     override fun setLargePosters(enabled: Boolean) = Unit
 
+    override fun setPosterQuality(quality: String) = Unit
+
+    override fun setImageParallel(count: Int) = Unit
+
     override fun setPlayerLogo(enabled: Boolean) = Unit
 
     override fun setPlayerSpeed(speed: Float) = Unit
