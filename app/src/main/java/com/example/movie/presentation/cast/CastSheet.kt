@@ -146,8 +146,9 @@ internal fun CastSheet(
             val raw = state.message
             val loading = resolving || state.busy || state.searching
             val silent = raw == readyText || raw == preparingText || raw == searchingText
+            val manualAddress = state.browserUrl?.takeIf { raw.contains("не открылся") }
             val message = when {
-                loading || silent -> null
+                loading || silent || manualAddress != null -> null
                 pageUrl.isNullOrBlank() -> stringResource(R.string.cast_no_stream)
                 raw.isNotBlank() -> raw
                 state.running -> null
@@ -156,7 +157,7 @@ internal fun CastSheet(
             Box(
                 Modifier
                     .fillMaxWidth()
-                    .height(36.dp),
+                    .heightIn(min = 36.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 if (loading) {
@@ -164,6 +165,17 @@ internal fun CastSheet(
                         color = PlayBlue,
                         strokeWidth = 2.dp,
                         modifier = Modifier.size(22.dp),
+                    )
+                } else if (manualAddress != null) {
+                    Text(
+                        text = manualAddress,
+                        modifier = Modifier.fillMaxWidth(),
+                        color = PlayBlue,
+                        fontSize = 15.sp,
+                        lineHeight = 19.sp,
+                        fontWeight = FontWeight.Medium,
+                        textAlign = TextAlign.Center,
+                        maxLines = 3,
                     )
                 } else if (message != null) {
                     Text(

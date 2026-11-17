@@ -7,7 +7,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.graphics.Color
 import com.example.movie.di.LocalAppContainer
+import com.example.movie.domain.model.GenreRails
 import com.example.movie.domain.model.Movie
+import com.example.movie.presentation.settings.LocalUserSettings
 
 @Composable
 fun HomeRoute(
@@ -38,6 +40,14 @@ fun HomeRoute(
         )
     }
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val settings by LocalUserSettings.current.settings.collectAsStateWithLifecycle()
+    val visibleGenres = GenreRails.All
+        .map { it.id }
+        .filter { settings.homeRailVisible(it) }
+        .toSet()
+    LaunchedEffect(visibleGenres) {
+        viewModel.syncGenreRails(visibleGenres)
+    }
     LaunchedEffect(session) {
         if (session > 0) viewModel.closeSearch()
     }

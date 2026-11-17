@@ -77,6 +77,9 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlin.math.hypot
 import com.example.movie.R
+import com.example.movie.domain.model.DefaultHomeRailOrder
+import com.example.movie.domain.model.GenreRails
+import com.example.movie.domain.model.moveHomeRail
 import com.example.movie.presentation.common.BookmarkFilled
 import com.example.movie.presentation.common.PlexPlay
 import com.example.movie.presentation.common.THEME_GRAPHITE
@@ -105,7 +108,22 @@ internal object HomeRails {
         val icon: ImageVector? = null,
     )
 
-    val All: List<Entry> = listOf(
+    val Genres: List<Entry> = listOf(
+        Entry(GenreRails.Action, R.string.section_action),
+        Entry(GenreRails.Scifi, R.string.section_scifi),
+        Entry(GenreRails.Horror, R.string.section_horror),
+        Entry(GenreRails.Drama, R.string.section_drama),
+        Entry(GenreRails.Thriller, R.string.section_thriller),
+        Entry(GenreRails.Comedy, R.string.section_comedy),
+        Entry(GenreRails.Western, R.string.section_western),
+        Entry(GenreRails.War, R.string.section_war),
+        Entry(GenreRails.Fantasy, R.string.section_fantasy),
+        Entry(GenreRails.Melodrama, R.string.section_melodrama),
+        Entry(GenreRails.Crime, R.string.section_crime),
+        Entry(GenreRails.Detective, R.string.section_detective),
+    )
+
+    val Own: List<Entry> = listOf(
         Entry(Recommendations, R.string.section_recommendations),
         Entry(History, R.string.section_history, ShellIcons.history),
         Entry(Continue, R.string.section_continue, PlexPlay),
@@ -114,6 +132,8 @@ internal object HomeRails {
         Entry(Watching, R.string.section_watching),
         Entry(Best, R.string.section_best),
     )
+
+    val All: List<Entry> = Genres + Own
 }
 
 internal enum class RailsLookTab {
@@ -430,17 +450,41 @@ private fun HomeRailsLookBody(page: RailsLookTab) {
                 lineHeight = 18.sp,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
             )
+            val order = settings.homeRailOrder
+            val atDefault = order == DefaultHomeRailOrder
+            val tick = rememberHapticTick()
+            Text(
+                text = stringResource(R.string.home_rails_reset),
+                color = if (atDefault) CinemaMuted else Color.White,
+                fontSize = 15.sp,
+                lineHeight = 20.sp,
+                textDecoration = if (atDefault) null else TextDecoration.Underline,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        enabled = !atDefault,
+                        onClick = {
+                            tick?.invoke()
+                            repository.setHomeRailOrder(DefaultHomeRailOrder)
+                        },
+                    )
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+            )
             RailsDivider()
-            HomeRails.All.forEachIndexed { index, entry ->
+            val entries = order.mapNotNull { id -> HomeRails.All.firstOrNull { it.id == id } }
+            entries.forEachIndexed { index, entry ->
                 if (index > 0) RailsDivider()
-                RailsToggle(
+                RailOrderRow(
                     title = stringResource(entry.titleRes),
-                    hint = stringResource(R.string.home_rails_shelf_hint),
-                    checked = settings.homeRailVisible(entry.id),
                     icon = entry.icon,
-                    onChecked = { visible ->
-                        repository.setHomeRailVisible(entry.id, visible)
-                    },
+                    checked = settings.homeRailVisible(entry.id),
+                    upEnabled = index > 0,
+                    downEnabled = index < entries.lastIndex,
+                    onUp = { repository.setHomeRailOrder(order.moveHomeRail(entry.id, up = true)) },
+                    onDown = { repository.setHomeRailOrder(order.moveHomeRail(entry.id, up = false)) },
+                    onChecked = { visible -> repository.setHomeRailVisible(entry.id, visible) },
                 )
             }
         }
@@ -702,9 +746,100 @@ private fun RailsDivider() {
 }
 
 @Composable
+private fun RailOrderRow(
+    title: String,
+    icon: ImageVector?,
+    checked: Boolean,
+    upEnabled: Boolean,
+    downEnabled: Boolean,
+    onUp: () -> Unit,
+    onDown: () -> Unit,
+    onChecked: (Boolean) -> Unit,
+) {
+    val tick = rememberHapticTick()
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 4.dp, end = 12.dp, top = 4.dp, bottom = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        RailNudge(up = true, enabled = upEnabled, onClick = {
+            tick?.invoke()
+            onUp()
+        })
+        RailNudge(up = false, enabled = downEnabled, onClick = {
+            tick?.invoke()
+            onDown()
+        })
+        Row(
+            modifier = Modifier
+                .weight(1f)
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = {
+                        tick?.invoke()
+                        onChecked(!checked)
+                    },
+                )
+                .padding(vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (icon != null) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(18.dp),
+                )
+                Spacer(Modifier.width(10.dp))
+            }
+            Text(
+                text = title,
+                color = Color.White,
+                fontWeight = FontWeight.Medium,
+                fontSize = 16.sp,
+                lineHeight = 22.sp,
+                letterSpacing = (-0.2).sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+            Spacer(Modifier.width(12.dp))
+            RailsSwitch(checked)
+        }
+    }
+}
+
+@Composable
+private fun RailNudge(up: Boolean, enabled: Boolean, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(36.dp)
+            .graphicsLayer { alpha = if (enabled) 1f else 0.28f }
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                enabled = enabled,
+                onClick = onClick,
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = ShellIcons.chevron,
+            contentDescription = stringResource(if (up) R.string.home_rails_up else R.string.home_rails_down),
+            tint = Color.White,
+            modifier = Modifier
+                .size(18.dp)
+                .graphicsLayer { rotationZ = if (up) -90f else 90f },
+        )
+    }
+}
+
+@Composable
 private fun RailsToggle(
     title: String,
-    hint: String,
+    hint: String? = null,
     checked: Boolean,
     onChecked: (Boolean) -> Unit,
     icon: ImageVector? = null,
@@ -746,13 +881,15 @@ private fun RailsToggle(
                 lineHeight = 22.sp,
                 letterSpacing = (-0.2).sp,
             )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = hint,
-                color = CinemaMuted,
-                fontSize = 13.sp,
-                lineHeight = 18.sp,
-            )
+            if (hint != null) {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = hint,
+                    color = CinemaMuted,
+                    fontSize = 13.sp,
+                    lineHeight = 18.sp,
+                )
+            }
         }
         RailsSwitch(checked)
     }

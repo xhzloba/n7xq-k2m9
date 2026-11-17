@@ -19,6 +19,8 @@ data class HomeUiState(
     val watchingReady: Boolean = false,
     val best: List<Movie> = emptyList(),
     val bestReady: Boolean = false,
+    val genres: Map<String, List<Movie>> = emptyMap(),
+    val genresReady: Set<String> = emptySet(),
     val phase: HomePhase = HomePhase.Loading,
     val refreshing: Boolean = false,
     val searchOpen: Boolean = false,

@@ -42,6 +42,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.movie.domain.model.GenreRails
 import com.example.movie.presentation.settings.LocalUserSettings
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -428,146 +429,28 @@ fun HomeScreen(
                         )
                     }
                 }
-                val showRecommendations = settings.homeRailVisible(HomeRails.Recommendations) &&
-                    (!state.recommendationsReady || state.recommendations.isNotEmpty())
-                val showHistory = settings.homeRailVisible(HomeRails.History) && state.history.isNotEmpty()
-                val showContinue = settings.homeRailVisible(HomeRails.Continue) && state.resume.isNotEmpty()
-                val showFavorites = settings.homeRailVisible(HomeRails.Favorites) && state.favorites.isNotEmpty()
-                val showWatched = settings.homeRailVisible(HomeRails.Watched) && state.watched.isNotEmpty()
-                val showWatching = settings.homeRailVisible(HomeRails.Watching) &&
-                    (!state.watchingReady || state.watching.isNotEmpty())
-                val showBest = settings.homeRailVisible(HomeRails.Best) &&
-                    (!state.bestReady || state.best.isNotEmpty())
+                val orderedRails = settings.homeRailOrder.mapNotNull { id ->
+                    HomeRails.All.firstOrNull { it.id == id }
+                }.filter { entry ->
+                    homeRailShown(entry.id, state, settings.homeRailVisible(entry.id))
+                }
                 // После героя зазор уже в карусели; между полками — HomeRailGap.
-                val railBeforePlaque = showRecommendations || showHistory || showContinue ||
-                    showFavorites || showWatched || showWatching || showBest
-                val firstRail = when {
-                    showRecommendations -> "recommendations"
-                    showHistory -> "history"
-                    showContinue -> "continue"
-                    showFavorites -> "favorites"
-                    showWatched -> "watched"
-                    showWatching -> "watching"
-                    showBest -> "best"
-                    else -> null
-                }
-                if (showRecommendations) {
-                    item(key = "recommendations") {
-                        RecommendationRail(
-                            movies = state.recommendations,
+                orderedRails.forEachIndexed { index, entry ->
+                    item(key = entry.id) {
+                        if (index > 0) Spacer(Modifier.height(HomeRailGap))
+                        HomeOrderedRail(
+                            entry = entry,
+                            state = state,
                             onMovieClick = onMovieClick,
                             onMoviePeek = onMoviePeek,
-                            title = stringResource(R.string.section_recommendations),
-                            onOpen = { onOpenSection(HomeSection.Recommendations) },
+                            onOpenSection = onOpenSection,
+                            onPlayResume = onPlayResume,
                             onSettled = logo::onSettled,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    }
-                }
-                if (showHistory) {
-                    item(key = "history") {
-                        if (firstRail != "history") Spacer(Modifier.height(HomeRailGap))
-                        RecommendationRail(
-                            movies = state.history.take(HistoryRailSize),
-                            onMovieClick = onMovieClick,
-                            onMoviePeek = onMoviePeek,
-                            title = stringResource(R.string.section_history),
-                            leadingIcon = ShellIcons.history,
-                            onOpen = { onOpenSection(HomeSection.History) },
-                            onSettled = logo::onSettled,
-                            stickToStart = true,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    }
-                }
-                if (showContinue) {
-                    item(key = "continue") {
-                        if (firstRail != "continue") Spacer(Modifier.height(HomeRailGap))
-                        val rail = state.resume.take(HistoryRailSize)
-                        RecommendationRail(
-                            movies = rail.map { it.toMovie() },
-                            onMovieClick = onPlayResume,
-                            onMoviePeek = onMoviePeek,
-                            title = stringResource(R.string.section_continue),
-                            leadingIcon = PlexPlay,
-                            onOpen = { onOpenSection(HomeSection.Continue) },
-                            onSettled = logo::onSettled,
-                            stickToStart = true,
-                            progressOf = { movie -> rail.firstOrNull { it.id == movie.id }?.fraction },
-                            captionOf = { movie -> rail.firstOrNull { it.id == movie.id }?.progressCaption() },
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    }
-                }
-                if (showFavorites) {
-                    item(key = "favorites") {
-                        if (firstRail != "favorites") Spacer(Modifier.height(HomeRailGap))
-                        RecommendationRail(
-                            movies = state.favorites.take(HistoryRailSize),
-                            onMovieClick = onMovieClick,
-                            onMoviePeek = onMoviePeek,
-                            title = stringResource(R.string.section_favorites),
-                            leadingIcon = BookmarkFilled,
-                            onOpen = if (state.favorites.size >= HistoryRailSize) {
-                                { onOpenSection(HomeSection.Favorites) }
-                            } else {
-                                null
-                            },
-                            onSettled = logo::onSettled,
-                            stickToStart = true,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    }
-                }
-                if (showWatched) {
-                    item(key = "watched") {
-                        if (firstRail != "watched") Spacer(Modifier.height(HomeRailGap))
-                        RecommendationRail(
-                            movies = state.watched.take(HistoryRailSize),
-                            onMovieClick = onMovieClick,
-                            onMoviePeek = onMoviePeek,
-                            title = stringResource(R.string.section_watched),
-                            onOpen = if (state.watched.size >= HistoryRailSize) {
-                                { onOpenSection(HomeSection.Watched) }
-                            } else {
-                                null
-                            },
-                            onSettled = logo::onSettled,
-                            stickToStart = true,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    }
-                }
-                if (showWatching) {
-                    item(key = "watching") {
-                        if (firstRail != "watching") Spacer(Modifier.height(HomeRailGap))
-                        RecommendationRail(
-                            movies = state.watching,
-                            onMovieClick = onMovieClick,
-                            onMoviePeek = onMoviePeek,
-                            title = stringResource(R.string.section_watching),
-                            onOpen = { onOpenSection(HomeSection.Watching) },
-                            onSettled = logo::onSettled,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    }
-                }
-                if (showBest) {
-                    item(key = "best") {
-                        if (firstRail != "best") Spacer(Modifier.height(HomeRailGap))
-                        RecommendationRail(
-                            movies = state.best,
-                            onMovieClick = onMovieClick,
-                            onMoviePeek = onMoviePeek,
-                            title = stringResource(R.string.section_best),
-                            onOpen = { onOpenSection(HomeSection.Best) },
-                            onSettled = logo::onSettled,
-                            modifier = Modifier.fillMaxWidth(),
                         )
                     }
                 }
                 item(key = "rails_look") {
-                    if (railBeforePlaque) Spacer(Modifier.height(HomeRailGap))
+                    if (orderedRails.isNotEmpty()) Spacer(Modifier.height(HomeRailGap))
                     HomeRailsLookPlaque(
                         onOpen = onOpenRailsLook,
                         modifier = Modifier.fillMaxWidth(),
@@ -750,6 +633,130 @@ private fun HomeScreenPreview() {
             onCloseSearch = {},
             onClearRecent = {},
         )
+    }
+}
+
+private fun homeRailShown(id: String, state: HomeUiState, visible: Boolean): Boolean {
+    if (!visible) return false
+    return when (id) {
+        HomeRails.Recommendations -> !state.recommendationsReady || state.recommendations.isNotEmpty()
+        HomeRails.History -> state.history.isNotEmpty()
+        HomeRails.Continue -> state.resume.isNotEmpty()
+        HomeRails.Favorites -> state.favorites.isNotEmpty()
+        HomeRails.Watched -> state.watched.isNotEmpty()
+        HomeRails.Watching -> !state.watchingReady || state.watching.isNotEmpty()
+        HomeRails.Best -> !state.bestReady || state.best.isNotEmpty()
+        else -> id !in state.genresReady || state.genres[id].orEmpty().isNotEmpty()
+    }
+}
+
+@Composable
+private fun HomeOrderedRail(
+    entry: HomeRails.Entry,
+    state: HomeUiState,
+    onMovieClick: (String) -> Unit,
+    onMoviePeek: (Movie) -> Unit,
+    onOpenSection: (HomeSection) -> Unit,
+    onPlayResume: (String) -> Unit,
+    onSettled: () -> Unit,
+) {
+    val title = stringResource(entry.titleRes)
+    when (entry.id) {
+        HomeRails.Recommendations -> RecommendationRail(
+            movies = state.recommendations,
+            onMovieClick = onMovieClick,
+            onMoviePeek = onMoviePeek,
+            title = title,
+            onOpen = { onOpenSection(HomeSection.Recommendations) },
+            onSettled = onSettled,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        HomeRails.History -> RecommendationRail(
+            movies = state.history.take(HistoryRailSize),
+            onMovieClick = onMovieClick,
+            onMoviePeek = onMoviePeek,
+            title = title,
+            leadingIcon = ShellIcons.history,
+            onOpen = { onOpenSection(HomeSection.History) },
+            onSettled = onSettled,
+            stickToStart = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        HomeRails.Continue -> {
+            val rail = state.resume.take(HistoryRailSize)
+            RecommendationRail(
+                movies = rail.map { it.toMovie() },
+                onMovieClick = onPlayResume,
+                onMoviePeek = onMoviePeek,
+                title = title,
+                leadingIcon = PlexPlay,
+                onOpen = { onOpenSection(HomeSection.Continue) },
+                onSettled = onSettled,
+                stickToStart = true,
+                progressOf = { movie -> rail.firstOrNull { it.id == movie.id }?.fraction },
+                captionOf = { movie -> rail.firstOrNull { it.id == movie.id }?.progressCaption() },
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        HomeRails.Favorites -> RecommendationRail(
+            movies = state.favorites.take(HistoryRailSize),
+            onMovieClick = onMovieClick,
+            onMoviePeek = onMoviePeek,
+            title = title,
+            leadingIcon = BookmarkFilled,
+            onOpen = if (state.favorites.size >= HistoryRailSize) {
+                { onOpenSection(HomeSection.Favorites) }
+            } else {
+                null
+            },
+            onSettled = onSettled,
+            stickToStart = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        HomeRails.Watched -> RecommendationRail(
+            movies = state.watched.take(HistoryRailSize),
+            onMovieClick = onMovieClick,
+            onMoviePeek = onMoviePeek,
+            title = title,
+            onOpen = if (state.watched.size >= HistoryRailSize) {
+                { onOpenSection(HomeSection.Watched) }
+            } else {
+                null
+            },
+            onSettled = onSettled,
+            stickToStart = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        HomeRails.Watching -> RecommendationRail(
+            movies = state.watching,
+            onMovieClick = onMovieClick,
+            onMoviePeek = onMoviePeek,
+            title = title,
+            onOpen = { onOpenSection(HomeSection.Watching) },
+            onSettled = onSettled,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        HomeRails.Best -> RecommendationRail(
+            movies = state.best,
+            onMovieClick = onMovieClick,
+            onMoviePeek = onMoviePeek,
+            title = title,
+            onOpen = { onOpenSection(HomeSection.Best) },
+            onSettled = onSettled,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        else -> {
+            val section = GenreRails.All.firstOrNull { it.id == entry.id }?.section ?: return
+            RecommendationRail(
+                movies = state.genres[entry.id].orEmpty(),
+                onMovieClick = onMovieClick,
+                onMoviePeek = onMoviePeek,
+                title = title,
+                onOpen = { onOpenSection(HomeSection.valueOf(section)) },
+                onSettled = onSettled,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
     }
 }
 

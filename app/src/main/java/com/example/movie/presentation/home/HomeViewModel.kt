@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.movie.domain.model.CatalogQuery
 import com.example.movie.domain.model.DataError
+import com.example.movie.domain.model.GenreRail
+import com.example.movie.domain.model.GenreRails
 import com.example.movie.domain.model.Movie
 import com.example.movie.domain.usecase.GetHomeShelvesUseCase
 import com.example.movie.domain.usecase.GetRecommendationsUseCase
@@ -72,6 +74,18 @@ class HomeViewModel(
         viewModelScope.launch { loadBest(keep = false) }
     }
 
+    private val wantedGenres = mutableSetOf<String>()
+    private val genreInflight = mutableSetOf<String>()
+
+    /** Грузим только включённые жанровые полки. */
+    fun syncGenreRails(visible: Set<String>) {
+        wantedGenres.clear()
+        wantedGenres.addAll(visible)
+        visible.forEach { id ->
+            viewModelScope.launch { loadGenreIfNeeded(id, keep = false) }
+        }
+    }
+
     fun refresh() {
         if (_state.value.refreshing) return
         viewModelScope.launch {
@@ -82,6 +96,7 @@ class HomeViewModel(
                     launch { loadRecommendations(keep = true) }
                     launch { loadWatching(keep = true) }
                     launch { loadBest(keep = true) }
+                    launch { reloadGenres(keep = true) }
                     launch {
                         if (_state.value.shelves.isEmpty() || _state.value.selectedId == null) {
                             loadShelves()
@@ -271,6 +286,7 @@ class HomeViewModel(
             if (!_state.value.bestReady || _state.value.best.isEmpty()) {
                 loadBest(keep = false)
             }
+            reloadGenres(keep = false)
             val selectedId = _state.value.selectedId
             if (_state.value.shelves.isEmpty() || selectedId == null) {
                 loadShelves()
@@ -306,6 +322,53 @@ class HomeViewModel(
             .onFailure {
                 if (keep && _state.value.watching.isNotEmpty()) return@onFailure
                 _state.update { it.copy(watching = emptyList(), watchingReady = true) }
+            }
+    }
+
+    private suspend fun reloadGenres(keep: Boolean) {
+        coroutineScope {
+            wantedGenres.toList().forEach { id ->
+                launch { loadGenreIfNeeded(id, keep) }
+            }
+        }
+    }
+
+    private suspend fun loadGenreIfNeeded(id: String, keep: Boolean) {
+        val current = _state.value
+        val movies = current.genres[id].orEmpty()
+        if (!keep && id in current.genresReady && movies.isNotEmpty()) return
+        synchronized(genreInflight) {
+            if (!genreInflight.add(id)) return
+        }
+        try {
+            loadGenre(GenreRails.All.first { it.id == id }, keep)
+        } finally {
+            synchronized(genreInflight) { genreInflight.remove(id) }
+        }
+    }
+
+    private suspend fun loadGenre(shelf: GenreRail, keep: Boolean) {
+        val id = shelf.id
+        if (!keep && _state.value.genres[id].isNullOrEmpty()) {
+            _state.update { it.copy(genresReady = it.genresReady - id) }
+        }
+        getShelfMovies(CatalogQuery(sort = "new", genre = shelf.genre), limit = 15)
+            .onSuccess { movies ->
+                _state.update {
+                    it.copy(
+                        genres = it.genres + (id to movies),
+                        genresReady = it.genresReady + id,
+                    )
+                }
+            }
+            .onFailure {
+                if (keep && !_state.value.genres[id].isNullOrEmpty()) return@onFailure
+                _state.update {
+                    it.copy(
+                        genres = it.genres + (id to emptyList()),
+                        genresReady = it.genresReady + id,
+                    )
+                }
             }
     }
 

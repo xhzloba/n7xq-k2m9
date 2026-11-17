@@ -10,6 +10,7 @@ import com.example.movie.data.history.ResumeStore
 import com.example.movie.data.history.ViewHistoryStore
 import com.example.movie.domain.model.CatalogQuery
 import com.example.movie.domain.model.DataError
+import com.example.movie.domain.model.GenreRails
 import com.example.movie.domain.model.Movie
 import com.example.movie.domain.model.MoviePage
 import com.example.movie.domain.model.progressCaption
@@ -22,6 +23,18 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 enum class HomeSection(@StringRes val title: Int) {
+    Action(R.string.section_action),
+    Scifi(R.string.section_scifi),
+    Horror(R.string.section_horror),
+    Drama(R.string.section_drama),
+    Thriller(R.string.section_thriller),
+    Comedy(R.string.section_comedy),
+    Western(R.string.section_western),
+    War(R.string.section_war),
+    Fantasy(R.string.section_fantasy),
+    Melodrama(R.string.section_melodrama),
+    Crime(R.string.section_crime),
+    Detective(R.string.section_detective),
     Recommendations(R.string.section_recommendations),
     Watching(R.string.section_watching),
     Best(R.string.section_best),
@@ -32,7 +45,7 @@ enum class HomeSection(@StringRes val title: Int) {
     ;
 
     val paged: Boolean
-        get() = this == Watching || this == Best
+        get() = GenreRails.query(name) != null || this == Watching || this == Best
 
     val stored: Boolean
         get() = this == History || this == Continue || this == Favorites || this == Watched
@@ -60,6 +73,7 @@ class SectionViewModel(
 ) : ViewModel() {
     private val pages = ShelfPages()
     private var busy = false
+    private var queued = false
     private val _state = MutableStateFlow(
         if (section.stored) {
             SectionUiState(loading = false, end = true)
@@ -132,8 +146,13 @@ class SectionViewModel(
 
     fun loadMore(force: Boolean = false) {
         val current = _state.value
-        if (busy || current.end) return
+        if (current.end) return
         if (!force && current.error != null) return
+        if (busy) {
+            queued = true
+            return
+        }
+        queued = false
         busy = true
         val first = current.movies.isEmpty()
         _state.value = current.copy(loading = first, loadingMore = !first, error = null)
@@ -185,15 +204,27 @@ class SectionViewModel(
                 }
             } finally {
                 busy = false
+                if (queued && !_state.value.end && _state.value.error == null) {
+                    queued = false
+                    loadMore()
+                } else {
+                    queued = false
+                }
             }
         }
     }
 
-    private suspend fun fetch(page: Int): Result<MoviePage> = when (section) {
-        HomeSection.Recommendations -> getRecommendations().map { MoviePage(it, hasMore = false) }
-        HomeSection.Watching -> getShelfMovies.paged(CatalogQuery(sort = "watching"), page = page)
-        HomeSection.Best -> getShelfMovies.paged(CatalogQuery(sort = "rating", type = "movie"), page = page)
-        HomeSection.History, HomeSection.Continue, HomeSection.Favorites, HomeSection.Watched ->
-            Result.success(MoviePage(emptyList(), hasMore = false))
+    private suspend fun fetch(page: Int): Result<MoviePage> {
+        GenreRails.query(section.name)?.let { query ->
+            return getShelfMovies.paged(query, page = page)
+        }
+        return when (section) {
+            HomeSection.Recommendations -> getRecommendations().map { MoviePage(it, hasMore = false) }
+            HomeSection.Watching -> getShelfMovies.paged(CatalogQuery(sort = "watching"), page = page)
+            HomeSection.Best -> getShelfMovies.paged(CatalogQuery(sort = "rating", type = "movie"), page = page)
+            HomeSection.History, HomeSection.Continue, HomeSection.Favorites, HomeSection.Watched ->
+                Result.success(MoviePage(emptyList(), hasMore = false))
+            else -> Result.success(MoviePage(emptyList(), hasMore = false))
+        }
     }
 }

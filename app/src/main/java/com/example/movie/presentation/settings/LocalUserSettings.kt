@@ -73,6 +73,8 @@ private object DefaultUserSettings : UserSettingsRepository {
 
     override fun setHomeRailVisible(id: String, visible: Boolean) = Unit
 
+    override fun setHomeRailOrder(order: List<String>) = Unit
+
     override fun setHideRailsLookHint(hidden: Boolean) = Unit
 
     override fun setAppTheme(theme: String) = Unit

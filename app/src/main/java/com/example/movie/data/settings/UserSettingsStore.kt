@@ -2,6 +2,11 @@ package com.example.movie.data.settings
 
 import android.content.Context
 import com.example.movie.domain.model.DefaultHiddenHomeRails
+import com.example.movie.domain.model.DefaultHomeRailOrder
+import com.example.movie.domain.model.PreviousHomeRailOrder
+import com.example.movie.domain.model.normalizedHomeRailOrder
+import com.example.movie.domain.model.placedAfter
+import com.example.movie.domain.model.GenreRails
 import com.example.movie.domain.model.DefaultWatchedPercent
 import com.example.movie.domain.model.DefaultHapticProfile
 import com.example.movie.domain.model.DefaultNetworkTimeoutSec
@@ -117,6 +122,7 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
             imageParallel = settings.imageParallel.normalizedImageParallel(),
             networkTimeoutSec = settings.networkTimeoutSec.normalizedNetworkTimeout(),
             watchedPercent = settings.watchedPercent.coerceIn(50, 100),
+            homeRailOrder = settings.homeRailOrder.normalizedHomeRailOrder(),
             appTheme = when (settings.appTheme) {
                 "graphite" -> "graphite"
                 "black" -> "black"
@@ -128,6 +134,10 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
     override fun setBackdropDissolve(enabled: Boolean) = write { it.copy(backdropDissolve = enabled) }
 
     override fun setHideRailsLookHint(hidden: Boolean) = write { it.copy(hideRailsLookHint = hidden) }
+
+    override fun setHomeRailOrder(order: List<String>) = write {
+        it.copy(homeRailOrder = order.normalizedHomeRailOrder())
+    }
 
     override fun setHomeRailVisible(id: String, visible: Boolean) = write { current ->
         val next = if (visible) {
@@ -211,6 +221,7 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
             .putBoolean(KEY_DETAIL_IRIS, next.detailIris)
             .putBoolean(KEY_BACKDROP_DISSOLVE, next.backdropDissolve)
             .putStringSet(KEY_HIDDEN_HOME_RAILS, HashSet(next.hiddenHomeRails))
+            .putString(KEY_HOME_RAIL_ORDER, next.homeRailOrder.joinToString(","))
             .putBoolean(KEY_HIDE_RAILS_LOOK_HINT, next.hideRailsLookHint)
             .putString(KEY_THEME, next.appTheme)
             .putInt(KEY_WATCHED_PERCENT, next.watchedPercent)
@@ -310,10 +321,93 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
         sliderShade = prefs.getBoolean(KEY_SLIDER_SHADE, false),
         detailIris = prefs.getBoolean(KEY_DETAIL_IRIS, false),
         backdropDissolve = prefs.getBoolean(KEY_BACKDROP_DISSOLVE, false),
-        hiddenHomeRails = if (prefs.contains(KEY_HIDDEN_HOME_RAILS)) {
-            prefs.getStringSet(KEY_HIDDEN_HOME_RAILS, emptySet())?.toSet().orEmpty()
-        } else {
-            DefaultHiddenHomeRails
+        hiddenHomeRails = run {
+            if (prefs.contains(KEY_HIDDEN_HOME_RAILS) && !prefs.contains(KEY_ACTION_RAIL_HIDDEN)) {
+                val hidden = prefs.getStringSet(KEY_HIDDEN_HOME_RAILS, emptySet()).orEmpty().toMutableSet()
+                hidden.add(GenreRails.Action)
+                prefs.edit()
+                    .putStringSet(KEY_HIDDEN_HOME_RAILS, hidden)
+                    .putBoolean(KEY_ACTION_RAIL_HIDDEN, true)
+                    .commit()
+            }
+            if (prefs.contains(KEY_HIDDEN_HOME_RAILS) && !prefs.contains(KEY_MELO_CRIME_HIDDEN)) {
+                val hidden = prefs.getStringSet(KEY_HIDDEN_HOME_RAILS, emptySet()).orEmpty().toMutableSet()
+                hidden.add(GenreRails.Melodrama)
+                hidden.add(GenreRails.Crime)
+                prefs.edit()
+                    .putStringSet(KEY_HIDDEN_HOME_RAILS, hidden)
+                    .putBoolean(KEY_MELO_CRIME_HIDDEN, true)
+                    .commit()
+            }
+            if (prefs.contains(KEY_HIDDEN_HOME_RAILS) && !prefs.contains(KEY_DETECTIVE_HIDDEN)) {
+                val hidden = prefs.getStringSet(KEY_HIDDEN_HOME_RAILS, emptySet()).orEmpty().toMutableSet()
+                hidden.add(GenreRails.Detective)
+                prefs.edit()
+                    .putStringSet(KEY_HIDDEN_HOME_RAILS, hidden)
+                    .putBoolean(KEY_DETECTIVE_HIDDEN, true)
+                    .commit()
+            }
+            if (prefs.contains(KEY_HIDDEN_HOME_RAILS) && !prefs.contains(KEY_OFF_RAILS)) {
+                val hidden = prefs.getStringSet(KEY_HIDDEN_HOME_RAILS, emptySet()).orEmpty().toMutableSet()
+                hidden.add(GenreRails.Comedy)
+                hidden.add(GenreRails.War)
+                hidden.add("watching")
+                prefs.edit()
+                    .putStringSet(KEY_HIDDEN_HOME_RAILS, hidden)
+                    .putBoolean(KEY_OFF_RAILS, true)
+                    .commit()
+            }
+            if (prefs.contains(KEY_HIDDEN_HOME_RAILS) && !prefs.contains(KEY_GENRE_RAILS_HIDDEN)) {
+                val hidden = prefs.getStringSet(KEY_HIDDEN_HOME_RAILS, emptySet()).orEmpty().toMutableSet()
+                GenreRails.All.forEach { rail ->
+                    if (rail.id != GenreRails.Action) hidden.add(rail.id)
+                }
+                prefs.edit()
+                    .putStringSet(KEY_HIDDEN_HOME_RAILS, hidden)
+                    .putBoolean(KEY_GENRE_RAILS_HIDDEN, true)
+                    .commit()
+            }
+            if (prefs.contains(KEY_HIDDEN_HOME_RAILS)) {
+                prefs.getStringSet(KEY_HIDDEN_HOME_RAILS, emptySet())?.toSet().orEmpty()
+            } else {
+                DefaultHiddenHomeRails
+            }
+        },
+        homeRailOrder = run {
+            val hadOrder = prefs.contains(KEY_HOME_RAIL_ORDER)
+            var order = prefs.getString(KEY_HOME_RAIL_ORDER, null)
+                ?.split(',')
+                .orEmpty()
+                .normalizedHomeRailOrder()
+            if (hadOrder && !prefs.contains(KEY_HOME_RAIL_ORDER_TOP)) {
+                val withoutNew = order.filter {
+                    it != GenreRails.Melodrama && it != GenreRails.Crime && it != GenreRails.Detective
+                }
+                if (withoutNew == PreviousHomeRailOrder) order = DefaultHomeRailOrder
+                prefs.edit().putBoolean(KEY_HOME_RAIL_ORDER_TOP, true).commit()
+            }
+            if (!prefs.contains(KEY_MELO_CRIME_ORDER)) {
+                if (hadOrder && order != DefaultHomeRailOrder) {
+                    order = order.placedAfter(
+                        GenreRails.Fantasy,
+                        listOf(GenreRails.Melodrama, GenreRails.Crime),
+                    )
+                }
+                prefs.edit()
+                    .putBoolean(KEY_MELO_CRIME_ORDER, true)
+                    .apply { if (hadOrder) putString(KEY_HOME_RAIL_ORDER, order.joinToString(",")) }
+                    .commit()
+            }
+            if (!prefs.contains(KEY_DETECTIVE_ORDER)) {
+                if (hadOrder && order != DefaultHomeRailOrder) {
+                    order = order.placedAfter(GenreRails.Crime, listOf(GenreRails.Detective))
+                }
+                prefs.edit()
+                    .putBoolean(KEY_DETECTIVE_ORDER, true)
+                    .apply { if (hadOrder) putString(KEY_HOME_RAIL_ORDER, order.joinToString(",")) }
+                    .commit()
+            }
+            order
         },
         hideRailsLookHint = prefs.getBoolean(KEY_HIDE_RAILS_LOOK_HINT, false),
         appTheme = prefs.getString(KEY_THEME, "cinema") ?: "cinema",
@@ -366,6 +460,15 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
         const val KEY_DETAIL_IRIS = "detail_iris"
         const val KEY_BACKDROP_DISSOLVE = "backdrop_dissolve"
         const val KEY_HIDDEN_HOME_RAILS = "hidden_home_rails"
+        const val KEY_HOME_RAIL_ORDER = "home_rail_order"
+        const val KEY_HOME_RAIL_ORDER_TOP = "home_rail_order_top"
+        const val KEY_ACTION_RAIL_HIDDEN = "action_rail_hidden_default"
+        const val KEY_GENRE_RAILS_HIDDEN = "genre_rails_hidden_default"
+        const val KEY_MELO_CRIME_HIDDEN = "melo_crime_hidden_default"
+        const val KEY_MELO_CRIME_ORDER = "melo_crime_order_default"
+        const val KEY_DETECTIVE_HIDDEN = "detective_hidden_default"
+        const val KEY_DETECTIVE_ORDER = "detective_order_default"
+        const val KEY_OFF_RAILS = "off_comedy_war_watching"
         const val KEY_HIDE_RAILS_LOOK_HINT = "hide_rails_look_hint"
         const val KEY_THEME = "app_theme"
         const val KEY_WATCHED_PERCENT = "watched_percent"

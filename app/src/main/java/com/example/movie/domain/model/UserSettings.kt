@@ -49,6 +49,8 @@ data class UserSettings(
     val backdropDissolve: Boolean = false,
     /** Скрытые полки главной (id из HomeRails). Главный слайдер всегда. По умолчанию все скрыты. */
     val hiddenHomeRails: Set<String> = DefaultHiddenHomeRails,
+    /** Порядок полок сверху вниз. Первая — сразу под слайдером. */
+    val homeRailOrder: List<String> = DefaultHomeRailOrder,
     /** Ссылка «Зачем это?» под плашкой «Вид полок». */
     val hideRailsLookHint: Boolean = false,
     val appTheme: String = "cinema",
@@ -83,7 +85,8 @@ fun String.normalizedPlayerCodec(): String = when (this) {
     else -> "auto"
 }
 
-val DefaultHiddenHomeRails: Set<String> = setOf(
+/** Порядок, который уже мог сохраниться: жанры, потом свои. */
+val PreviousHomeRailOrder: List<String> = GenreRails.All.map { it.id } + listOf(
     "recommendations",
     "history",
     "continue",
@@ -92,6 +95,41 @@ val DefaultHiddenHomeRails: Set<String> = setOf(
     "watching",
     "best",
 )
+
+val DefaultHomeRailOrder: List<String> = listOf(
+    "history",
+    "favorites",
+    "watched",
+    "continue",
+    "watching",
+    "best",
+    "recommendations",
+) + GenreRails.All.map { it.id }
+
+val DefaultHiddenHomeRails: Set<String> = DefaultHomeRailOrder.toSet()
+
+fun List<String>.normalizedHomeRailOrder(): List<String> {
+    val kept = map { it.trim() }.filter { it in DefaultHomeRailOrder }.distinct()
+    return kept + DefaultHomeRailOrder.filter { it !in kept }
+}
+
+fun List<String>.placedAfter(anchor: String, ids: List<String>): List<String> {
+    val order = toMutableList()
+    ids.forEach { order.remove(it) }
+    val at = order.indexOf(anchor).let { if (it >= 0) it + 1 else order.size }
+    order.addAll(at, ids)
+    return order
+}
+
+fun List<String>.moveHomeRail(id: String, up: Boolean): List<String> {
+    val order = normalizedHomeRailOrder().toMutableList()
+    val from = order.indexOf(id)
+    if (from < 0) return order
+    val to = if (up) from - 1 else from + 1
+    if (to !in order.indices) return order
+    order.add(to, order.removeAt(from))
+    return order
+}
 
 interface UserSettingsRepository {
     val settings: StateFlow<UserSettings>
@@ -155,6 +193,8 @@ interface UserSettingsRepository {
     fun setBackdropDissolve(enabled: Boolean)
 
     fun setHomeRailVisible(id: String, visible: Boolean)
+
+    fun setHomeRailOrder(order: List<String>)
 
     fun setHideRailsLookHint(hidden: Boolean)
 
