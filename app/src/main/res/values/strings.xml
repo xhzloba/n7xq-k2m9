@@ -258,6 +258,7 @@
     <string name="section_scifi">Фантастика</string>
     <string name="section_horror">Ужасы</string>
     <string name="section_drama">Драма</string>
+    <string name="section_historical">История</string>
     <string name="section_thriller">Триллер</string>
     <string name="section_comedy">Комедия</string>
     <string name="section_western">Вестерн</string>
@@ -266,6 +267,12 @@
     <string name="section_melodrama">Мелодрама</string>
     <string name="section_crime">Криминал</string>
     <string name="section_detective">Детектив</string>
+    <string name="section_family">Семейный</string>
+    <string name="section_adventure">Приключения</string>
+    <string name="section_biography">Биография</string>
+    <string name="section_sport">Спорт</string>
+    <string name="section_music">Музыка</string>
+    <string name="section_musical">Мюзикл</string>
     <string name="section_recommendations">Возможно, вам понравится</string>
     <string name="section_continue">Продолжить просмотр</string>
     <string name="section_history">История просмотров</string>
@@ -317,11 +324,11 @@
     <string name="nav_settings">Настройки</string>
     <string name="settings_interface">Интерфейс</string>
     <string name="settings_title">Настройки</string>
-    <string name="settings_menu_theme">Фон и заливка шапки при прокрутке.</string>
+    <string name="settings_menu_theme">Обычный фон, графит или чёрная.</string>
     <string name="settings_header_fill">Шапка заливкой</string>
-    <string name="settings_header_fill_hint">При прокрутке под логотипом и значками сплошной цвет темы. То же в полном списке. Если на главной включены цвета обложки, заливка берёт их.</string>
+    <string name="settings_header_fill_hint">При прокрутке под логотипом и значками тот же цвет, что у нижнего меню. То же в полном списке. Если на главной включены цвета обложки, заливка берёт их.</string>
     <string name="settings_menu_posters">Размер, ретушь, названия и отметки.</string>
-    <string name="settings_menu_navigation">Подписи, скрытие при скролле и подсказки.</string>
+    <string name="settings_menu_navigation">Подписи, шапка и меню при скролле, подсказки.</string>
     <string name="settings_menu_color">UltraBlur на главной и цвета карточки.</string>
     <string name="settings_menu_detail">Логотипы, кадры и свечение.</string>
     <string name="settings_group_motion">Анимации</string>

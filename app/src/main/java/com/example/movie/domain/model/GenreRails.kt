@@ -23,20 +23,35 @@ object GenreRails {
     const val Melodrama = "melodrama"
     const val Crime = "crime"
     const val Detective = "detective"
+    const val Family = "family"
+    const val Adventure = "adventure"
+    const val Biography = "biography"
+    const val Sport = "sport"
+    const val Music = "music"
+    const val Musical = "musical"
+    const val Historical = "historical"
 
+    /** Порядок полок — по названию, с первой буквы. */
     val All: List<GenreRail> = listOf(
+        GenreRail(Biography, "биография", "Biography"),
         GenreRail(Action, "боевик", "Action"),
-        GenreRail(Scifi, "фантастика", "Scifi"),
-        GenreRail(Horror, "ужасы", "Horror"),
-        GenreRail(Drama, "драма", "Drama"),
-        GenreRail(Thriller, "триллер", "Thriller"),
-        GenreRail(Comedy, "комедия", "Comedy"),
         GenreRail(Western, "вестерн", "Western"),
         GenreRail(War, "военный", "War"),
-        GenreRail(Fantasy, "фэнтези", "Fantasy"),
-        GenreRail(Melodrama, "мелодрама", "Melodrama"),
-        GenreRail(Crime, "криминал", "Crime"),
         GenreRail(Detective, "детектив", "Detective"),
+        GenreRail(Drama, "драма", "Drama"),
+        GenreRail(Historical, "история", "Historical"),
+        GenreRail(Comedy, "комедия", "Comedy"),
+        GenreRail(Crime, "криминал", "Crime"),
+        GenreRail(Melodrama, "мелодрама", "Melodrama"),
+        GenreRail(Music, "музыка", "Music"),
+        GenreRail(Musical, "мюзикл", "Musical"),
+        GenreRail(Adventure, "приключения", "Adventure"),
+        GenreRail(Family, "семейный", "Family"),
+        GenreRail(Sport, "спорт", "Sport"),
+        GenreRail(Thriller, "триллер", "Thriller"),
+        GenreRail(Horror, "ужасы", "Horror"),
+        GenreRail(Scifi, "фантастика", "Scifi"),
+        GenreRail(Fantasy, "фэнтези", "Fantasy"),
     )
 
     fun sectionOf(id: String): String = All.first { it.id == id }.section

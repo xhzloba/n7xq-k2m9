@@ -4,6 +4,7 @@ import android.content.Context
 import com.example.movie.domain.model.DefaultHiddenHomeRails
 import com.example.movie.domain.model.DefaultHomeRailOrder
 import com.example.movie.domain.model.PreviousHomeRailOrder
+import com.example.movie.domain.model.genresAlphabetical
 import com.example.movie.domain.model.normalizedHomeRailOrder
 import com.example.movie.domain.model.placedAfter
 import com.example.movie.domain.model.GenreRails
@@ -347,6 +348,34 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
                     .putBoolean(KEY_DETECTIVE_HIDDEN, true)
                     .commit()
             }
+            if (prefs.contains(KEY_HIDDEN_HOME_RAILS) && !prefs.contains(KEY_HISTORICAL_HIDDEN)) {
+                val hidden = prefs.getStringSet(KEY_HIDDEN_HOME_RAILS, emptySet()).orEmpty().toMutableSet()
+                hidden.add(GenreRails.Historical)
+                prefs.edit()
+                    .putStringSet(KEY_HIDDEN_HOME_RAILS, hidden)
+                    .putBoolean(KEY_HISTORICAL_HIDDEN, true)
+                    .commit()
+            }
+            if (prefs.contains(KEY_HIDDEN_HOME_RAILS) && !prefs.contains(KEY_MUSIC_GENRES_HIDDEN)) {
+                val hidden = prefs.getStringSet(KEY_HIDDEN_HOME_RAILS, emptySet()).orEmpty().toMutableSet()
+                hidden.add(GenreRails.Music)
+                hidden.add(GenreRails.Musical)
+                prefs.edit()
+                    .putStringSet(KEY_HIDDEN_HOME_RAILS, hidden)
+                    .putBoolean(KEY_MUSIC_GENRES_HIDDEN, true)
+                    .commit()
+            }
+            if (prefs.contains(KEY_HIDDEN_HOME_RAILS) && !prefs.contains(KEY_LIFE_GENRES_HIDDEN)) {
+                val hidden = prefs.getStringSet(KEY_HIDDEN_HOME_RAILS, emptySet()).orEmpty().toMutableSet()
+                hidden.add(GenreRails.Family)
+                hidden.add(GenreRails.Adventure)
+                hidden.add(GenreRails.Biography)
+                hidden.add(GenreRails.Sport)
+                prefs.edit()
+                    .putStringSet(KEY_HIDDEN_HOME_RAILS, hidden)
+                    .putBoolean(KEY_LIFE_GENRES_HIDDEN, true)
+                    .commit()
+            }
             if (prefs.contains(KEY_HIDDEN_HOME_RAILS) && !prefs.contains(KEY_OFF_RAILS)) {
                 val hidden = prefs.getStringSet(KEY_HIDDEN_HOME_RAILS, emptySet()).orEmpty().toMutableSet()
                 hidden.add(GenreRails.Comedy)
@@ -405,6 +434,50 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
                 prefs.edit()
                     .putBoolean(KEY_DETECTIVE_ORDER, true)
                     .apply { if (hadOrder) putString(KEY_HOME_RAIL_ORDER, order.joinToString(",")) }
+                    .commit()
+            }
+            if (!prefs.contains(KEY_LIFE_GENRES_ORDER)) {
+                if (hadOrder && order != DefaultHomeRailOrder) {
+                    order = order.placedAfter(
+                        GenreRails.Detective,
+                        listOf(
+                            GenreRails.Family,
+                            GenreRails.Adventure,
+                            GenreRails.Biography,
+                            GenreRails.Sport,
+                        ),
+                    )
+                }
+                prefs.edit()
+                    .putBoolean(KEY_LIFE_GENRES_ORDER, true)
+                    .apply { if (hadOrder) putString(KEY_HOME_RAIL_ORDER, order.joinToString(",")) }
+                    .commit()
+            }
+            if (!prefs.contains(KEY_GENRE_ALPHA_ORDER)) {
+                val sorted = order.genresAlphabetical()
+                val changed = hadOrder && sorted != order
+                if (changed) order = sorted
+                prefs.edit()
+                    .putBoolean(KEY_GENRE_ALPHA_ORDER, true)
+                    .apply { if (changed) putString(KEY_HOME_RAIL_ORDER, order.joinToString(",")) }
+                    .commit()
+            }
+            if (!prefs.contains(KEY_MUSIC_GENRES_ORDER)) {
+                val sorted = order.genresAlphabetical()
+                val changed = hadOrder && sorted != order
+                if (changed) order = sorted
+                prefs.edit()
+                    .putBoolean(KEY_MUSIC_GENRES_ORDER, true)
+                    .apply { if (changed) putString(KEY_HOME_RAIL_ORDER, order.joinToString(",")) }
+                    .commit()
+            }
+            if (!prefs.contains(KEY_HISTORICAL_ORDER)) {
+                val sorted = order.genresAlphabetical()
+                val changed = hadOrder && sorted != order
+                if (changed) order = sorted
+                prefs.edit()
+                    .putBoolean(KEY_HISTORICAL_ORDER, true)
+                    .apply { if (changed) putString(KEY_HOME_RAIL_ORDER, order.joinToString(",")) }
                     .commit()
             }
             order
@@ -468,6 +541,13 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
         const val KEY_MELO_CRIME_ORDER = "melo_crime_order_default"
         const val KEY_DETECTIVE_HIDDEN = "detective_hidden_default"
         const val KEY_DETECTIVE_ORDER = "detective_order_default"
+        const val KEY_LIFE_GENRES_HIDDEN = "life_genres_hidden_default"
+        const val KEY_LIFE_GENRES_ORDER = "life_genres_order_default"
+        const val KEY_GENRE_ALPHA_ORDER = "genre_alpha_order"
+        const val KEY_MUSIC_GENRES_HIDDEN = "music_genres_hidden_default"
+        const val KEY_MUSIC_GENRES_ORDER = "music_genres_order_default"
+        const val KEY_HISTORICAL_HIDDEN = "historical_genre_hidden_default"
+        const val KEY_HISTORICAL_ORDER = "historical_genre_order_default"
         const val KEY_OFF_RAILS = "off_comedy_war_watching"
         const val KEY_HIDE_RAILS_LOOK_HINT = "hide_rails_look_hint"
         const val KEY_THEME = "app_theme"

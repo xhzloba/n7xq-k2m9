@@ -79,7 +79,6 @@ import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -132,6 +131,7 @@ import com.example.movie.presentation.update.LocalAppUpdate
 import com.example.movie.presentation.update.UpdateBadge
 import com.example.movie.presentation.common.appBackground
 import com.example.movie.presentation.common.appChrome
+import com.example.movie.presentation.common.dockInk
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
@@ -783,15 +783,6 @@ private val IdleInk = Color(0xFFC7C7CC)
 
 private val WashDockFallback = Color(0xFF121212)
 
-/** Чуть глубже угол UltraBlur — бар читаемый, палитра та же. */
-private fun Color.dockInk(): Color {
-    val hsv = FloatArray(3)
-    android.graphics.Color.colorToHSV(toArgb(), hsv)
-    hsv[1] = (hsv[1] * 0.95f).coerceAtMost(1f)
-    hsv[2] = (hsv[2] * 0.82f).coerceIn(0.1f, 0.4f)
-    return Color(android.graphics.Color.HSVToColor(hsv))
-}
-
 @Composable
 private fun AppBottomBar(
     selected: AppTab?,
@@ -845,7 +836,6 @@ private fun AppBottomBar(
                             Paint().apply { alpha = washIn },
                         )
                     }
-                    // Горизонталь как нижние углы UltraBlur + плотный scrim для иконок.
                     drawRect(brush = Brush.horizontalGradient(listOf(inkLeft, inkRight)))
                     drawRect(
                         brush = Brush.verticalGradient(

@@ -380,8 +380,6 @@ private fun SettingsLeaf(
                 .padding(top = 18.dp, bottom = 96.dp),
         ) {
             ThemeGroup(selected = settings.appTheme, onSelect = onAppTheme)
-            Spacer(Modifier.height(22.dp))
-            HeaderFillSwitch()
         }
         SettingsPage.Posters -> Column(leafScroll(modifier)) {
                 PosterQualityControl(selected = settings.posterQuality)
@@ -425,6 +423,8 @@ private fun SettingsLeaf(
             }
         SettingsPage.Navigation -> Column(leafScroll(modifier)) {
                 BarScrollControl(selected = settings.barScroll)
+                Spacer(Modifier.height(22.dp))
+                HeaderFillSwitch()
                 Spacer(Modifier.height(22.dp))
                 SettingGroup(
                     items = listOf(
@@ -563,7 +563,10 @@ private fun SettingsLeaf(
                         ),
                     ),
                 )
-                HapticFeelRows(profile = settings.hapticProfile)
+                HapticFeelRows(
+                    profile = settings.hapticProfile,
+                    enabled = settings.haptic,
+                )
             }
         SettingsPage.Data -> DataPage(leafScroll(modifier))
         SettingsPage.About -> AboutPage(modifier.padding(top = 18.dp))
@@ -577,17 +580,20 @@ private fun leafScroll(modifier: Modifier): Modifier =
         .padding(top = 18.dp, bottom = 96.dp)
 
 @Composable
-private fun HapticFeelRows(profile: String) {
+private fun HapticFeelRows(profile: String, enabled: Boolean) {
     val repository = LocalUserSettings.current
     val context = LocalContext.current
     val vibrator = remember(context) {
         context.getSystemService(VibratorManager::class.java)?.defaultVibrator
     }
+    val titleColor = if (enabled) CinemaMuted else CinemaMuted.copy(alpha = 0.38f)
+    val nameColor = if (enabled) Color.White else Color.White.copy(alpha = 0.32f)
+    val valueColor = if (enabled) CinemaMuted else CinemaMuted.copy(alpha = 0.32f)
     Spacer(Modifier.height(22.dp))
     Text(
         text = stringResource(R.string.settings_haptic_actions),
         modifier = Modifier.padding(start = PosterGridInset + 4.dp, end = PosterGridInset, bottom = 8.dp),
-        color = CinemaMuted,
+        color = titleColor,
         fontWeight = FontWeight.SemiBold,
         fontSize = 13.sp,
         lineHeight = 16.sp,
@@ -608,6 +614,7 @@ private fun HapticFeelRows(profile: String) {
                     .clickable(
                         interactionSource = remember(slot) { MutableInteractionSource() },
                         indication = null,
+                        enabled = enabled,
                         onClick = {
                             val next = nextHapticFeel(slot, feel)
                             repository.setHapticFeel(slot.name, next.name)
@@ -620,7 +627,7 @@ private fun HapticFeelRows(profile: String) {
                 Text(
                     text = stringResource(slot.label()),
                     modifier = Modifier.weight(1f),
-                    color = Color.White,
+                    color = nameColor,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Medium,
                     maxLines = 1,
@@ -628,7 +635,7 @@ private fun HapticFeelRows(profile: String) {
                 )
                 Text(
                     text = stringResource(feel.label()),
-                    color = CinemaMuted,
+                    color = valueColor,
                     fontSize = 15.sp,
                     maxLines = 1,
                 )

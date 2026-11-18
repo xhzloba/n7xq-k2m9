@@ -191,13 +191,32 @@ internal fun topScrimHeight(top: Dp): Dp {
 }
 
 @Composable
-internal fun headerThemeBrush(): Brush {
-    val settings by LocalUserSettings.current.settings.collectAsStateWithLifecycle()
-    return when (settings.appTheme) {
-        THEME_GRAPHITE -> Brush.horizontalGradient(listOf(GraphiteTopLeft, GraphiteTopRight))
-        THEME_BLACK -> SolidColor(Color.Black)
-        else -> SolidColor(CinemaBlack)
-    }
+internal fun headerThemeBrush(): Brush = SolidColor(appChrome())
+
+/** Чуть глубже угол UltraBlur — шапка и нижнее меню читаемые, палитра та же. */
+internal fun Color.dockInk(): Color {
+    val hsv = FloatArray(3)
+    android.graphics.Color.colorToHSV(toArgb(), hsv)
+    hsv[1] = (hsv[1] * 0.95f).coerceAtMost(1f)
+    hsv[2] = (hsv[2] * 0.82f).coerceIn(0.1f, 0.4f)
+    return Color(android.graphics.Color.HSVToColor(hsv))
+}
+
+/** Плашка как у нижнего меню. [left] и [right] уже через [dockInk]. */
+internal fun DrawScope.drawDockPlate(left: Color, right: Color, edgeAtTop: Boolean) {
+    drawRect(brush = Brush.horizontalGradient(listOf(left, right)))
+    val edge = Color.Black.copy(alpha = 0.46f)
+    val mid = Color.Black.copy(alpha = 0.34f)
+    val inner = Color.Black.copy(alpha = 0.22f)
+    drawRect(
+        brush = Brush.verticalGradient(
+            colorStops = if (edgeAtTop) {
+                arrayOf(0f to edge, 0.6f to mid, 1f to inner)
+            } else {
+                arrayOf(0f to inner, 0.4f to mid, 1f to edge)
+            },
+        ),
+    )
 }
 
 internal fun DrawScope.drawTopScrim(
@@ -207,20 +226,16 @@ internal fun DrawScope.drawTopScrim(
     palette: TopScrimPalette,
     pools: DrawScope.() -> Unit,
 ) {
+    if (wash != null) {
+        drawDockPlate(wash.topLeft.dockInk(), wash.topRight.dockInk(), edgeAtTop = true)
+        return
+    }
     if (!fill) {
         drawRect(brush = palette.verticalBrush())
         pools()
         return
     }
-    val plate = if (wash != null) {
-        Brush.horizontalGradient(
-            0f to wash.topLeft.copy(alpha = 1f),
-            1f to wash.topRight.copy(alpha = 1f),
-        )
-    } else {
-        theme
-    }
-    drawRect(brush = plate)
+    drawRect(brush = theme)
 }
 
 @Composable

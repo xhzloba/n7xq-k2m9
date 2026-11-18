@@ -260,7 +260,7 @@ private fun CatalogBrand(
                 imageVector = ShellIcons.search,
                 contentDescription = stringResource(R.string.search),
                 tint = Color.White,
-                modifier = Modifier.size(22.dp),
+                modifier = Modifier.size(28.dp),
             )
         }
     }

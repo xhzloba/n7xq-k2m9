@@ -85,8 +85,21 @@ fun String.normalizedPlayerCodec(): String = when (this) {
     else -> "auto"
 }
 
-/** Порядок, который уже мог сохраниться: жанры, потом свои. */
-val PreviousHomeRailOrder: List<String> = GenreRails.All.map { it.id } + listOf(
+/** Порядок, который уже мог сохраниться: жанры до семейного, потом свои. */
+val PreviousHomeRailOrder: List<String> = listOf(
+    GenreRails.Action,
+    GenreRails.Scifi,
+    GenreRails.Horror,
+    GenreRails.Drama,
+    GenreRails.Thriller,
+    GenreRails.Comedy,
+    GenreRails.Western,
+    GenreRails.War,
+    GenreRails.Fantasy,
+    GenreRails.Melodrama,
+    GenreRails.Crime,
+    GenreRails.Detective,
+) + listOf(
     "recommendations",
     "history",
     "continue",
@@ -119,6 +132,14 @@ fun List<String>.placedAfter(anchor: String, ids: List<String>): List<String> {
     val at = order.indexOf(anchor).let { if (it >= 0) it + 1 else order.size }
     order.addAll(at, ids)
     return order
+}
+
+/** Жанровые полки в своих местах, но по алфавиту. Остальные полки не двигаются. */
+fun List<String>.genresAlphabetical(): List<String> {
+    val rank = GenreRails.All.mapIndexed { index, rail -> rail.id to index }.toMap()
+    val sorted = filter { it in rank }.sortedBy { rank.getValue(it) }
+    var cursor = 0
+    return map { id -> if (id in rank) sorted[cursor++] else id }
 }
 
 fun List<String>.moveHomeRail(id: String, up: Boolean): List<String> {

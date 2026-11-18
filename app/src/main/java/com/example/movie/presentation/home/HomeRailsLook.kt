@@ -65,7 +65,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -109,18 +108,25 @@ internal object HomeRails {
     )
 
     val Genres: List<Entry> = listOf(
+        Entry(GenreRails.Biography, R.string.section_biography),
         Entry(GenreRails.Action, R.string.section_action),
-        Entry(GenreRails.Scifi, R.string.section_scifi),
-        Entry(GenreRails.Horror, R.string.section_horror),
-        Entry(GenreRails.Drama, R.string.section_drama),
-        Entry(GenreRails.Thriller, R.string.section_thriller),
-        Entry(GenreRails.Comedy, R.string.section_comedy),
         Entry(GenreRails.Western, R.string.section_western),
         Entry(GenreRails.War, R.string.section_war),
-        Entry(GenreRails.Fantasy, R.string.section_fantasy),
-        Entry(GenreRails.Melodrama, R.string.section_melodrama),
-        Entry(GenreRails.Crime, R.string.section_crime),
         Entry(GenreRails.Detective, R.string.section_detective),
+        Entry(GenreRails.Drama, R.string.section_drama),
+        Entry(GenreRails.Historical, R.string.section_historical),
+        Entry(GenreRails.Comedy, R.string.section_comedy),
+        Entry(GenreRails.Crime, R.string.section_crime),
+        Entry(GenreRails.Melodrama, R.string.section_melodrama),
+        Entry(GenreRails.Music, R.string.section_music),
+        Entry(GenreRails.Musical, R.string.section_musical),
+        Entry(GenreRails.Adventure, R.string.section_adventure),
+        Entry(GenreRails.Family, R.string.section_family),
+        Entry(GenreRails.Sport, R.string.section_sport),
+        Entry(GenreRails.Thriller, R.string.section_thriller),
+        Entry(GenreRails.Horror, R.string.section_horror),
+        Entry(GenreRails.Scifi, R.string.section_scifi),
+        Entry(GenreRails.Fantasy, R.string.section_fantasy),
     )
 
     val Own: List<Entry> = listOf(
@@ -309,9 +315,6 @@ internal fun HomeRailsLookSheet(
     val settings by LocalUserSettings.current.settings.collectAsStateWithLifecycle()
     val panel = themePanel(settings.appTheme)
     var tab by remember(initial) { mutableStateOf(initial) }
-    // Чуть выше половины экрана; длинный список крутится внутри.
-    val sheetCap = (LocalConfiguration.current.screenHeightDp * 0.58f).dp
-    val listCap = sheetCap - 108.dp
     // Оверскролл списка не должен утаскивать шит вниз (скролл главной тоже).
     val keepSheet = remember {
         object : NestedScrollConnection {
@@ -324,11 +327,10 @@ internal fun HomeRailsLookSheet(
             override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity = available
         }
     }
-    CoverPopup(onDismiss = onDismiss) {
+    CoverPopup(onDismiss = onDismiss, expand = true) {
         Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(max = sheetCap)
+                .fillMaxSize()
                 .padding(bottom = 12.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
@@ -366,17 +368,18 @@ internal fun HomeRailsLookSheet(
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(max = listCap)
+                    .weight(1f)
                     .padding(horizontal = PosterGridInset),
                 label = "rails-look-tab",
             ) { page ->
                 Column(
                     modifier = Modifier
-                        .fillMaxWidth()
+                        .fillMaxSize()
                         .nestedScroll(keepSheet)
                         .clip(RoundedCornerShape(20.dp))
                         .background(panel)
-                        .verticalScroll(rememberScrollState()),
+                        .verticalScroll(rememberScrollState())
+                        .padding(bottom = 12.dp),
                 ) {
                     HomeRailsLookBody(page)
                 }

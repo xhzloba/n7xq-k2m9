@@ -338,7 +338,7 @@ internal fun BrandRow(
                 imageVector = ShellIcons.search,
                 contentDescription = stringResource(R.string.search),
                 tint = Color.White,
-                modifier = Modifier.size(22.dp),
+                modifier = Modifier.size(28.dp),
             )
         }
     }
@@ -368,7 +368,7 @@ internal fun HeaderBell(onClick: () -> Unit) {
             imageVector = ShellIcons.bell,
             contentDescription = stringResource(R.string.nav_alerts),
             tint = Color.White,
-            modifier = Modifier.size(22.dp),
+            modifier = Modifier.size(28.dp),
         )
         if (count > 0) {
             CountBadge(
