@@ -681,12 +681,12 @@ private fun AboutPage(modifier: Modifier = Modifier) {
             .padding(bottom = 96.dp),
     ) {
         Image(
-            painter = painterResource(R.drawable.amigoplay_logo),
-            contentDescription = "AmigoPlay",
+            painter = painterResource(R.drawable.lumen_logo),
+            contentDescription = "Люмен",
             modifier = Modifier
                 .padding(start = PosterGridInset - BrandLogoBleed, end = PosterGridInset)
                 .height(36.dp)
-                .aspectRatio(754f / 186f, matchHeightConstraintsFirst = true),
+                .aspectRatio(915f / 203f, matchHeightConstraintsFirst = true),
             alignment = Alignment.CenterStart,
             contentScale = ContentScale.Fit,
         )

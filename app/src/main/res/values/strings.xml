@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">movie</string>
+    <string name="app_name">Lumen</string>
     <string name="retry">Повторить</string>
     <string name="popular_load_error">Не удалось загрузить.</string>
     <string name="popular_network_error">Нет сети. Проверь соединение.</string>
