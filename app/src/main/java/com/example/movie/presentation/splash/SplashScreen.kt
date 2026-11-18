@@ -1,6 +1,9 @@
 package com.example.movie.presentation.splash
 
 import android.graphics.BitmapFactory
+import android.os.VibrationAttributes
+import android.os.VibrationEffect
+import android.os.Vibrator
 import android.os.VibratorManager
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
@@ -32,15 +35,23 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.movie.R
-import com.example.movie.domain.model.HapticFeel
 import com.example.movie.presentation.common.appBackground
-import com.example.movie.presentation.haptic.play
 import com.example.movie.presentation.settings.LocalUserSettings
 import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
 
 private val LogoAspect = 915f / 203f
 private val Enter = CubicBezierEasing(0.22f, 0.08f, 0.18f, 1f)
+
+private fun Vibrator.splashBuzz() {
+    if (!hasVibrator()) return
+    val effect = if (hasAmplitudeControl()) {
+        VibrationEffect.createWaveform(longArrayOf(0, 160, 50), intArrayOf(0, 255, 220), 0)
+    } else {
+        VibrationEffect.createWaveform(longArrayOf(0, 180, 40), 0)
+    }
+    vibrate(effect, VibrationAttributes.createForUsage(VibrationAttributes.USAGE_ALARM))
+}
 
 @Composable
 internal fun SplashScreen(onReveal: () -> Unit, onFinished: () -> Unit) {
@@ -52,13 +63,17 @@ internal fun SplashScreen(onReveal: () -> Unit, onFinished: () -> Unit) {
         context.getSystemService(VibratorManager::class.java)?.defaultVibrator
     }
     LaunchedEffect(Unit) {
-        enter.animateTo(1f, tween(820, easing = Enter))
-        if (settings.haptic) vibrator?.play(HapticFeel.Click)
-        delay(280)
-        onReveal()
-        delay(200)
-        veil.animateTo(0f, tween(640, easing = FastOutSlowInEasing))
-        onFinished()
+        if (settings.haptic) vibrator?.splashBuzz()
+        try {
+            enter.animateTo(1f, tween(820, easing = Enter))
+            delay(280)
+            onReveal()
+            delay(200)
+            veil.animateTo(0f, tween(640, easing = FastOutSlowInEasing))
+            onFinished()
+        } finally {
+            vibrator?.cancel()
+        }
     }
     BackHandler(enabled = true) {}
     BoxWithConstraints(
