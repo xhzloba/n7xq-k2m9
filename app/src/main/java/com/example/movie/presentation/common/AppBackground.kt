@@ -226,13 +226,13 @@ internal fun DrawScope.drawTopScrim(
     palette: TopScrimPalette,
     pools: DrawScope.() -> Unit,
 ) {
-    if (wash != null) {
-        drawDockPlate(wash.topLeft.dockInk(), wash.topRight.dockInk(), edgeAtTop = true)
-        return
-    }
     if (!fill) {
         drawRect(brush = palette.verticalBrush())
         pools()
+        return
+    }
+    if (wash != null) {
+        drawDockPlate(wash.topLeft.dockInk(), wash.topRight.dockInk(), edgeAtTop = true)
         return
     }
     drawRect(brush = theme)

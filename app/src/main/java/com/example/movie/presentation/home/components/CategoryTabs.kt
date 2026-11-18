@@ -86,7 +86,7 @@ internal val CategoryTabLineHeight = 24.sp
 internal val CategoryTabLetterSpacing = (-0.2).sp
 
 private val LogoHeight = 36.dp
-private val LogoAspect = 915f / 203f
+internal val LogoAspect = 915f / 203f
 internal val PosterGridInset = 16.dp
 internal val HomeContentInset = PosterGridInset
 internal val BrandTopInset = 16.dp
