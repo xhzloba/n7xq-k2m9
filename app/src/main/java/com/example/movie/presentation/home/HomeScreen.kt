@@ -382,6 +382,9 @@ fun HomeScreen(
                     bottom = HomeBottomClearance,
                 ),
             ) {
+                item(key = "cast_live") {
+                    CastLiveSlot(onMovieClick = onMovieClick)
+                }
                 item(key = "tabs") {
                     if (state.shelves.isEmpty()) {
                         CategoryTabsSkeleton(

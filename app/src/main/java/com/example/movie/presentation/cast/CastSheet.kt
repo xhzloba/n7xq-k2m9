@@ -53,7 +53,9 @@ import com.example.movie.R
 import com.example.movie.data.cast.DlnaDevice
 import com.example.movie.data.player.videoTrackLabel
 import com.example.movie.data.cast.TvCastHub
+import com.example.movie.data.cast.CastProgram
 import com.example.movie.domain.model.EpisodeProgress
+import com.example.movie.domain.model.Movie
 import com.example.movie.domain.model.FranchiseEpisode
 import com.example.movie.domain.model.FranchiseSeason
 import com.example.movie.domain.model.ResumeItem
@@ -68,6 +70,7 @@ import com.example.movie.ui.theme.PlayBlue
 @Composable
 internal fun CastSheet(
     title: String,
+    movie: Movie,
     movieId: String,
     pageUrl: String?,
     resolving: Boolean,
@@ -99,9 +102,17 @@ internal fun CastSheet(
         if (!series || id == null || season <= 0 || episode <= 0) return pageUrl
         return resumeWatchUrl(id, season, episode)
     }
+    fun program(season: Int, episode: Int) = CastProgram(
+        movie = movie,
+        watchId = watchId,
+        seasons = if (series) seasons else emptyList(),
+        season = season,
+        episode = episode,
+    )
     fun launch(target: CastTarget, device: DlnaDevice) {
         val season = seasonNumber
         val episode = episodeNumber
+        if (target == CastTarget.Player) TvCastHub.arm(program(season, episode))
         launchOn(
             context = context,
             target = target,
@@ -236,11 +247,13 @@ internal fun CastSheet(
                                 val episode = next.aired(null)?.number ?: return@TvDrop
                                 seasonNumber = number
                                 episodeNumber = episode
+                                TvCastHub.sync(program(number, episode))
                                 TvCastService.retarget(context, resumeWatchUrl(id, number, episode), shownTitle(number, episode), movieId)
                             },
                             onEpisode = { number ->
                                 episodeNumber = number
                                 val id = watchId ?: return@TvDrop
+                                TvCastHub.sync(program(seasonNumber, number))
                                 TvCastService.retarget(
                                     context,
                                     resumeWatchUrl(id, seasonNumber, number),

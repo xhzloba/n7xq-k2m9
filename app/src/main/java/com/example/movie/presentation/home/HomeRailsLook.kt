@@ -71,6 +71,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -315,6 +316,9 @@ internal fun HomeRailsLookSheet(
     val settings by LocalUserSettings.current.settings.collectAsStateWithLifecycle()
     val panel = themePanel(settings.appTheme)
     var tab by remember(initial) { mutableStateOf(initial) }
+    // Чуть выше половины экрана; длинный список крутится внутри.
+    val sheetCap = (LocalConfiguration.current.screenHeightDp * 0.58f).dp
+    val listCap = sheetCap - 108.dp
     // Оверскролл списка не должен утаскивать шит вниз (скролл главной тоже).
     val keepSheet = remember {
         object : NestedScrollConnection {
@@ -327,10 +331,11 @@ internal fun HomeRailsLookSheet(
             override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity = available
         }
     }
-    CoverPopup(onDismiss = onDismiss, expand = true) {
+    CoverPopup(onDismiss = onDismiss) {
         Column(
             modifier = Modifier
-                .fillMaxSize()
+                .fillMaxWidth()
+                .heightIn(max = sheetCap)
                 .padding(bottom = 12.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
@@ -368,18 +373,17 @@ internal fun HomeRailsLookSheet(
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(1f)
+                    .heightIn(max = listCap)
                     .padding(horizontal = PosterGridInset),
                 label = "rails-look-tab",
             ) { page ->
                 Column(
                     modifier = Modifier
-                        .fillMaxSize()
+                        .fillMaxWidth()
                         .nestedScroll(keepSheet)
                         .clip(RoundedCornerShape(20.dp))
                         .background(panel)
-                        .verticalScroll(rememberScrollState())
-                        .padding(bottom = 12.dp),
+                        .verticalScroll(rememberScrollState()),
                 ) {
                     HomeRailsLookBody(page)
                 }
@@ -553,8 +557,7 @@ internal fun HomeRailsCover(
     val p = progress.value
     val contentAlpha = ((p - 0.78f) / 0.22f).coerceIn(0f, 1f)
     val veil = color.copy(alpha = 1f)
-    val nav = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-    val dockClearance = 16.dp + 42.dp + (nav + 4.dp).coerceAtLeast(22.dp) + 12.dp
+    val navPad = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     Box(Modifier.fillMaxSize()) {
         CornerIris(progress = p, color = veil, modifier = Modifier.fillMaxSize())
         Box(
@@ -584,7 +587,6 @@ internal fun HomeRailsCover(
                         start = HomeContentInset - BrandLogoBleed,
                         end = HomeContentInset - 9.dp,
                         top = BrandTopInset,
-                        bottom = dockClearance,
                     )
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
@@ -625,7 +627,7 @@ internal fun HomeRailsCover(
                     Modifier
                         .fillMaxWidth()
                         .weight(1f)
-                        .clip(RoundedCornerShape(20.dp))
+                        .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
                         .background(color),
                 ) {
                     AnimatedContent(
@@ -651,7 +653,8 @@ internal fun HomeRailsCover(
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .verticalScroll(rememberScrollState()),
+                                .verticalScroll(rememberScrollState())
+                                .padding(bottom = navPad),
                         ) {
                             HomeRailsLookBody(page)
                         }

@@ -233,6 +233,7 @@
     <string name="cast_audio_value">Озвучка: %1$s</string>
     <string name="cast_episode_value">Серия %1$d</string>
     <string name="cast_live">Идёт</string>
+    <string name="cast_plaque_live">Идёт трансляция</string>
     <string name="cast_browser_allow">На телевизоре подтверди доступ. Откроется тот же плеер, что в браузере.</string>
     <string name="cast_browser_opened">Плеер открыт на %1$s</string>
     <string name="cast_browser">Адрес в браузере телевизора</string>

@@ -140,6 +140,9 @@ fun CatalogScreen(
                     bottom = 96.dp,
                 ),
             ) {
+                item(key = "cast_live") {
+                    CastLiveSlot(onMovieClick = onMovieClick)
+                }
                 item(key = "tabs") {
                     CategoryTabs(
                         shelves = menu,

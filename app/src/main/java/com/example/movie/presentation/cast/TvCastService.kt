@@ -274,7 +274,13 @@ class TvCastService : Service() {
         playOnRenderer(DlnaDevice(name, control, control), url, mediaTitle, dash = !hls)
         controlUrl = control
         TvCastHub.update {
-            it.copy(busy = false, playingOn = name, streamUrl = url, message = getString(R.string.cast_playing, name))
+            it.copy(
+                busy = false,
+                playingOn = name,
+                streamUrl = url,
+                player = TvCastHub.armed,
+                message = getString(R.string.cast_playing, name),
+            )
         }
     }
 
@@ -289,12 +295,18 @@ class TvCastService : Service() {
         TvCastHub.update { it.copy(busy = true, message = getString(R.string.cast_browser_allow)) }
         openTvBrowser(tv, page, TvPairing(this))
         TvCastHub.update {
-            it.copy(busy = false, playingOn = name, message = getString(R.string.cast_browser_opened, name))
+            it.copy(
+                busy = false,
+                playingOn = name,
+                player = null,
+                message = getString(R.string.cast_browser_opened, name),
+            )
         }
     }
 
     private fun shutdown() {
         release()
+        TvCastHub.armed = null
         TvCastHub.update { TvCastUi() }
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()

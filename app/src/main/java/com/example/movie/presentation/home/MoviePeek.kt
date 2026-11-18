@@ -23,7 +23,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -289,7 +288,6 @@ private fun MovieMenu(
 @Composable
 internal fun CoverPopup(
     onDismiss: () -> Unit,
-    expand: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -306,7 +304,6 @@ internal fun CoverPopup(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .then(if (expand) Modifier.fillMaxHeight() else Modifier)
                 .appBackground()
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
@@ -325,11 +322,7 @@ internal fun CoverPopup(
                     .clip(RoundedCornerShape(2.dp))
                     .background(Color.White.copy(alpha = 0.28f)),
             )
-            if (expand) {
-                Box(Modifier.weight(1f).fillMaxWidth()) { content() }
-            } else {
-                content()
-            }
+            content()
         }
     }
 }
