@@ -6,6 +6,7 @@ import com.example.movie.BuildConfig
 import com.example.movie.data.alerts.ReleaseWatch
 import com.example.movie.data.alerts.ReleaseWatchStore
 import com.example.movie.data.backdrops.BackdropSetStore
+import com.example.movie.data.palette.WashToneStore
 import com.example.movie.data.download.OfflineStore
 import com.example.movie.data.favorites.FavoriteStore
 import com.example.movie.data.favorites.WatchedStore
@@ -41,6 +42,7 @@ import java.util.concurrent.TimeUnit
 class AppContainer(context: Context) {
     val userSettings: UserSettingsRepository = UserSettingsStore(context)
     val backdropSets = BackdropSetStore(context)
+    val washTones = WashToneStore(context)
     val favorites = FavoriteStore(context)
     val watched = WatchedStore(context)
     val offline = OfflineStore(context)

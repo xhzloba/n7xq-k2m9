@@ -8,6 +8,8 @@ import com.example.movie.data.backdrops.BackdropSetStore
 import com.example.movie.data.favorites.FavoriteStore
 import com.example.movie.data.favorites.WatchedStore
 import com.example.movie.data.history.ResumeStore
+import com.example.movie.data.palette.WashTone
+import com.example.movie.data.palette.WashToneStore
 import com.example.movie.data.history.ViewHistoryStore
 import com.example.movie.data.search.SearchHistoryStore
 import com.example.movie.domain.model.EpisodeProgress
@@ -49,6 +51,7 @@ internal data class LibraryFile(
     val shelves: List<FeedShelf> = emptyList(),
     val frames: Map<String, BackdropPick> = emptyMap(),
     val shots: List<KeptShot> = emptyList(),
+    val tones: Map<String, WashTone> = emptyMap(),
 )
 
 @Serializable
@@ -81,6 +84,11 @@ internal object LibraryArchive {
         val parsed = runCatching { json.parseToJsonElement(text) }.getOrNull() as? JsonObject ?: return false
         return "frames" in parsed || "shots" in parsed
     }
+
+    fun hasTones(text: String): Boolean {
+        val parsed = runCatching { json.parseToJsonElement(text) }.getOrNull() as? JsonObject ?: return false
+        return "tones" in parsed
+    }
 }
 
 internal class AppBackup(
@@ -93,6 +101,7 @@ internal class AppBackup(
     private val search: SearchHistoryStore,
     private val alerts: ReleaseWatchStore,
     private val backdrops: BackdropSetStore,
+    private val washTones: WashToneStore,
 ) {
     fun export(): String {
         val shots = backdrops.exportShots().map { (path, bytes) ->
@@ -113,6 +122,7 @@ internal class AppBackup(
                 shelves = alerts.shelves.value,
                 frames = backdrops.sets.value,
                 shots = shots,
+                tones = washTones.tones.value,
             ),
         )
     }
@@ -135,6 +145,9 @@ internal class AppBackup(
             }
             backdrops.restore(file.frames, shots)
         }
+        if (LibraryArchive.hasTones(text)) {
+            washTones.replace(file.tones)
+        }
         return true
     }
 
@@ -147,6 +160,7 @@ internal class AppBackup(
         search.clear()
         alerts.replace(emptyList(), emptyList(), FeedWatch(), emptyList())
         backdrops.clearAll()
+        washTones.clearAll()
     }
 
     fun clearCache() {

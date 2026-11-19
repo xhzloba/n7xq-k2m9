@@ -12,6 +12,18 @@ data class UserSettings(
     val heroPosterColors: Boolean = true,
     /** true = UltraBlur на всю главную; false = только зона слайдера. */
     val heroPosterPage: Boolean = true,
+    /** 1 — дальность цветов как у алгоритма. Меньше — больше чёрного между углами. */
+    val plexIntensity: Float = 1f,
+    /** Сдвиг яркости уже добытых цветов. 0 — не трогать. */
+    val plexLight: Float = 0f,
+    /** Насколько самый край угла уходит в чёрный. 0 — цвет угла как есть. */
+    val plexCorner: Float = 0f,
+    /** Белый поверх цвета. Больше не рисуется, поле осталось чтобы старые бэкапы читались. */
+    val plexWhite: Float = 0f,
+    /** Сила каждого угла: левый верх, правый верх, правый низ, левый низ. 0 — как достал алгоритм. */
+    val plexPunch: List<Float> = listOf(0f, 0f, 0f, 0f),
+    /** Свой цвет угла, ARGB. 0 — цвет алгоритма. Порядок тот же, что у plexPunch. */
+    val plexPick: List<Int> = listOf(0, 0, 0, 0),
     val showLogos: Boolean = true,
     val autoBackdrop: Boolean = true,
     val watchGlow: Boolean = false,
@@ -170,6 +182,20 @@ interface UserSettingsRepository {
     fun setHeroPosterColors(enabled: Boolean)
 
     fun setHeroPosterPage(enabled: Boolean)
+
+    fun setPlexIntensity(value: Float)
+
+    fun setPlexLight(value: Float)
+
+    fun setPlexCorner(value: Float)
+
+    fun setPlexWhite(value: Float)
+
+    fun setPlexPunch(index: Int, value: Float)
+
+    fun setPlexPick(index: Int, color: Int)
+
+    fun resetPlexTone()
 
     fun setShowLogos(enabled: Boolean)
 

@@ -56,6 +56,37 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
 
     override fun setHeroPosterPage(enabled: Boolean) = write { it.copy(heroPosterPage = enabled) }
 
+    override fun setPlexIntensity(value: Float) = tune { it.copy(plexIntensity = value.coerceIn(0.45f, 1.55f)) }
+
+    override fun setPlexLight(value: Float) = tune { it.copy(plexLight = value.coerceIn(-1f, 1f)) }
+
+    override fun setPlexCorner(value: Float) = tune { it.copy(plexCorner = value.coerceIn(0f, 1f)) }
+
+    override fun setPlexWhite(value: Float) = tune { it.copy(plexWhite = value.coerceIn(0f, 0.72f)) }
+
+    override fun setPlexPunch(index: Int, value: Float) = tune { current ->
+        val next = current.plexPunch.punch4().toMutableList()
+        next[index.coerceIn(0, 3)] = value.coerceIn(-1f, 1f)
+        current.copy(plexPunch = next)
+    }
+
+    override fun setPlexPick(index: Int, color: Int) = tune { current ->
+        val next = current.plexPick.pick4().toMutableList()
+        next[index.coerceIn(0, 3)] = color
+        current.copy(plexPick = next)
+    }
+
+    override fun resetPlexTone() = tune {
+        it.copy(
+            plexIntensity = 1f,
+            plexLight = 0f,
+            plexCorner = 0f,
+            plexWhite = 0f,
+            plexPunch = listOf(0f, 0f, 0f, 0f),
+            plexPick = listOf(0, 0, 0, 0),
+        )
+    }
+
     override fun setShowLogos(enabled: Boolean) = write { it.copy(showLogos = enabled) }
 
     override fun setAutoBackdrop(enabled: Boolean) = write { it.copy(autoBackdrop = enabled) }
@@ -206,6 +237,12 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
             .putBoolean(KEY_PLEX_BACKDROP, next.plexBackdrop)
             .putBoolean(KEY_HERO_COLORS, next.heroPosterColors)
             .putBoolean(KEY_HERO_PAGE, next.heroPosterPage)
+            .putFloat(KEY_PLEX_INTENSITY, next.plexIntensity)
+            .putFloat(KEY_PLEX_LIGHT, next.plexLight)
+            .putFloat(KEY_PLEX_CORNER, next.plexCorner)
+            .putFloat(KEY_PLEX_WHITE, next.plexWhite)
+            .putString(KEY_PLEX_PUNCH, next.plexPunch.punch4().joinToString(","))
+            .putString(KEY_PLEX_PICK, next.plexPick.pick4().joinToString(","))
             .putBoolean(KEY_LOGOS, next.showLogos)
             .putBoolean(KEY_BACKDROP, next.autoBackdrop)
             .putBoolean(KEY_WATCH_GLOW, next.watchGlow)
@@ -248,6 +285,19 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
             .putBoolean(KEY_HOME_HINT, next.homeHintSeen)
             .commit()
         state.value = next
+    }
+
+    private fun tune(transform: (UserSettings) -> UserSettings) {
+        val next = transform(state.value)
+        state.value = next
+        prefs.edit()
+            .putFloat(KEY_PLEX_INTENSITY, next.plexIntensity)
+            .putFloat(KEY_PLEX_LIGHT, next.plexLight)
+            .putFloat(KEY_PLEX_CORNER, next.plexCorner)
+            .putFloat(KEY_PLEX_WHITE, next.plexWhite)
+            .putString(KEY_PLEX_PUNCH, next.plexPunch.punch4().joinToString(","))
+            .putString(KEY_PLEX_PICK, next.plexPick.pick4().joinToString(","))
+            .apply()
     }
 
     private fun read(): UserSettings {
@@ -301,6 +351,12 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
         plexBackdrop = prefs.getBoolean(KEY_PLEX_BACKDROP, true),
         heroPosterColors = prefs.getBoolean(KEY_HERO_COLORS, true),
         heroPosterPage = prefs.getBoolean(KEY_HERO_PAGE, true),
+        plexIntensity = prefs.getFloat(KEY_PLEX_INTENSITY, 1f).coerceIn(0.45f, 1.55f),
+        plexLight = prefs.getFloat(KEY_PLEX_LIGHT, 0f).coerceIn(-1f, 1f),
+        plexCorner = prefs.getFloat(KEY_PLEX_CORNER, 0f).coerceIn(0f, 1f),
+        plexWhite = prefs.getFloat(KEY_PLEX_WHITE, 0f).coerceIn(0f, 0.72f),
+        plexPunch = prefs.getString(KEY_PLEX_PUNCH, null).toPunch(),
+        plexPick = prefs.getString(KEY_PLEX_PICK, null).toPick(),
         showLogos = prefs.getBoolean(KEY_LOGOS, true),
         autoBackdrop = prefs.getBoolean(KEY_BACKDROP, true),
         watchGlow = prefs.getBoolean(KEY_WATCH_GLOW, false),
@@ -522,6 +578,12 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
         const val KEY_DEFAULTS_230 = "defaults_2_30"
         const val KEY_HERO_COLORS = "hero_poster_colors"
         const val KEY_HERO_PAGE = "hero_poster_page"
+        const val KEY_PLEX_INTENSITY = "plex_intensity"
+        const val KEY_PLEX_LIGHT = "plex_light"
+        const val KEY_PLEX_CORNER = "plex_corner"
+        const val KEY_PLEX_WHITE = "plex_white"
+        const val KEY_PLEX_PUNCH = "plex_punch"
+        const val KEY_PLEX_PICK = "plex_pick"
         const val KEY_LOGOS = "show_logos"
         const val KEY_BACKDROP = "auto_backdrop"
         const val KEY_WATCH_GLOW = "watch_glow"
@@ -580,4 +642,18 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
         const val KEY_HOME_HINT = "home_hint_seen"
         const val KEY_HINTS_ARMED = "hints_armed"
     }
+}
+
+private fun List<Float>.punch4(): List<Float> = List(4) { getOrElse(it) { 0f }.coerceIn(-1f, 1f) }
+
+private fun List<Int>.pick4(): List<Int> = List(4) { getOrElse(it) { 0 } }
+
+private fun String?.toPunch(): List<Float> {
+    val parts = this?.split(',')?.mapNotNull { it.toFloatOrNull() }.orEmpty()
+    return parts.punch4()
+}
+
+private fun String?.toPick(): List<Int> {
+    val parts = this?.split(',')?.mapNotNull { it.toIntOrNull() }.orEmpty()
+    return parts.pick4()
 }

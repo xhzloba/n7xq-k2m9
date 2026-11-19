@@ -23,6 +23,20 @@ private object DefaultUserSettings : UserSettingsRepository {
 
     override fun setHeroPosterPage(enabled: Boolean) = Unit
 
+    override fun setPlexIntensity(value: Float) = Unit
+
+    override fun setPlexLight(value: Float) = Unit
+
+    override fun setPlexCorner(value: Float) = Unit
+
+    override fun setPlexWhite(value: Float) = Unit
+
+    override fun setPlexPunch(index: Int, value: Float) = Unit
+
+    override fun setPlexPick(index: Int, color: Int) = Unit
+
+    override fun resetPlexTone() = Unit
+
     override fun setShowLogos(enabled: Boolean) = Unit
 
     override fun setAutoBackdrop(enabled: Boolean) = Unit

@@ -75,6 +75,8 @@ import com.example.movie.presentation.cast.CastSheet
 import com.example.movie.presentation.cast.ChromeCast
 import com.example.movie.presentation.home.components.BrandTopInset
 import com.example.movie.presentation.settings.LocalUserSettings
+import com.example.movie.presentation.settings.WashToneButton
+import com.example.movie.presentation.settings.WashToneSheet
 import com.example.movie.ui.theme.CinemaBlack
 import com.example.movie.ui.theme.PlayBlue
 import com.example.movie.ui.theme.PosterShape
@@ -149,6 +151,8 @@ import com.example.movie.presentation.palette.plexWash
 import com.example.movie.presentation.palette.posterWash
 import com.example.movie.data.player.TrailerSources
 import com.example.movie.data.player.fetchTrailerSources
+import com.example.movie.data.palette.WashTone
+import com.example.movie.data.palette.washToneKey
 import com.example.movie.di.LocalAppContainer
 import com.example.movie.domain.model.ResumeItem
 import com.example.movie.domain.model.combineMarks
@@ -671,6 +675,8 @@ private fun DetailContent(
     var episodesOpen by remember(detail.id) { mutableStateOf(false) }
     var seasonWatch by remember(detail.id) { mutableStateOf(false) }
     var castSheet by remember(detail.id) { mutableStateOf(false) }
+    var toneOpen by remember(detail.id) { mutableStateOf(false) }
+    var previewOn by remember(detail.id) { mutableStateOf(true) }
     var downloadSheet by remember(detail.id) { mutableStateOf(false) }
     var moreOpen by remember(detail.id) { mutableStateOf(false) }
     var qualitySheet by remember(detail.id) { mutableStateOf(false) }
@@ -737,6 +743,7 @@ private fun DetailContent(
     val cardBuzz = rememberHaptic(HapticSlot.Card)
     var logoReady by remember(detail.id, detail.logoUrl) { mutableStateOf(false) }
     val settings by LocalUserSettings.current.settings.collectAsStateWithLifecycle()
+    val cardTones by LocalAppContainer.current.washTones.tones.collectAsStateWithLifecycle()
     val flat = PosterWash(CinemaBlack, CinemaBlack, CinemaBlack, CinemaBlack)
     val hidden = PosterWash(Color.Black, Color.Black, Color.Black, Color.Black)
     val colored = settings.extractBackdrop || settings.extractPlex
@@ -827,6 +834,13 @@ private fun DetailContent(
     } else {
         backdrops[(if (manualBackdrop) pagerState.currentPage else frame).coerceIn(0, backdrops.lastIndex)]
     }
+    val backdropTone = when {
+        settings.extractBackdrop -> shownBackdrop
+        settings.extractPlex && settings.plexBackdrop -> shownBackdrop
+        else -> null
+    }
+    val toneKey = washToneKey(detail.id, backdropTone)
+    val cardTone = cardTones[toneKey] ?: WashTone()
     val washCache = remember(detail.id) { HashMap<String, PosterWash>() }
     val stillReady = shownBackdrop == null || loadedStills[shownBackdrop] == true
     var cardPlayed by remember(detail.id) { mutableStateOf(false) }
@@ -916,6 +930,11 @@ private fun DetailContent(
     } else {
         target
     }
+    val toneWash = if (colored) {
+        paintWash.graded(cardTone.lights, cardTone.punch, cardTone.pick)
+    } else {
+        paintWash
+    }
     var backdropColorReady by remember(detail.id, shownBackdrop) { mutableStateOf(false) }
     var watchGlow by remember(detail.id) { mutableStateOf<Color?>(null) }
     LaunchedEffect(detail.id, settings.watchGlow) {
@@ -966,7 +985,7 @@ private fun DetailContent(
                 }
                 drawRect(Color(0xFF121212))
                 if (settings.extractPlex) {
-                    drawPlexWash(paintWash, washAlpha)
+                    drawPlexWash(toneWash, washAlpha, cardTone.intensity, cardTone.corner)
                 } else {
                     val washLift = size.height * 0.035f
                     scale(
@@ -974,7 +993,7 @@ private fun DetailContent(
                         scaleY = (size.height + washLift) / size.height,
                         pivot = Offset(size.width / 2f, size.height),
                     ) {
-                        drawPosterWash(paintWash, washAlpha)
+                        drawPosterWash(toneWash, washAlpha, cardTone.intensity, cardTone.corner)
                     }
                 }
                 if (shade > 0f && colored && !settings.extractPlex) {
@@ -1008,7 +1027,7 @@ private fun DetailContent(
         val logoTop = with(density) { contentTop.toPx() } - scroll.value
         val logoAnchor = logoTop + logoExtentPx / 2f
         val barIn = ((castDock + barTravelPx - logoAnchor) / barTravelPx).coerceIn(0f, 1f)
-        if (backdrops.isNotEmpty() || (wantTrailer && trailerMedia != null)) {
+        if (previewOn && (backdrops.isNotEmpty() || (wantTrailer && trailerMedia != null))) {
             Box(
                 modifier = Modifier
                     .offset(y = -lift)
@@ -1039,16 +1058,18 @@ private fun DetailContent(
                 }
             }
         }
-        if (holdTrailer && trailerFrame) {
+        if (previewOn && holdTrailer && trailerFrame) {
             TrailerEdgeFade(
-                wash = paintWash,
+                wash = toneWash,
                 alpha = washAlpha,
                 plex = settings.extractPlex,
+                intensity = cardTone.intensity,
+                corner = cardTone.corner,
                 bottomFraction = with(density) { contentTop.toPx() / maxHeight.toPx() },
                 modifier = Modifier.fillMaxSize(),
             )
         }
-        if (backdrops.isNotEmpty()) {
+        if (previewOn && backdrops.isNotEmpty()) {
             Box(
                 modifier = Modifier
                     .offset(y = -lift)
@@ -1160,7 +1181,7 @@ private fun DetailContent(
                 }
             }
         }
-        if (trailerLoading) {
+        if (previewOn && trailerLoading) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1174,7 +1195,7 @@ private fun DetailContent(
                 )
             }
         }
-        if (manualBackdrop) {
+        if (previewOn && manualBackdrop) {
             BackdropDots(
                 count = backdrops.size,
                 index = pagerState.currentPage,
@@ -1520,6 +1541,15 @@ private fun DetailContent(
                 .align(Alignment.TopCenter)
                 .graphicsLayer { alpha = (1f - barIn) * (1f - pageAlpha) },
         ) {
+            WashToneButton(
+                colors = listOf(toneWash.topLeft, toneWash.topRight, toneWash.bottomRight, toneWash.bottomLeft),
+                onClick = {
+                    tick?.invoke()
+                    toneOpen = true
+                },
+                modifier = Modifier.align(Alignment.CenterEnd).padding(end = 64.dp),
+                enabled = barIn < 0.45f && pageAlpha < 0.5f,
+            )
             Box(
                 Modifier
                     .align(Alignment.CenterEnd)
@@ -1538,16 +1568,34 @@ private fun DetailContent(
                 ChromeCastMark()
             }
         }
-        DetailLogoBar(
-            title = detail.title,
-            logoUrl = detail.logoUrl,
-            showLogo = settings.showLogos,
-            color = lerp(paintWash.topLeft, paintWash.topRight, 0.5f).sunk(),
-            progress = barIn * (1f - pageAlpha),
-            onBack = onBack,
-            onCast = { castSheet = true },
-            modifier = Modifier.align(Alignment.TopCenter),
-        )
+        val barProgress = barIn * (1f - pageAlpha)
+        if (barProgress > 0.4f) {
+            DetailLogoBar(
+                title = detail.title,
+                logoUrl = detail.logoUrl,
+                showLogo = settings.showLogos,
+                color = lerp(paintWash.topLeft, paintWash.topRight, 0.5f).sunk(),
+                progress = barProgress,
+                onBack = onBack,
+                onCast = { castSheet = true },
+                onTune = {
+                    tick?.invoke()
+                    toneOpen = true
+                },
+                toneColors = listOf(toneWash.topLeft, toneWash.topRight, toneWash.bottomRight, toneWash.bottomLeft),
+                modifier = Modifier.align(Alignment.TopCenter),
+            )
+        }
+        if (toneOpen && pageShown == null) {
+            WashToneSheet(
+                movieId = toneKey,
+                wash = paintWash,
+                backdropUrl = backdropTone,
+                previewOn = previewOn,
+                onPreview = { previewOn = it },
+                onDismiss = { toneOpen = false },
+            )
+        }
         val openedPage = pageShown
         if (openedPage != null) {
             val pageModifier = Modifier
@@ -2247,6 +2295,8 @@ private fun DetailLogoBar(
     progress: Float,
     onBack: () -> Unit,
     onCast: () -> Unit,
+    onTune: () -> Unit,
+    toneColors: List<Color>,
     modifier: Modifier = Modifier,
 ) {
     val tick = rememberHapticTick()
@@ -2326,6 +2376,12 @@ private fun DetailLogoBar(
                 modifier = Modifier.size(26.dp),
             )
         }
+        WashToneButton(
+            colors = toneColors,
+            onClick = onTune,
+            modifier = Modifier.align(Alignment.CenterEnd).padding(end = 58.dp),
+            enabled = progress > 0.4f,
+        )
         ChromeCastMark(Modifier.align(Alignment.CenterEnd).padding(end = 27.dp))
     }
 }
@@ -2838,7 +2894,12 @@ private fun Color.sunk(): Color {
     return Color(android.graphics.Color.HSVToColor(hsv))
 }
 
-internal fun DrawScope.drawPosterWash(wash: PosterWash, alpha: Float) {
+internal fun DrawScope.drawPosterWash(
+    wash: PosterWash,
+    alpha: Float,
+    intensity: Float = 1f,
+    corner: Float = 0f,
+) {
     if (alpha <= 0f) return
     val layer = alpha < 0.99f
     if (layer) {
@@ -2849,7 +2910,7 @@ internal fun DrawScope.drawPosterWash(wash: PosterWash, alpha: Float) {
     }
     drawRect(Color(0xFF1E1E1E))
     val side = max(size.width, size.height)
-    val radius = side * 1.41421356f
+    val radius = side * 1.41421356f * intensity
     fun pool(color: Color, endX: Boolean, endY: Boolean) {
         scale(
             scaleX = size.width / side,
@@ -2857,12 +2918,18 @@ internal fun DrawScope.drawPosterWash(wash: PosterWash, alpha: Float) {
             pivot = Offset.Zero,
         ) {
             val center = Offset(if (endX) side else 0f, if (endY) side else 0f)
+            val stops = if (corner <= 0.001f) {
+                arrayOf(0f to color, 0.95f to Color.Transparent)
+            } else {
+                arrayOf(
+                    0f to lerp(color, Color.Black, corner),
+                    0.16f to color,
+                    0.95f to Color.Transparent,
+                )
+            }
             drawCircle(
                 brush = Brush.radialGradient(
-                    colorStops = arrayOf(
-                        0f to color,
-                        0.95f to Color.Transparent,
-                    ),
+                    colorStops = stops,
                     center = center,
                     radius = radius,
                 ),
@@ -2878,7 +2945,12 @@ internal fun DrawScope.drawPosterWash(wash: PosterWash, alpha: Float) {
     if (layer) drawContext.canvas.restore()
 }
 
-internal fun DrawScope.drawPlexWash(wash: PosterWash, alpha: Float) {
+internal fun DrawScope.drawPlexWash(
+    wash: PosterWash,
+    alpha: Float,
+    intensity: Float = 1f,
+    corner: Float = 0f,
+) {
     if (alpha <= 0f) return
     if (wash.isFlat()) {
         drawRect(wash.topLeft.copy(alpha = alpha))
@@ -2891,17 +2963,17 @@ internal fun DrawScope.drawPlexWash(wash: PosterWash, alpha: Float) {
             Paint().apply { this.alpha = alpha },
         )
     }
-    drawUltrablur(wash)
+    drawUltrablur(wash, intensity, corner)
     if (layer) drawContext.canvas.restore()
 }
 
 private fun PosterWash.isFlat(): Boolean =
     topLeft == topRight && topLeft == bottomRight && topLeft == bottomLeft
 
-private fun DrawScope.drawUltrablur(wash: PosterWash) {
+private fun DrawScope.drawUltrablur(wash: PosterWash, intensity: Float, corner: Float) {
     drawRect(Color.Black)
     val side = max(size.width, size.height)
-    val reach = side * UltrablurReach
+    val reach = side * UltrablurReach * intensity
     fun pool(color: Color, endX: Boolean, endY: Boolean) {
         scale(
             scaleX = size.width / side,
@@ -2909,13 +2981,23 @@ private fun DrawScope.drawUltrablur(wash: PosterWash) {
             pivot = Offset.Zero,
         ) {
             val center = Offset(if (endX) side else 0f, if (endY) side else 0f)
+            val stops = if (corner <= 0.001f) {
+                arrayOf(
+                    0f to color,
+                    UltrablurCore to color,
+                    1f to color.copy(alpha = 0f),
+                )
+            } else {
+                arrayOf(
+                    0f to lerp(color, Color.Black, corner),
+                    0.08f to color,
+                    UltrablurCore to color,
+                    1f to color.copy(alpha = 0f),
+                )
+            }
             drawRect(
                 brush = Brush.radialGradient(
-                    colorStops = arrayOf(
-                        0f to color,
-                        UltrablurCore to color,
-                        1f to color.copy(alpha = 0f),
-                    ),
+                    colorStops = stops,
                     center = center,
                     radius = reach,
                 ),
@@ -2927,6 +3009,41 @@ private fun DrawScope.drawUltrablur(wash: PosterWash) {
     pool(wash.bottomLeft, endX = false, endY = true)
     pool(wash.topRight, endX = true, endY = false)
     pool(wash.topLeft, endX = false, endY = false)
+}
+
+internal fun PosterWash.graded(lights: List<Float>, punch: List<Float>, pick: List<Int>): PosterWash {
+    val silent = lights.all { it == 0f } && punch.all { it == 0f } && pick.all { it == 0 }
+    if (silent) return this
+    fun Color.at(index: Int): Color {
+        val chosen = pick.getOrElse(index) { 0 }
+        val base = if (chosen != 0) Color(chosen) else this
+        return base.shiftLight(lights.getOrElse(index) { 0f }).punch(punch.getOrElse(index) { 0f })
+    }
+    return copy(
+        topLeft = topLeft.at(0),
+        topRight = topRight.at(1),
+        bottomRight = bottomRight.at(2),
+        bottomLeft = bottomLeft.at(3),
+    )
+}
+
+private fun Color.shiftLight(light: Float): Color {
+    val hsv = FloatArray(3)
+    android.graphics.Color.colorToHSV(toArgb(), hsv)
+    hsv[2] = (hsv[2] + light * 0.42f).coerceIn(0.02f, 1f)
+    return Color(android.graphics.Color.HSVToColor((alpha * 255).toInt().coerceIn(0, 255), hsv))
+}
+
+private fun Color.punch(amount: Float): Color {
+    if (amount == 0f) return this
+    val hsv = FloatArray(3)
+    android.graphics.Color.colorToHSV(toArgb(), hsv)
+    if (amount > 0f) {
+        hsv[1] = (hsv[1] + (1f - hsv[1]) * amount * 0.45f).coerceIn(0f, 1f)
+    } else {
+        hsv[1] = (hsv[1] * (1f + amount * 0.85f)).coerceIn(0f, 1f)
+    }
+    return Color(android.graphics.Color.HSVToColor((alpha * 255).toInt().coerceIn(0, 255), hsv))
 }
 
 private const val PosterStandInDelay = 1_500L
@@ -2972,13 +3089,15 @@ private fun TrailerEdgeFade(
     plex: Boolean,
     bottomFraction: Float,
     modifier: Modifier = Modifier,
+    intensity: Float = 1f,
+    corner: Float = 0f,
 ) {
     if (alpha <= 0.01f) return
     Canvas(modifier) {
         val bottom = size.height * bottomFraction
         val fadeTop = bottom * 0.74f
         drawContext.canvas.saveLayer(Rect(0f, fadeTop, size.width, bottom + 2f), Paint())
-        if (plex) drawPlexWash(wash, alpha) else drawPosterWash(wash, alpha)
+        if (plex) drawPlexWash(wash, alpha, intensity, corner) else drawPosterWash(wash, alpha, intensity, corner)
         drawRect(
             brush = Brush.verticalGradient(
                 0f to Color.Transparent,

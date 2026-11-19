@@ -60,6 +60,7 @@ internal fun DataPage(modifier: Modifier = Modifier) {
             search = container.searchHistory,
             alerts = container.releaseWatch.store,
             backdrops = container.backdropSets,
+            washTones = container.washTones,
         )
     }
     var confirm by remember { mutableStateOf<String?>(null) }
