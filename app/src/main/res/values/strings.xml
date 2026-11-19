@@ -131,6 +131,14 @@
     <string name="action_more">Дополнительно</string>
     <string name="detail_settings">Настройки</string>
     <string name="detail_settings_hint">Логотип, кадры, цвет и параллакс этой карточки.</string>
+    <string name="detail_frames">Кадры</string>
+    <string name="detail_frames_hint">Какие backdrop крутить. Свои картинки остаются после очистки кэша.</string>
+    <string name="frames_good_only">Только хорошее качество</string>
+    <string name="frames_good_only_hint">В поток идут кадры от 1280 по ширине. Остальные остаются в списке и не грузятся.</string>
+    <string name="frames_add">Добавить свой кадр</string>
+    <string name="frames_own">Свой</string>
+    <string name="frames_low">Низкое</string>
+    <string name="frames_remove">Убрать</string>
     <string name="action_download">Скачать</string>
     <string name="action_downloaded">Скачано</string>
     <string name="download_title">Скачать</string>

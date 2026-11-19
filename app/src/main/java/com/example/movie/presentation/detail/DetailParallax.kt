@@ -8,9 +8,11 @@ import android.os.Handler
 import android.os.Looper
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.foundation.layout.offset
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -19,16 +21,20 @@ import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.IntOffset
+import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
+import kotlinx.coroutines.isActive
 
 /** Наклон относительно позы, в которой открыли карточку. −1…1 по обеим осям. */
 @Composable
 internal fun rememberDetailTilt(enabled: Boolean, resetKey: Any): State<Offset> {
-    val tilt = remember(resetKey) { mutableStateOf(Offset.Zero) }
+    val target = remember(resetKey) { mutableStateOf(Offset.Zero) }
+    val shown = remember(resetKey) { mutableStateOf(Offset.Zero) }
     val context = LocalContext.current
     DisposableEffect(enabled, resetKey, context) {
-        tilt.value = Offset.Zero
+        target.value = Offset.Zero
+        shown.value = Offset.Zero
         if (!enabled) return@DisposableEffect onDispose {}
         val manager = context.getSystemService(SensorManager::class.java)
         val rotation = manager?.getDefaultSensor(Sensor.TYPE_GAME_ROTATION_VECTOR)
@@ -38,12 +44,30 @@ internal fun rememberDetailTilt(enabled: Boolean, resetKey: Any): State<Offset> 
         if (manager == null || sensor == null) return@DisposableEffect onDispose {}
         val main = Handler(Looper.getMainLooper())
         val listener = TiltListener(rotation != null) { next ->
-            main.post { tilt.value = next }
+            main.post { target.value = next }
         }
-        manager.registerListener(listener, sensor, SensorManager.SENSOR_DELAY_UI)
+        manager.registerListener(listener, sensor, SensorManager.SENSOR_DELAY_GAME)
         onDispose { manager.unregisterListener(listener) }
     }
-    return tilt
+    LaunchedEffect(enabled, resetKey) {
+        if (!enabled) {
+            shown.value = Offset.Zero
+            return@LaunchedEffect
+        }
+        while (isActive) {
+            withFrameNanos { }
+            val goal = target.value
+            val current = shown.value
+            val dx = goal.x - current.x
+            val dy = goal.y - current.y
+            shown.value = if (abs(dx) < 0.0015f && abs(dy) < 0.0015f) {
+                goal
+            } else {
+                Offset(current.x + dx * 0.22f, current.y + dy * 0.22f)
+            }
+        }
+    }
+    return shown
 }
 
 /**
@@ -64,21 +88,19 @@ internal fun Modifier.backdropPan(tilt: State<Offset>, shift: Float, fade: Float
             val h = (bh * (1f + bleed)).roundToInt()
             val placeable = measurable.measure(Constraints.fixed(w, h))
             layout(bw, bh) {
-                val sample = tilt.value
-                val finite = sample.x.isFinite() && sample.y.isFinite()
-                val tx = if (finite) -sample.x * shift * fade else 0f
-                val ty = if (finite) -sample.y * shift * 0.62f * fade else 0f
                 placeable.place(
-                    ((bw - w) / 2f + tx).roundToInt(),
-                    ((bh - h) / 2f + ty).roundToInt(),
+                    ((bw - w) / 2f).roundToInt(),
+                    ((bh - h) / 2f).roundToInt(),
                 )
             }
         }
     }.graphicsLayer {
         val sample = tilt.value
         if (!sample.x.isFinite() || !sample.y.isFinite()) return@graphicsLayer
-        rotationY = sample.x * 6f * fade
-        rotationX = -sample.y * 4.5f * fade
+        translationX = -sample.x * shift * fade
+        translationY = -sample.y * shift * 0.62f * fade
+        rotationY = sample.x * 4f * fade
+        rotationX = -sample.y * 3f * fade
     }
 }
 
@@ -114,8 +136,8 @@ private class TiltListener(
         }
         val dx = ((baseX - sample.x) / Swing).coerceIn(-1f, 1f)
         val dy = ((baseY - sample.y) / Swing).coerceIn(-1f, 1f)
-        smoothX += (dx - smoothX) * 0.35f
-        smoothY += (dy - smoothY) * 0.35f
+        smoothX += (dx - smoothX) * 0.5f
+        smoothY += (dy - smoothY) * 0.5f
         if (!smoothX.isFinite() || !smoothY.isFinite()) {
             smoothX = 0f
             smoothY = 0f

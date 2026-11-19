@@ -346,6 +346,7 @@ private fun RowScope.ActionSlot(label: String, content: @Composable () -> Unit) 
 private fun MoreActionsSheet(
     downloadStatus: OfflineStatus?,
     onDownload: () -> Unit,
+    onFrames: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     val tick = rememberHapticTick()
@@ -410,6 +411,44 @@ private fun MoreActionsSheet(
                         fontWeight = FontWeight.Medium,
                         modifier = Modifier.weight(1f),
                     )
+                }
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = {
+                                tick?.invoke()
+                                onFrames()
+                            },
+                        )
+                        .padding(horizontal = 14.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_action_frames),
+                        contentDescription = null,
+                        tint = Color.White.copy(alpha = 0.92f),
+                        modifier = Modifier.size(22.dp),
+                    )
+                    Spacer(Modifier.width(14.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.detail_frames),
+                            color = Color.White,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Medium,
+                        )
+                        Spacer(Modifier.height(2.dp))
+                        Text(
+                            text = stringResource(R.string.detail_frames_hint),
+                            color = CinemaMuted,
+                            fontSize = 13.sp,
+                            lineHeight = 17.sp,
+                        )
+                    }
                 }
                 Row(
                     Modifier
@@ -705,7 +744,10 @@ private fun DetailContent(
     var target by remember(detail.id) { mutableStateOf(if (colored) hidden else flat) }
     var backdropWash by remember(detail.id) { mutableStateOf(hidden) }
     val reveal = remember(detail.id) { Animatable(if (colored) 0f else 1f) }
-    val backdrops = detail.backdrops
+    val backdropStore = LocalAppContainer.current.backdropSets
+    val backdropPicks by backdropStore.sets.collectAsStateWithLifecycle()
+    val backdropPick = backdropPicks[detail.id] ?: com.example.movie.data.backdrops.BackdropPick()
+    val backdrops = remember(detail.backdrops, backdropPick) { backdropPick.stream(detail.backdrops) }
     val manualBackdrop = !settings.autoBackdrop && backdrops.size > 1
     val pagerState = rememberPagerState { backdrops.size.coerceAtLeast(1) }
     val scope = rememberCoroutineScope()
@@ -970,11 +1012,6 @@ private fun DetailContent(
                 if (holdTrailer && media != null) {
                     Box(
                         modifier = Modifier
-                            .backdropPan(tilt, backdropShift, parallaxFade)
-                            .fillMaxSize(),
-                    ) {
-                    Box(
-                        modifier = Modifier
                             .align(Alignment.TopCenter)
                             .fillMaxWidth()
                             .height(contentTop + lift)
@@ -990,7 +1027,6 @@ private fun DetailContent(
                                 onFailed = { wantTrailer = false },
                             )
                         }
-                    }
                     }
                 }
             }
@@ -1532,6 +1568,13 @@ private fun DetailContent(
                     onBack = { franchisePage = null },
                     modifier = pageModifier,
                 )
+            } else if (openedPage == "frames") {
+                BackdropFramesPage(
+                    movieId = detail.id,
+                    api = detail.backdrops,
+                    onBack = { franchisePage = null },
+                    modifier = pageModifier,
+                )
             } else {
                 FranchiseAboutPage(
                     detail = detail,
@@ -1612,6 +1655,10 @@ private fun DetailContent(
                 onDownload = {
                     moreOpen = false
                     downloadSheet = true
+                },
+                onFrames = {
+                    moreOpen = false
+                    franchisePage = "frames"
                 },
                 onDismiss = { moreOpen = false },
             )
