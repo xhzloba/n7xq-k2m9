@@ -381,6 +381,7 @@ private fun RecommendationPager(
                         ) {
                         PosterImage(
                             url = movie.posterUrl,
+                            movieId = movie.id,
                             contentDescription = stringResource(R.string.poster_content_description, movie.title),
                             modifier = Modifier
                                 .matchParentSize()

@@ -524,6 +524,12 @@ private fun SettingsLeaf(
                         onChecked = onDetailIris,
                     ),
                     SettingItem(
+                        title = stringResource(R.string.settings_detail_shutter),
+                        hint = stringResource(R.string.settings_detail_shutter_hint),
+                        checked = settings.detailShutter,
+                        onChecked = LocalUserSettings.current::setDetailShutter,
+                    ),
+                    SettingItem(
                         title = stringResource(R.string.settings_backdrop_dissolve),
                         hint = stringResource(R.string.settings_backdrop_dissolve_hint),
                         checked = settings.backdropDissolve,
@@ -573,23 +579,13 @@ private fun SettingsLeaf(
                 Spacer(Modifier.height(22.dp))
                 val sensors = LocalUserSettings.current
                 SettingGroup(
-                    items = listOfNotNull(
+                    items = listOf(
                         SettingItem(
                             title = stringResource(R.string.settings_gyro),
                             hint = stringResource(R.string.settings_gyro_hint),
                             checked = settings.gyro,
                             onChecked = sensors::setGyro,
                         ),
-                        if (settings.gyro) {
-                            SettingItem(
-                                title = stringResource(R.string.settings_parallax),
-                                hint = stringResource(R.string.settings_parallax_hint),
-                                checked = settings.detailParallax,
-                                onChecked = sensors::setDetailParallax,
-                            )
-                        } else {
-                            null
-                        },
                     ),
                 )
             }

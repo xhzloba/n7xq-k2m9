@@ -218,6 +218,7 @@ private fun DownloadTitleRow(
     ) {
         OfflinePoster(
             url = item.title.posterUrl,
+            movieId = item.title.id,
             title = item.title.title,
         )
         Spacer(Modifier.width(12.dp))
@@ -461,9 +462,10 @@ private fun episodeCountRes(count: Int): Int {
 }
 
 @Composable
-private fun OfflinePoster(url: String?, title: String) {
+private fun OfflinePoster(url: String?, movieId: String, title: String) {
     PosterImage(
         url = url,
+        movieId = movieId,
         contentDescription = title,
         modifier = Modifier
             .size(width = 56.dp, height = 82.dp)

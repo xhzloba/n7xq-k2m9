@@ -6,6 +6,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,7 +23,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.CircleShape
@@ -64,6 +67,7 @@ import kotlinx.coroutines.launch
 internal fun BackdropFramesPage(
     movieId: String,
     api: List<String>,
+    poster: String?,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -91,6 +95,22 @@ internal fun BackdropFramesPage(
             store.addOwn(movieId, uri, context.contentResolver)
         }
     }
+    val addPoster = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        scope.launch(Dispatchers.IO) {
+            store.addPoster(movieId, uri, context.contentResolver)
+        }
+    }
+    val posters = remember(poster, pick.posterOwn) {
+        buildList {
+            val catalog = poster?.takeIf { it.isNotBlank() }
+            if (catalog != null) add(PosterSlot(catalog, catalog, null))
+            pick.posterOwn.filter { File(it).isFile }.forEach { path ->
+                add(PosterSlot(path.toBackdropKey(), File(path), path))
+            }
+        }
+    }
+    val activePoster = pick.chosenPoster(poster)
     LaunchedEffect(movieId, api) {
         store.measureMissing(movieId, api)
     }
@@ -117,6 +137,20 @@ internal fun BackdropFramesPage(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    PosterPicker(
+                        posters = posters,
+                        active = activePoster,
+                        onPick = { key ->
+                            tick?.invoke()
+                            store.usePoster(movieId, key)
+                        },
+                        onRemove = { path ->
+                            tick?.invoke()
+                            store.removePoster(movieId, path)
+                        },
+                    )
+                }
                 items(slots.size, key = { slots[it].key }) { index ->
                     val slot = slots[index]
                     val on = pick.enabled(slot.key)
@@ -180,31 +214,150 @@ internal fun BackdropFramesPage(
                     FrameSwitch(pick.goodOnly)
                 }
                 Spacer(Modifier.height(8.dp))
-                Box(
-                    Modifier
-                        .fillMaxWidth()
-                        .height(48.dp)
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(Color.White)
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null,
-                            onClick = {
-                                tick?.invoke()
-                                add.launch(arrayOf("image/*"))
-                            },
-                        ),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text = stringResource(R.string.frames_add),
-                        color = Color.Black,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Medium,
+                AddPictureButton(stringResource(R.string.frames_poster_add)) {
+                    tick?.invoke()
+                    addPoster.launch(arrayOf("image/*"))
+                }
+                Spacer(Modifier.height(8.dp))
+                AddPictureButton(stringResource(R.string.frames_add)) {
+                    tick?.invoke()
+                    add.launch(arrayOf("image/*"))
+                }
+            }
+        }
+    }
+}
+
+private data class PosterSlot(
+    val key: String,
+    val model: Any,
+    val path: String?,
+)
+
+@Composable
+private fun PosterPicker(
+    posters: List<PosterSlot>,
+    active: String?,
+    onPick: (String) -> Unit,
+    onRemove: (String) -> Unit,
+) {
+    Column(Modifier.fillMaxWidth().padding(bottom = 14.dp)) {
+        Text(
+            text = stringResource(R.string.frames_poster),
+            color = Color.White,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Medium,
+        )
+        Spacer(Modifier.height(2.dp))
+        Text(
+            text = stringResource(R.string.frames_poster_hint),
+            color = CinemaMuted,
+            fontSize = 13.sp,
+            lineHeight = 17.sp,
+        )
+        if (posters.isNotEmpty()) {
+            Spacer(Modifier.height(10.dp))
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(posters.size, key = { posters[it].key }) { index ->
+                    val slot = posters[index]
+                    PosterChoice(
+                        model = slot.model,
+                        selected = slot.key == active,
+                        label = stringResource(if (slot.path == null) R.string.frames_poster_api else R.string.frames_own),
+                        onPick = { onPick(slot.key) },
+                        onRemove = slot.path?.let { path -> { onRemove(path) } },
                     )
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun PosterChoice(
+    model: Any,
+    selected: Boolean,
+    label: String,
+    onPick: () -> Unit,
+    onRemove: (() -> Unit)?,
+) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(
+            Modifier
+                .width(78.dp)
+                .aspectRatio(2f / 3f)
+                .border(
+                    width = if (selected) 2.dp else 0.dp,
+                    color = if (selected) Color.White else Color.Transparent,
+                    shape = RoundedCornerShape(10.dp),
+                )
+                .clip(RoundedCornerShape(10.dp))
+                .background(Color.White.copy(alpha = 0.06f))
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onPick,
+                ),
+        ) {
+            AsyncImage(
+                model = model,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize().graphicsLayer { alpha = if (selected) 1f else 0.55f },
+            )
+            Text(
+                text = label,
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(4.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(Color.Black.copy(alpha = 0.62f))
+                    .padding(horizontal = 5.dp, vertical = 2.dp),
+                color = Color.White,
+                fontSize = 10.sp,
+                maxLines = 1,
+            )
+        }
+        if (onRemove != null) {
+            Text(
+                text = stringResource(R.string.frames_remove),
+                modifier = Modifier
+                    .padding(top = 4.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = onRemove,
+                    )
+                    .padding(horizontal = 4.dp, vertical = 2.dp),
+                color = CinemaMuted,
+                fontSize = 11.sp,
+            )
+        }
+    }
+}
+
+@Composable
+private fun AddPictureButton(label: String, onClick: () -> Unit) {
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .height(48.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(Color.White)
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick,
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = label,
+            color = Color.Black,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Medium,
+        )
     }
 }
 

@@ -49,6 +49,8 @@ data class UserSettings(
     val sliderShade: Boolean = false,
     /** Переход в деталку: экран закрывается цветом темы из углов. */
     val detailIris: Boolean = false,
+    /** Переход в деталку: полосы цвета темы заезжают одна за другой. */
+    val detailShutter: Boolean = false,
     /** Смена кадров в деталке: растворение вместо сдвига. По умолчанию сдвиг. */
     val backdropDissolve: Boolean = false,
     /** Скрытые полки главной (id из HomeRails). Главный слайдер всегда. По умолчанию все скрыты. */
@@ -218,6 +220,8 @@ interface UserSettingsRepository {
     fun setSliderShade(enabled: Boolean)
 
     fun setDetailIris(enabled: Boolean)
+
+    fun setDetailShutter(enabled: Boolean)
 
     fun setBackdropDissolve(enabled: Boolean)
 

@@ -228,6 +228,7 @@ private fun AlertRow(alert: SeriesAlert, onClick: () -> Unit) {
     ) {
         PosterImage(
             url = alert.posterUrl,
+            movieId = alert.movieId,
             contentDescription = null,
             modifier = Modifier
                 .width(46.dp)

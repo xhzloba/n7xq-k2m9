@@ -95,6 +95,12 @@ internal fun DetailSettingsPage() {
                 onChecked = store::setDetailIris,
             )
             DetailToggle(
+                title = stringResource(R.string.settings_detail_shutter),
+                hint = stringResource(R.string.settings_detail_shutter_hint),
+                checked = settings.detailShutter,
+                onChecked = store::setDetailShutter,
+            )
+            DetailToggle(
                 title = stringResource(R.string.settings_extract_backdrop),
                 hint = stringResource(R.string.settings_extract_backdrop_hint),
                 checked = settings.extractBackdrop,
@@ -120,14 +126,6 @@ internal fun DetailSettingsPage() {
                 checked = settings.gyro,
                 onChecked = store::setGyro,
             )
-            if (settings.gyro) {
-                DetailToggle(
-                    title = stringResource(R.string.settings_parallax),
-                    hint = stringResource(R.string.settings_parallax_hint),
-                    checked = settings.detailParallax,
-                    onChecked = store::setDetailParallax,
-                )
-            }
         }
     }
 }

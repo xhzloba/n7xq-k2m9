@@ -103,6 +103,7 @@ import com.example.movie.R
 import com.example.movie.domain.model.Movie
 import com.example.movie.presentation.detail.DetailSeed
 import com.example.movie.presentation.common.PosterImage
+import com.example.movie.presentation.common.moviePoster
 import com.example.movie.presentation.home.holdCue
 import com.example.movie.presentation.home.holdToPeek
 import com.example.movie.presentation.home.PosterWave
@@ -935,13 +936,13 @@ private fun PosterReflection(
 ) {
     val context = LocalContext.current
     var image by remember(movie?.id) { mutableStateOf<ImageBitmap?>(null) }
-    LaunchedEffect(movie?.id, movie?.posterUrl, movie?.backdropUrl) {
-        val url = movie?.posterUrl ?: movie?.backdropUrl
+    val poster = moviePoster(movie?.id, movie?.posterUrl, movie?.backdropUrl)
+    LaunchedEffect(poster) {
         image = null
-        if (url == null) return@LaunchedEffect
+        if (poster == null) return@LaunchedEffect
         val result = context.imageLoader.execute(
             ImageRequest.Builder(context)
-                .data(url)
+                .data(poster)
                 .allowHardware(false)
                 .size(540, 800)
                 .build(),
@@ -1004,8 +1005,9 @@ private fun PosterPage(
     modifier: Modifier = Modifier,
     onReady: () -> Unit = {},
 ) {
+    val poster = moviePoster(movie.id, movie.posterUrl, movie.backdropUrl)
     PosterImage(
-        url = movie.posterUrl ?: movie.backdropUrl,
+        url = poster,
         contentDescription = stringResource(R.string.poster_content_description, movie.title),
         modifier = modifier.background(Color(0xFF2A2A2E)),
         iconSize = 36.dp,

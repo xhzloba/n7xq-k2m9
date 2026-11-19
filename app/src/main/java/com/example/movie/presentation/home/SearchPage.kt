@@ -430,7 +430,9 @@ private fun SearchIdle(
                             },
                     ) {
                         PosterImage(
-                            url = movie.posterUrl ?: movie.backdropUrl,
+                            url = movie.posterUrl,
+                            movieId = movie.id,
+                            fallbackUrl = movie.backdropUrl,
                             contentDescription = stringResource(
                                 R.string.poster_content_description,
                                 movie.title,
@@ -580,7 +582,9 @@ private fun SearchResults(
                         },
                 ) {
                     PosterImage(
-                        url = movie.posterUrl ?: movie.backdropUrl,
+                        url = movie.posterUrl,
+                        movieId = movie.id,
+                        fallbackUrl = movie.backdropUrl,
                         contentDescription = stringResource(R.string.poster_content_description, movie.title),
                         modifier = Modifier
                             .matchParentSize()

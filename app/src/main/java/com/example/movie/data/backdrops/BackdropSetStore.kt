@@ -23,18 +23,47 @@ data class BackdropPick(
     val own: List<String> = emptyList(),
     val goodOnly: Boolean = false,
     val width: Map<String, Int> = emptyMap(),
+    val posterOwn: List<String> = emptyList(),
+    /** Ключ выбранного постера: url каталога или file-uri своего. Пусто — каталог, если он есть, иначе свой. */
+    val posterUse: String? = null,
 ) {
     fun stream(api: List<String>): List<String> {
         val alive = own.filter { File(it).isFile }.map { it.toBackdropKey() }
         val chosen = api.filterNot { it in off } + alive.filterNot { it in off }
         if (!goodOnly) return chosen
+        val ownKeys = alive.toSet()
         return chosen.filter { key ->
+            if (key in ownKeys) return@filter true
             val known = width[key]
             known == null || known >= GoodBackdropWidth
         }
     }
 
     fun enabled(key: String): Boolean = key !in off
+
+    fun chosenPoster(api: String?): String? {
+        val own = posterOwn.filter { File(it).isFile }.map { it.toBackdropKey() }
+        val catalog = api?.takeIf { it.isNotBlank() }
+        val options = listOfNotNull(catalog) + own
+        if (options.isEmpty()) return null
+        return posterUse?.takeIf { it in options } ?: catalog ?: own.first()
+    }
+
+    fun relocate(remap: Map<String, String>): BackdropPick {
+        if (remap.isEmpty()) return this
+        fun pathOf(path: String) = remap[path] ?: path
+        fun keyOf(key: String): String {
+            val path = remap.keys.find { it.toBackdropKey() == key } ?: return key
+            return pathOf(path).toBackdropKey()
+        }
+        return copy(
+            own = own.map(::pathOf),
+            posterOwn = posterOwn.map(::pathOf),
+            posterUse = posterUse?.let(::keyOf),
+            off = off.map(::keyOf),
+            width = width.mapKeys { (key, _) -> keyOf(key) },
+        )
+    }
 }
 
 internal const val GoodBackdropWidth = 1280
@@ -72,32 +101,36 @@ class BackdropSetStore(context: Context) {
         }
     }
 
-    fun addOwn(movieId: String, uri: Uri, resolver: ContentResolver): String? {
-        if (movieId.isBlank()) return null
-        val dir = File(root, movieFolder(movieId)).apply { mkdirs() }
-        val ext = when (resolver.getType(uri)) {
-            "image/png" -> "png"
-            "image/webp" -> "webp"
-            else -> "jpg"
+    fun addOwn(movieId: String, uri: Uri, resolver: ContentResolver): String? =
+        copyImage(movieId, uri, resolver, "frames") { pick, path, width ->
+            pick.copy(own = pick.own + path, width = width)
         }
-        val dest = File(dir, "${UUID.randomUUID()}.$ext")
-        val copied = runCatching {
-            resolver.openInputStream(uri)?.use { input ->
-                dest.outputStream().use { input.copyTo(it) }
-            } ?: return null
-            dest
-        }.getOrElse {
-            dest.delete()
-            return null
+
+    fun addPoster(movieId: String, uri: Uri, resolver: ContentResolver): String? =
+        copyImage(movieId, uri, resolver, "posters") { pick, path, width ->
+            pick.copy(
+                posterOwn = pick.posterOwn + path,
+                posterUse = path.toBackdropKey(),
+                width = width,
+            )
         }
-        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        BitmapFactory.decodeFile(copied.path, bounds)
-        val key = copied.path.toBackdropKey()
+
+    fun usePoster(movieId: String, key: String) {
+        if (movieId.isBlank() || key.isBlank()) return
+        update(movieId) { it.copy(posterUse = key) }
+    }
+
+    fun removePoster(movieId: String, path: String) {
+        if (movieId.isBlank() || path.isBlank()) return
+        File(path).delete()
+        val key = path.toBackdropKey()
         update(movieId) { pick ->
-            val width = if (bounds.outWidth > 0) pick.width + (key to bounds.outWidth) else pick.width
-            pick.copy(own = pick.own + copied.path, width = width)
+            pick.copy(
+                posterOwn = pick.posterOwn - path,
+                posterUse = pick.posterUse.takeUnless { it == key },
+                width = pick.width - key,
+            )
         }
-        return copied.path
     }
 
     fun removeOwn(movieId: String, path: String) {
@@ -182,6 +215,83 @@ class BackdropSetStore(context: Context) {
             ((data[offset + 1].toInt() and 0xff) shl 16) or
             ((data[offset + 2].toInt() and 0xff) shl 8) or
             (data[offset + 3].toInt() and 0xff)
+
+    fun clearAll() {
+        synchronized(index) {
+            root.deleteRecursively()
+            root.mkdirs()
+            state.value = emptyMap()
+        }
+    }
+
+    fun exportShots(): List<Pair<String, ByteArray>> {
+        val paths = state.value.values.flatMap { it.own + it.posterOwn }.distinct()
+        return paths.mapNotNull { path ->
+            val file = File(path)
+            if (!file.isFile) null else path to file.readBytes()
+        }
+    }
+
+    fun restore(picks: Map<String, BackdropPick>, shots: List<Pair<String, ByteArray>>) {
+        synchronized(index) {
+            root.deleteRecursively()
+            root.mkdirs()
+            val remap = HashMap<String, String>()
+            shots.forEach { (path, bytes) ->
+                val dest = destination(path)
+                dest.parentFile?.mkdirs()
+                dest.writeBytes(bytes)
+                if (dest.path != path) remap[path] = dest.path
+            }
+            val next = picks.mapValues { (_, pick) -> pick.relocate(remap) }
+            state.value = next
+            runCatching { index.writeText(json.encodeToString(next)) }
+        }
+    }
+
+    private fun destination(path: String): File {
+        val marker = "/backdrops/"
+        val index = path.indexOf(marker)
+        if (index >= 0) {
+            val relative = path.substring(index + marker.length)
+            if (relative.isNotBlank() && !relative.contains("..")) return File(root, relative)
+        }
+        return File(root, "imported/${File(path).name}")
+    }
+
+    private fun copyImage(
+        movieId: String,
+        uri: Uri,
+        resolver: ContentResolver,
+        folder: String,
+        write: (BackdropPick, String, Map<String, Int>) -> BackdropPick,
+    ): String? {
+        if (movieId.isBlank()) return null
+        val dir = File(root, "${movieFolder(movieId)}/$folder").apply { mkdirs() }
+        val ext = when (resolver.getType(uri)) {
+            "image/png" -> "png"
+            "image/webp" -> "webp"
+            else -> "jpg"
+        }
+        val dest = File(dir, "${UUID.randomUUID()}.$ext")
+        val copied = runCatching {
+            resolver.openInputStream(uri)?.use { input ->
+                dest.outputStream().use { input.copyTo(it) }
+            } ?: return null
+            dest
+        }.getOrElse {
+            dest.delete()
+            return null
+        }
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeFile(copied.path, bounds)
+        val key = copied.path.toBackdropKey()
+        update(movieId) { pick ->
+            val width = if (bounds.outWidth > 0) pick.width + (key to bounds.outWidth) else pick.width
+            write(pick, copied.path, width)
+        }
+        return copied.path
+    }
 
     private fun update(movieId: String, block: (BackdropPick) -> BackdropPick) {
         synchronized(index) {

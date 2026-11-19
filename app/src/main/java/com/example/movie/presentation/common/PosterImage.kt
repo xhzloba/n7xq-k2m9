@@ -25,8 +25,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.example.movie.R
+import com.example.movie.di.LocalAppContainer
 import com.example.movie.presentation.settings.LocalUserSettings
 import com.example.movie.presentation.shell.ShellIcons
 import java.io.IOException
@@ -40,11 +42,14 @@ internal fun PosterImage(
     iconSize: Dp = 28.dp,
     showLabel: Boolean = true,
     onSuccess: (() -> Unit)? = null,
+    movieId: String? = null,
+    fallbackUrl: String? = null,
 ) {
     val settings by LocalUserSettings.current.settings.collectAsStateWithLifecycle()
+    val shown = moviePoster(movieId, url, fallbackUrl)
     BoxWithConstraints(modifier = modifier, contentAlignment = Alignment.Center) {
         val width = if (constraints.hasBoundedWidth) constraints.maxWidth else 0
-        val model = posterForCell(url, width, settings.posterQuality)
+        val model = posterForCell(shown, width, settings.posterQuality)
         PosterBitmap(
             url = model,
             contentDescription = contentDescription,
@@ -54,6 +59,15 @@ internal fun PosterImage(
             onSuccess = onSuccess,
         )
     }
+}
+
+@Composable
+internal fun moviePoster(movieId: String?, api: String?, fallback: String? = null): String? {
+    val poster = api?.takeIf { it.isNotBlank() }
+    val spare = fallback?.takeIf { it.isNotBlank() }
+    if (movieId.isNullOrBlank()) return poster ?: spare
+    val picks by LocalAppContainer.current.backdropSets.sets.collectAsStateWithLifecycle()
+    return picks[movieId]?.chosenPoster(poster) ?: poster ?: spare
 }
 
 @Composable

@@ -941,6 +941,7 @@ private fun FavoritePoster(
             ) {
                 PosterImage(
                     url = item.posterUrl,
+                    movieId = item.id,
                     contentDescription = stringResource(R.string.poster_content_description, item.title),
                     modifier = Modifier
                         .matchParentSize()

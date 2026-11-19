@@ -56,6 +56,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -523,6 +524,36 @@ internal fun CornerIris(
             }
         }
         drawPath(path, color)
+    }
+}
+
+/** Полосы цвета темы заезжают слева направо с задержкой. [progress] 0 — открыто, 1 — закрыто. */
+@Composable
+internal fun ShutterBlades(
+    progress: Float,
+    color: Color,
+    modifier: Modifier = Modifier,
+) {
+    if (progress <= 0f) return
+    Canvas(modifier) {
+        val blades = 6
+        val band = size.height / blades
+        val edge = 2.dp.toPx()
+        for (index in 0 until blades) {
+            val local = (progress * 1.4f - index * 0.055f).coerceIn(0f, 1f)
+            if (local <= 0f) continue
+            val width = size.width * local
+            val top = band * index
+            drawRect(color, Offset(0f, top), Size(width, band + 1f))
+            if (local in 0.04f..0.96f) {
+                val glow = (0.22f * (1f - kotlin.math.abs(local - 0.55f) / 0.55f)).coerceIn(0f, 0.22f)
+                drawRect(
+                    Color.White.copy(alpha = glow),
+                    Offset((width - edge).coerceAtLeast(0f), top),
+                    Size(edge, band + 1f),
+                )
+            }
+        }
     }
 }
 

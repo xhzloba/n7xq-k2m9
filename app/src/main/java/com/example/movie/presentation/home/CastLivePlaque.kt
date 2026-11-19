@@ -144,6 +144,7 @@ internal fun CastLivePlaque(
         ) {
             PosterImage(
                 url = movie.posterUrl,
+                movieId = movie.id,
                 contentDescription = movie.title,
                 showLabel = false,
                 modifier = Modifier

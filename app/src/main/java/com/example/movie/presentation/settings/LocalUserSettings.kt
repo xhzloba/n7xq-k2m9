@@ -73,6 +73,8 @@ private object DefaultUserSettings : UserSettingsRepository {
 
     override fun setDetailIris(enabled: Boolean) = Unit
 
+    override fun setDetailShutter(enabled: Boolean) = Unit
+
     override fun setBackdropDissolve(enabled: Boolean) = Unit
 
     override fun setHomeRailVisible(id: String, visible: Boolean) = Unit

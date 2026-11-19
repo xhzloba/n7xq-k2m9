@@ -3,6 +3,8 @@ package com.example.movie.data.backup
 import android.content.Context
 import coil.imageLoader
 import com.example.movie.data.alerts.ReleaseWatchStore
+import com.example.movie.data.backdrops.BackdropPick
+import com.example.movie.data.backdrops.BackdropSetStore
 import com.example.movie.data.favorites.FavoriteStore
 import com.example.movie.data.favorites.WatchedStore
 import com.example.movie.data.history.ResumeStore
@@ -26,6 +28,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.decodeFromJsonElement
+import android.util.Base64
 
 @Serializable
 internal data class KeptMarks(val id: String, val marks: List<EpisodeProgress>)
@@ -44,6 +47,14 @@ internal data class LibraryFile(
     val alerts: List<SeriesAlert> = emptyList(),
     val feed: FeedWatch = FeedWatch(),
     val shelves: List<FeedShelf> = emptyList(),
+    val frames: Map<String, BackdropPick> = emptyMap(),
+    val shots: List<KeptShot> = emptyList(),
+)
+
+@Serializable
+internal data class KeptShot(
+    val path: String,
+    val bytes: String,
 )
 
 internal object LibraryArchive {
@@ -65,6 +76,11 @@ internal object LibraryArchive {
             settings = file.settings.copy(barScroll = if (hide) BarScrollScroll else BarScrollOff),
         )
     }
+
+    fun hasShots(text: String): Boolean {
+        val parsed = runCatching { json.parseToJsonElement(text) }.getOrNull() as? JsonObject ?: return false
+        return "frames" in parsed || "shots" in parsed
+    }
 }
 
 internal class AppBackup(
@@ -76,22 +92,30 @@ internal class AppBackup(
     private val resume: ResumeStore,
     private val search: SearchHistoryStore,
     private val alerts: ReleaseWatchStore,
+    private val backdrops: BackdropSetStore,
 ) {
-    fun export(): String = LibraryArchive.encode(
-        LibraryFile(
-            settings = settings.settings.value,
-            favorites = favorites.items.value,
-            watched = watched.items.value,
-            history = history.items.value,
-            resume = resume.items.value,
-            marks = resume.kept.value.map { (id, marks) -> KeptMarks(id, marks) },
-            search = search.items(),
-            subs = alerts.subs.value,
-            alerts = alerts.alerts.value,
-            feed = alerts.feed.value,
-            shelves = alerts.shelves.value,
-        ),
-    )
+    fun export(): String {
+        val shots = backdrops.exportShots().map { (path, bytes) ->
+            KeptShot(path, Base64.encodeToString(bytes, Base64.NO_WRAP))
+        }
+        return LibraryArchive.encode(
+            LibraryFile(
+                settings = settings.settings.value,
+                favorites = favorites.items.value,
+                watched = watched.items.value,
+                history = history.items.value,
+                resume = resume.items.value,
+                marks = resume.kept.value.map { (id, marks) -> KeptMarks(id, marks) },
+                search = search.items(),
+                subs = alerts.subs.value,
+                alerts = alerts.alerts.value,
+                feed = alerts.feed.value,
+                shelves = alerts.shelves.value,
+                frames = backdrops.sets.value,
+                shots = shots,
+            ),
+        )
+    }
 
     fun import(text: String): Boolean {
         val file = LibraryArchive.decode(text) ?: return false
@@ -103,6 +127,14 @@ internal class AppBackup(
         resume.replace(file.resume, file.marks.associate { it.id to it.marks })
         search.replace(file.search)
         alerts.replace(file.subs, file.alerts, file.feed, file.shelves)
+        if (LibraryArchive.hasShots(text)) {
+            val shots = file.shots.mapNotNull { shot ->
+                val bytes = runCatching { Base64.decode(shot.bytes, Base64.DEFAULT) }.getOrNull()
+                    ?: return@mapNotNull null
+                shot.path to bytes
+            }
+            backdrops.restore(file.frames, shots)
+        }
         return true
     }
 
@@ -114,6 +146,7 @@ internal class AppBackup(
         resume.replace(emptyList(), emptyMap())
         search.clear()
         alerts.replace(emptyList(), emptyList(), FeedWatch(), emptyList())
+        backdrops.clearAll()
     }
 
     fun clearCache() {

@@ -108,7 +108,13 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
 
     override fun setSliderShade(enabled: Boolean) = write { it.copy(sliderShade = enabled) }
 
-    override fun setDetailIris(enabled: Boolean) = write { it.copy(detailIris = enabled) }
+    override fun setDetailIris(enabled: Boolean) = write {
+        it.copy(detailIris = enabled, detailShutter = if (enabled) false else it.detailShutter)
+    }
+
+    override fun setDetailShutter(enabled: Boolean) = write {
+        it.copy(detailShutter = enabled, detailIris = if (enabled) false else it.detailIris)
+    }
 
     override fun setHints(enabled: Boolean) = write { current ->
         current.copy(
@@ -226,6 +232,7 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
             .putBoolean(KEY_NAV_LABELS, next.navLabels)
             .putBoolean(KEY_SLIDER_SHADE, next.sliderShade)
             .putBoolean(KEY_DETAIL_IRIS, next.detailIris)
+            .putBoolean(KEY_DETAIL_SHUTTER, next.detailShutter)
             .putBoolean(KEY_BACKDROP_DISSOLVE, next.backdropDissolve)
             .putStringSet(KEY_HIDDEN_HOME_RAILS, HashSet(next.hiddenHomeRails))
             .putString(KEY_HOME_RAIL_ORDER, next.homeRailOrder.joinToString(","))
@@ -329,6 +336,7 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
         navLabels = prefs.getBoolean(KEY_NAV_LABELS, false),
         sliderShade = prefs.getBoolean(KEY_SLIDER_SHADE, false),
         detailIris = prefs.getBoolean(KEY_DETAIL_IRIS, false),
+        detailShutter = prefs.getBoolean(KEY_DETAIL_SHUTTER, false),
         backdropDissolve = prefs.getBoolean(KEY_BACKDROP_DISSOLVE, false),
         hiddenHomeRails = run {
             if (prefs.contains(KEY_HIDDEN_HOME_RAILS) && !prefs.contains(KEY_ACTION_RAIL_HIDDEN)) {
@@ -541,6 +549,7 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
         const val KEY_NAV_LABELS = "nav_labels"
         const val KEY_SLIDER_SHADE = "slider_shade"
         const val KEY_DETAIL_IRIS = "detail_iris"
+        const val KEY_DETAIL_SHUTTER = "detail_shutter"
         const val KEY_BACKDROP_DISSOLVE = "backdrop_dissolve"
         const val KEY_HIDDEN_HOME_RAILS = "hidden_home_rails"
         const val KEY_HOME_RAIL_ORDER = "home_rail_order"

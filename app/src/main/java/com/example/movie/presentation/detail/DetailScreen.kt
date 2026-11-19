@@ -210,7 +210,6 @@ import com.example.movie.presentation.shell.ShellIcons
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.scale
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -747,6 +746,7 @@ private fun DetailContent(
     val backdropStore = LocalAppContainer.current.backdropSets
     val backdropPicks by backdropStore.sets.collectAsStateWithLifecycle()
     val backdropPick = backdropPicks[detail.id] ?: com.example.movie.data.backdrops.BackdropPick()
+    val posterShown = backdropPick.chosenPoster(detail.posterUrl)
     val backdrops = remember(detail.backdrops, backdropPick) { backdropPick.stream(detail.backdrops) }
     val manualBackdrop = !settings.autoBackdrop && backdrops.size > 1
     val pagerState = rememberPagerState { backdrops.size.coerceAtLeast(1) }
@@ -801,17 +801,25 @@ private fun DetailContent(
     LaunchedEffect(watching) {
         if (watching != null) wantTrailer = false
     }
+    val loadedStills = remember(detail.id) { mutableStateMapOf<String, Boolean>() }
     LaunchedEffect(detail.id, frame, backdrops, settings.autoBackdrop, wantTrailer) {
         if (!settings.autoBackdrop || backdrops.size < 2 || wantTrailer) return@LaunchedEffect
-        snapshotFlow { frameReady }.first { it }
+        val current = backdrops.getOrNull(frame) ?: return@LaunchedEffect
+        if (loadedStills[current] != true) {
+            withTimeoutOrNull(1_500) {
+                snapshotFlow { frameReady || loadedStills[current] == true }.first { it }
+            }
+        }
         val next = backdrops[(frame + 1) % backdrops.size]
-        val incoming = async {
-            context.imageLoader.execute(
-                ImageRequest.Builder(context).data(next).build(),
-            ) is SuccessResult
+        val preload = launch {
+            runCatching {
+                context.imageLoader.execute(
+                    ImageRequest.Builder(context).data(stillModel(next)).build(),
+                )
+            }
         }
         delay(8_000)
-        incoming.await()
+        preload.cancel()
         frame = (frame + 1) % backdrops.size
     }
     val shownBackdrop = if (backdrops.isEmpty()) {
@@ -820,7 +828,6 @@ private fun DetailContent(
         backdrops[(if (manualBackdrop) pagerState.currentPage else frame).coerceIn(0, backdrops.lastIndex)]
     }
     val washCache = remember(detail.id) { HashMap<String, PosterWash>() }
-    val loadedStills = remember(detail.id) { mutableStateMapOf<String, Boolean>() }
     val stillReady = shownBackdrop == null || loadedStills[shownBackdrop] == true
     var cardPlayed by remember(detail.id) { mutableStateOf(false) }
     LaunchedEffect(detail.id, contentReady, logoReady, stillReady) {
@@ -832,13 +839,14 @@ private fun DetailContent(
     LaunchedEffect(
         detail.id,
         shownBackdrop,
+        posterShown,
         settings.extractBackdrop,
         settings.extractPlex,
         settings.plexBackdrop,
     ) {
         when {
             settings.extractPlex -> {
-                val poster = detail.posterUrl?.takeIf { it.isNotBlank() }
+                val poster = posterShown?.takeIf { it.isNotBlank() }
                 val still = shownBackdrop
                 if (poster == null && still == null) {
                     backdropWash = flat
@@ -926,7 +934,7 @@ private fun DetailContent(
     val shadeTravel = with(density) { 200.dp.toPx() }
     val shade = (scroll.value / shadeTravel).coerceIn(0f, 1f)
     val backdropAlpha = if (colored) 1f - shade else 1f
-    val parallaxOn = settings.gyro && settings.detailParallax && backdrops.isNotEmpty()
+    val parallaxOn = settings.gyro && backdrops.isNotEmpty()
     val tilt = rememberDetailTilt(parallaxOn, detail.id)
     val parallaxFade = if (parallaxOn) 1f - shade else 0f
     val contentShift = with(density) { 3.dp.toPx() }
@@ -1572,6 +1580,7 @@ private fun DetailContent(
                 BackdropFramesPage(
                     movieId = detail.id,
                     api = detail.backdrops,
+                    poster = detail.posterUrl,
                     onBack = { franchisePage = null },
                     modifier = pageModifier,
                 )
@@ -1683,7 +1692,7 @@ private fun DetailContent(
             if (franchise != null && franchise.seasons.isNotEmpty()) {
                 EpisodeSheet(
                     seasons = franchise.seasons,
-                    posterUrl = detail.posterUrl,
+                    posterUrl = posterShown,
                     resume = resumeItems.firstOrNull { it.id == detail.id },
                     marks = progressMarks,
                     onPlay = { season, episode ->
@@ -2761,6 +2770,7 @@ private fun MovieStrip(
             Column(modifier = Modifier.width(posterWidth)) {
                 PosterImage(
                     url = movie.posterUrl,
+                    movieId = movie.id,
                     contentDescription = movie.title,
                     modifier = Modifier
                         .fillMaxWidth()
@@ -3056,7 +3066,7 @@ private fun BackdropStill(
     mask: Boolean = true,
 ) {
     AsyncImage(
-        model = url,
+        model = stillModel(url),
         contentDescription = null,
         contentScale = ContentScale.Crop,
         alignment = alignment,
@@ -3077,6 +3087,11 @@ private fun BackdropStill(
                 }
             },
     )
+}
+
+private fun stillModel(url: String): Any {
+    if (!url.startsWith("file:")) return url
+    return runCatching { java.io.File(java.net.URI(url)) }.getOrDefault(url)
 }
 
 @Composable

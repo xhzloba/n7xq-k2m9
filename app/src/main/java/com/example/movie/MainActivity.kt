@@ -48,6 +48,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.zIndex
 import com.example.movie.presentation.common.appChrome
 import com.example.movie.presentation.home.CornerIris
+import com.example.movie.presentation.home.ShutterBlades
 import kotlin.math.roundToInt
 import com.example.movie.di.LocalAppContainer
 import com.example.movie.presentation.common.LocalShelfNotices
@@ -117,6 +118,7 @@ class MainActivity : ComponentActivity() {
                         val coverShift = remember { Animatable(0f) }
                         val detailIris = remember { Animatable(0f) }
                         var detailIrisOn by remember { mutableStateOf(false) }
+                        var coverShutter by remember { mutableStateOf(false) }
                         var covering by remember { mutableStateOf(false) }
                         var presented by remember { mutableStateOf(stack.toList()) }
                         val settings by LocalUserSettings.current.settings.collectAsStateWithLifecycle()
@@ -125,15 +127,18 @@ class MainActivity : ComponentActivity() {
                             val target = stack.toList()
                             val pushing = target.size == presented.size + 1 &&
                                 target.dropLast(1) == presented
-                            if (pushing && settings.detailIris) {
+                            val shutter = settings.detailShutter
+                            val iris = settings.detailIris && !shutter
+                            if (pushing && (iris || shutter)) {
+                                coverShutter = shutter
                                 detailIrisOn = true
                                 detailIris.snapTo(0f)
                                 covering = false
                                 coverShift.snapTo(0f)
-                                detailIris.animateTo(1f, tween(480, easing = FastOutSlowInEasing))
+                                detailIris.animateTo(1f, tween(520, easing = FastOutSlowInEasing))
                                 presented = target
                                 detailShift.snapTo(0f)
-                                detailIris.animateTo(0f, tween(400, easing = FastOutSlowInEasing))
+                                detailIris.animateTo(0f, tween(440, easing = FastOutSlowInEasing))
                                 detailIrisOn = false
                             } else if (pushing) {
                                 detailIris.snapTo(0f)
@@ -257,11 +262,19 @@ class MainActivity : ComponentActivity() {
                         }
                         if (detailIrisOn || detailIris.value > 0.001f) {
                             Box(Modifier.fillMaxSize().zIndex(80f)) {
-                                CornerIris(
-                                    progress = detailIris.value,
-                                    color = appChrome().copy(alpha = 0.94f),
-                                    modifier = Modifier.fillMaxSize(),
-                                )
+                                if (coverShutter) {
+                                    ShutterBlades(
+                                        progress = detailIris.value,
+                                        color = appChrome().copy(alpha = 0.94f),
+                                        modifier = Modifier.fillMaxSize(),
+                                    )
+                                } else {
+                                    CornerIris(
+                                        progress = detailIris.value,
+                                        color = appChrome().copy(alpha = 0.94f),
+                                        modifier = Modifier.fillMaxSize(),
+                                    )
+                                }
                                 Box(
                                     Modifier
                                         .fillMaxSize()

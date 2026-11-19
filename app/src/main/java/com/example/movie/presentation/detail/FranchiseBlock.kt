@@ -1033,7 +1033,7 @@ private fun EpisodeLine(
 
 @Composable
 internal fun SeasonPoster(url: String?, fallback: String?) {
-    val poster = url?.takeIf { it.startsWith("http") } ?: fallback?.takeIf { it.startsWith("http") }
+    val poster = url?.takeIf { it.isNotBlank() } ?: fallback?.takeIf { it.isNotBlank() }
     PosterImage(
         url = poster,
         contentDescription = null,
