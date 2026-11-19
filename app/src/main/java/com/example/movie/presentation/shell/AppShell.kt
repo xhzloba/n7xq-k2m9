@@ -191,6 +191,10 @@ fun AppShell(
             searchShown = false
         }
     }
+    var homeTop by remember { mutableIntStateOf(0) }
+    var catalogTop by remember { mutableIntStateOf(0) }
+    var favoritesTop by remember { mutableIntStateOf(0) }
+    var settingsTop by remember { mutableIntStateOf(0) }
     var peek by remember { mutableStateOf<Movie?>(null) }
     var resumePlayback by remember { mutableStateOf<ResumeItem?>(null) }
     val playResume: (String) -> Unit = { id ->
@@ -403,14 +407,16 @@ fun AppShell(
                     onOpenAlerts = openAlerts,
                     presentSearch = tab == AppTab.Home,
                     session = session,
+                    scrollTop = homeTop,
                 )
                 AppTab.Catalog -> Unit
                 AppTab.Favorites -> FavoritesScreen(
                     onMovieClick = onMovieClick,
                     onMoviePeek = { peek = it },
                     onPlayResume = playResume,
+                    scrollTop = favoritesTop,
                 )
-                AppTab.Settings -> SettingsRoute()
+                AppTab.Settings -> SettingsRoute(scrollTop = settingsTop)
             }
         }
     }
@@ -475,6 +481,7 @@ fun AppShell(
                     },
                 ) {
                     CatalogScreen(
+                        scrollTop = catalogTop,
                         onMovieClick = onMovieClick,
                         onMoviePeek = { peek = it },
                         onSearch = homeViewModel::openSearch,
@@ -510,6 +517,7 @@ fun AppShell(
         }
         if (genresShown) {
             CatalogGenresPage(
+                scrollTop = catalogTop,
                 type = genresHold.orEmpty(),
                 onBack = { genresType = null },
                 onGenre = { name ->
@@ -532,6 +540,7 @@ fun AppShell(
             val genreName = rest.removePrefix("g:").takeIf { rest.startsWith("g:") }
             if (genreName != null) {
                 CatalogListRoute(
+                    scrollTop = catalogTop,
                     type = type,
                     sort = "",
                     genre = genreName,
@@ -549,6 +558,7 @@ fun AppShell(
                 val titleRes = CatalogSort.entries.firstOrNull { it.sort == rest }?.title
                 if (titleRes != null) {
                     CatalogListRoute(
+                        scrollTop = catalogTop,
                         type = type,
                         sort = rest,
                         title = stringResource(titleRes),
@@ -613,6 +623,14 @@ fun AppShell(
                     homeNavMenu = false
                     if (fromHome && next == AppTab.Home) sectionName = null
                     else onTabChange(next.name)
+                },
+                onReselect = { next ->
+                    when (next) {
+                        AppTab.Home -> homeTop++
+                        AppTab.Catalog -> catalogTop++
+                        AppTab.Favorites -> favoritesTop++
+                        AppTab.Settings -> settingsTop++
+                    }
                 },
                 onHomeHold = {
                     if (!homeNavMenu && showHomeHint) {
@@ -787,6 +805,7 @@ private val WashDockFallback = Color(0xFF121212)
 private fun AppBottomBar(
     selected: AppTab?,
     onSelect: (AppTab) -> Unit,
+    onReselect: (AppTab) -> Unit,
     onHomeHold: () -> Unit,
     onHomeAnchor: (Rect) -> Unit,
     washLeft: Color? = null,
@@ -919,6 +938,9 @@ private fun AppBottomBar(
                                 if (tab != selected) {
                                     tick?.invoke()
                                     onSelect(tab)
+                                } else {
+                                    tick?.invoke()
+                                    onReselect(tab)
                                 }
                             },
                         )

@@ -3,6 +3,8 @@ package com.example.movie.data.download
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
+import android.content.Intent
 import android.os.Build
 import androidx.annotation.OptIn
 import androidx.core.app.NotificationCompat
@@ -11,6 +13,7 @@ import androidx.media3.exoplayer.offline.Download
 import androidx.media3.exoplayer.offline.DownloadManager
 import androidx.media3.exoplayer.offline.DownloadService
 import androidx.media3.exoplayer.scheduler.Scheduler
+import com.example.movie.MainActivity
 import com.example.movie.R
 import com.example.movie.notification.appIcon
 
@@ -49,10 +52,22 @@ class MovieDownloadService : DownloadService(
             percent != null -> getString(R.string.download_progress, percent)
             else -> getString(R.string.download_running)
         }
+        val movieId = active?.request?.id?.substringBefore('#')?.takeIf { it.isNotBlank() }
+        val open = movieId?.let { id ->
+            PendingIntent.getActivity(
+                this,
+                NOTIFICATION_ID,
+                Intent(this, MainActivity::class.java)
+                    .putExtra(MainActivity.EXTRA_MOVIE, id)
+                    .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP),
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            )
+        }
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .appIcon(this)
             .setContentTitle(title)
             .setContentText(text)
+            .setContentIntent(open)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setProgress(100, percent ?: 0, percent == null)

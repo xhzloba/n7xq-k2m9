@@ -99,6 +99,7 @@ import com.example.movie.data.download.OfflineItem
 import com.example.movie.di.LocalAppContainer
 import com.example.movie.presentation.common.LocalShelfNotices
 import com.example.movie.presentation.common.drawTopScrim
+import com.example.movie.presentation.common.scrollToTopOn
 import com.example.movie.presentation.common.headerThemeBrush
 import com.example.movie.presentation.common.headerFillOn
 import com.example.movie.presentation.common.topScrimFade
@@ -187,6 +188,7 @@ internal fun FavoritesScreen(
     onMovieClick: (String) -> Unit,
     onMoviePeek: (Movie) -> Unit,
     onPlayResume: (String) -> Unit = {},
+    scrollTop: Int = 0,
 ) {
     val container = LocalAppContainer.current
     val favorites by container.favorites.items.collectAsStateWithLifecycle()
@@ -230,6 +232,7 @@ internal fun FavoritesScreen(
     val filtered = genre?.let { name -> inTab.filter { name in it.genreKeys() } } ?: inTab
     val shown = filtered.sortedFor(sort)
     val gridState = rememberLazyGridState()
+    gridState.scrollToTopOn(scrollTop)
     val density = LocalDensity.current
     val scrim = if (gridState.firstVisibleItemIndex > 0) {
         1f

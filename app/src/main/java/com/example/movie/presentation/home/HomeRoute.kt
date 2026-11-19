@@ -24,6 +24,7 @@ fun HomeRoute(
     onOpenAlerts: () -> Unit = {},
     presentSearch: Boolean = true,
     session: Int = 0,
+    scrollTop: Int = 0,
 ) {
     val container = LocalAppContainer.current
     val viewModel: HomeViewModel = viewModel {
@@ -71,5 +72,6 @@ fun HomeRoute(
         onHideBar = onHideBar,
         onOpenRailsLook = onOpenRailsLook,
         presentSearch = presentSearch,
+        scrollTop = scrollTop,
     )
 }

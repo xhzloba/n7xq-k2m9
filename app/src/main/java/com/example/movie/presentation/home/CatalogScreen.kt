@@ -53,6 +53,7 @@ import com.example.movie.domain.model.Movie
 import com.example.movie.domain.model.Shelf
 import com.example.movie.presentation.common.HideBarOnScroll
 import com.example.movie.presentation.common.drawTopScrim
+import com.example.movie.presentation.common.scrollToTopOn
 import com.example.movie.presentation.common.headerThemeBrush
 import com.example.movie.presentation.common.headerFillOn
 import com.example.movie.presentation.common.topScrimFade
@@ -83,6 +84,7 @@ private enum class CatalogTab(@StringRes val label: Int, val type: String) {
 
 @Composable
 fun CatalogScreen(
+    scrollTop: Int = 0,
     onMovieClick: (String) -> Unit,
     onMoviePeek: (Movie) -> Unit,
     onSearch: () -> Unit,
@@ -127,6 +129,7 @@ fun CatalogScreen(
             SectionError(viewModel::retry)
         } else {
             val listState = rememberLazyListState()
+            listState.scrollToTopOn(scrollTop)
             val settings by LocalUserSettings.current.settings.collectAsStateWithLifecycle()
             HideBarOnScroll(
                 enabled = settings.hidesBar(),
@@ -315,6 +318,7 @@ private fun CatalogScrim(progress: () -> Float, modifier: Modifier = Modifier) {
 
 @Composable
 internal fun CatalogListRoute(
+    scrollTop: Int = 0,
     type: String,
     sort: String,
     title: String,
@@ -339,6 +343,7 @@ internal fun CatalogListRoute(
     val state by viewModel.state.collectAsStateWithLifecycle()
     key(querySort) {
         SectionPage(
+            scrollTop = scrollTop,
             title = title,
             state = state,
             onBack = onBack,

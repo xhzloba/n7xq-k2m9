@@ -107,6 +107,7 @@ import com.example.movie.presentation.update.downloadStatus
 import com.example.movie.domain.model.AppRelease
 import com.example.movie.domain.model.DownloadProgress
 import com.example.movie.presentation.common.HandleSheet
+import com.example.movie.presentation.common.ScrollToTop
 import com.example.movie.presentation.common.THEME_BLACK
 import com.example.movie.presentation.common.THEME_CINEMA
 import com.example.movie.presentation.common.THEME_GRAPHITE
@@ -181,10 +182,11 @@ private enum class SettingsPage {
 }
 
 @Composable
-fun SettingsRoute() {
+fun SettingsRoute(scrollTop: Int = 0) {
     val repository = LocalUserSettings.current
     val settings by repository.settings.collectAsStateWithLifecycle()
     SettingsScreen(
+        scrollTop = scrollTop,
         settings = settings,
         onExtractBackdrop = repository::setExtractBackdrop,
         onExtractPlex = repository::setExtractPlex,
@@ -210,6 +212,7 @@ fun SettingsRoute() {
 
 @Composable
 private fun SettingsScreen(
+    scrollTop: Int,
     settings: UserSettings,
     onExtractBackdrop: (Boolean) -> Unit,
     onExtractPlex: (Boolean) -> Unit,
@@ -293,6 +296,7 @@ private fun SettingsScreen(
                 )
             }
             SettingsMenu(
+                scrollTop = scrollTop,
                 onOpen = { pageName = it.name },
                 modifier = Modifier
                     .weight(1f)
@@ -312,6 +316,7 @@ private fun SettingsScreen(
                     onBack = { pageName = SettingsPage.Root.name },
                 )
                 SettingsLeaf(
+                    scrollTop = scrollTop,
                     page = shown,
                     settings = settings,
                     onExtractBackdrop = onExtractBackdrop,
@@ -349,6 +354,7 @@ private fun SettingsScreen(
 
 @Composable
 private fun SettingsLeaf(
+    scrollTop: Int,
     page: SettingsPage,
     settings: UserSettings,
     onExtractBackdrop: (Boolean) -> Unit,
@@ -374,14 +380,10 @@ private fun SettingsLeaf(
 ) {
     when (page) {
         SettingsPage.Root -> Unit
-        SettingsPage.Theme -> Column(
-            modifier
-                .verticalScroll(rememberScrollState())
-                .padding(top = 18.dp, bottom = 96.dp),
-        ) {
+        SettingsPage.Theme -> Column(leafScroll(modifier, scrollTop)) {
             ThemeGroup(selected = settings.appTheme, onSelect = onAppTheme)
         }
-        SettingsPage.Posters -> Column(leafScroll(modifier)) {
+        SettingsPage.Posters -> Column(leafScroll(modifier, scrollTop)) {
                 PosterQualityControl(selected = settings.posterQuality)
                 Spacer(Modifier.height(22.dp))
                 ImageParallelControl(count = settings.imageParallel)
@@ -421,7 +423,7 @@ private fun SettingsLeaf(
                     ),
                 )
             }
-        SettingsPage.Navigation -> Column(leafScroll(modifier)) {
+        SettingsPage.Navigation -> Column(leafScroll(modifier, scrollTop)) {
                 BarScrollControl(selected = settings.barScroll)
                 Spacer(Modifier.height(22.dp))
                 HeaderFillSwitch()
@@ -443,7 +445,7 @@ private fun SettingsLeaf(
                     ),
                 )
             }
-        SettingsPage.Color -> Column(leafScroll(modifier)) {
+        SettingsPage.Color -> Column(leafScroll(modifier, scrollTop)) {
                 SettingGroup(
                     items = listOfNotNull(
                         SettingItem(
@@ -487,7 +489,7 @@ private fun SettingsLeaf(
                     ),
                 )
             }
-        SettingsPage.Detail -> Column(leafScroll(modifier)) {
+        SettingsPage.Detail -> Column(leafScroll(modifier, scrollTop)) {
                 SettingGroup(
                     items = listOf(
                         SettingItem(
@@ -511,7 +513,7 @@ private fun SettingsLeaf(
                     ),
             )
         }
-        SettingsPage.Motion -> Column(leafScroll(modifier)) {
+        SettingsPage.Motion -> Column(leafScroll(modifier, scrollTop)) {
             SettingGroup(
                 items = listOf(
                     SettingItem(
@@ -529,7 +531,7 @@ private fun SettingsLeaf(
                 ),
             )
         }
-        SettingsPage.Player -> Column(leafScroll(modifier)) {
+        SettingsPage.Player -> Column(leafScroll(modifier, scrollTop)) {
             MaxCodecControl(selected = settings.playerCodec)
             Spacer(Modifier.height(22.dp))
             WatchedPercentControl(
@@ -548,10 +550,10 @@ private fun SettingsLeaf(
                 ),
             )
         }
-        SettingsPage.Network -> Column(leafScroll(modifier)) {
+        SettingsPage.Network -> Column(leafScroll(modifier, scrollTop)) {
             NetworkTimeoutControl(seconds = settings.networkTimeoutSec)
         }
-        SettingsPage.Sensors -> Column(leafScroll(modifier)) {
+        SettingsPage.Sensors -> Column(leafScroll(modifier, scrollTop)) {
                 SettingGroup(
                     items = listOf(
                         SettingItem(
@@ -568,16 +570,19 @@ private fun SettingsLeaf(
                     enabled = settings.haptic,
                 )
             }
-        SettingsPage.Data -> DataPage(leafScroll(modifier))
-        SettingsPage.About -> AboutPage(modifier.padding(top = 18.dp))
+        SettingsPage.Data -> DataPage(leafScroll(modifier, scrollTop))
+        SettingsPage.About -> AboutPage(scrollTop, modifier.padding(top = 18.dp))
     }
 }
 
 @Composable
-private fun leafScroll(modifier: Modifier): Modifier =
-    modifier
-        .verticalScroll(rememberScrollState())
+private fun leafScroll(modifier: Modifier, scrollTop: Int): Modifier {
+    val state = rememberScrollState()
+    ScrollToTop(scrollTop, atTop = { state.value == 0 }) { state.animateScrollTo(0) }
+    return modifier
+        .verticalScroll(state)
         .padding(top = 18.dp, bottom = 96.dp)
+}
 
 @Composable
 private fun HapticFeelRows(profile: String, enabled: Boolean) {
@@ -670,14 +675,16 @@ private fun HapticFeel.label(): Int = when (this) {
 }
 
 @Composable
-private fun AboutPage(modifier: Modifier = Modifier) {
+private fun AboutPage(scrollTop: Int, modifier: Modifier = Modifier) {
     var featuresOpen by rememberSaveable { mutableStateOf(false) }
     val updates = LocalAppUpdate.current
     val context = LocalContext.current
     val tick = rememberHapticTick()
+    val aboutScroll = rememberScrollState()
+    ScrollToTop(scrollTop, atTop = { aboutScroll.value == 0 }) { aboutScroll.animateScrollTo(0) }
     Column(
         modifier = modifier
-            .verticalScroll(rememberScrollState())
+            .verticalScroll(aboutScroll)
             .padding(bottom = 96.dp),
     ) {
         Image(
@@ -1006,15 +1013,18 @@ private fun ChangeLine(text: String, color: Color = ChangeText) {
 
 @Composable
 private fun SettingsMenu(
+    scrollTop: Int,
     onOpen: (SettingsPage) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val tick = rememberHapticTick()
     val pending = LocalAppUpdate.current.pending
     val pages = SettingsPage.entries.filter { it != SettingsPage.Root }
+    val menuScroll = rememberScrollState()
+    ScrollToTop(scrollTop, atTop = { menuScroll.value == 0 }) { menuScroll.animateScrollTo(0) }
     Column(
         modifier
-            .verticalScroll(rememberScrollState())
+            .verticalScroll(menuScroll)
             .padding(top = 18.dp, bottom = 96.dp),
     ) {
         Column(

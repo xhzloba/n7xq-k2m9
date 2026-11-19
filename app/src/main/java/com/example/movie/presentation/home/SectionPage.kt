@@ -94,6 +94,7 @@ import com.example.movie.presentation.home.rememberPressScale
 import com.example.movie.presentation.shell.ShellIcons
 import com.example.movie.presentation.common.appBackground
 import com.example.movie.presentation.common.drawTopScrim
+import com.example.movie.presentation.common.scrollToTopOn
 import com.example.movie.presentation.common.headerThemeBrush
 import com.example.movie.presentation.common.headerFillOn
 import com.example.movie.presentation.common.topScrimFade
@@ -147,6 +148,7 @@ fun SectionRoute(
 
 @Composable
 internal fun SectionPage(
+    scrollTop: Int = 0,
     title: String,
     state: SectionUiState,
     onBack: () -> Unit,
@@ -162,6 +164,7 @@ internal fun SectionPage(
 ) {
     var confirmClear by remember { mutableStateOf(false) }
     val grid = rememberLazyGridState()
+    grid.scrollToTopOn(scrollTop)
     val density = LocalDensity.current
     val settings by LocalUserSettings.current.settings.collectAsStateWithLifecycle()
     val top = WindowInsets.safeDrawing.asPaddingValues().calculateTopPadding()

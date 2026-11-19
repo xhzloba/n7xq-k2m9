@@ -93,6 +93,7 @@ import com.example.movie.presentation.common.appBackground
 import com.example.movie.presentation.common.drawGraphite
 import com.example.movie.presentation.common.headerThemeBrush
 import com.example.movie.presentation.common.drawTopScrim
+import com.example.movie.presentation.common.scrollToTopOn
 import com.example.movie.presentation.common.headerFillOn
 import com.example.movie.presentation.common.topScrimFade
 import com.example.movie.presentation.common.topScrimHeight
@@ -171,6 +172,7 @@ fun HomeScreen(
     onHideBar: (Boolean) -> Unit = {},
     onOpenRailsLook: () -> Unit = {},
     presentSearch: Boolean = true,
+    scrollTop: Int = 0,
     modifier: Modifier = Modifier,
 ) {
     val playAnim = remember { Animatable(PlayBlue) }
@@ -346,6 +348,7 @@ fun HomeScreen(
             var brandHeight by remember { mutableIntStateOf(0) }
             val playBlend = remember { androidx.compose.animation.core.Animatable(0f) }
             val listState = rememberLazyListState()
+            listState.scrollToTopOn(scrollTop)
             HideBarOnScroll(
                 enabled = settings.hidesBar(),
                 listState = listState,

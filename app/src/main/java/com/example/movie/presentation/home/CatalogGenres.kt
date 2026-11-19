@@ -53,6 +53,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.movie.R
 import com.example.movie.presentation.common.THEME_GRAPHITE
 import com.example.movie.presentation.common.appBackground
+import com.example.movie.presentation.common.scrollToTopOn
 import com.example.movie.presentation.haptic.HapticOnChange
 import com.example.movie.presentation.haptic.rememberHapticTick
 import com.example.movie.presentation.home.components.BrandTopInset
@@ -248,6 +249,7 @@ private fun GenreChip(
 
 @Composable
 internal fun CatalogGenresPage(
+    scrollTop: Int = 0,
     type: String,
     onBack: () -> Unit,
     onGenre: (String) -> Unit,
@@ -257,6 +259,7 @@ internal fun CatalogGenresPage(
     val header = top + BrandTopInset + 36.dp + 18.dp
     val genres = remember(type) { catalogGenresFor(type) }
     val grid = rememberLazyGridState()
+    grid.scrollToTopOn(scrollTop)
     val density = LocalDensity.current
     val scrim = if (grid.firstVisibleItemIndex > 0) {
         1f
