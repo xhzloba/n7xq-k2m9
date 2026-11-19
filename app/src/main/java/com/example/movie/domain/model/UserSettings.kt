@@ -16,6 +16,10 @@ data class UserSettings(
     val autoBackdrop: Boolean = true,
     val watchGlow: Boolean = false,
     val haptic: Boolean = true,
+    /** Наклон телефона. Без него параллакс в карточке не работает. */
+    val gyro: Boolean = false,
+    /** Сдвиг первого экрана карточки относительно кадра. */
+    val detailParallax: Boolean = false,
     val showPosterTitles: Boolean = true,
     val largePosters: Boolean = false,
     /** full — полный постер, light — под ячейку, low — маленький файл. */
@@ -172,6 +176,10 @@ interface UserSettingsRepository {
     fun setWatchGlow(enabled: Boolean)
 
     fun setHaptic(enabled: Boolean)
+
+    fun setGyro(enabled: Boolean)
+
+    fun setDetailParallax(enabled: Boolean)
 
     fun setShowPosterTitles(enabled: Boolean)
 

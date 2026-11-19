@@ -349,7 +349,12 @@ private fun MoreActionsSheet(
     onDismiss: () -> Unit,
 ) {
     val tick = rememberHapticTick()
+    var settings by remember { mutableStateOf(false) }
     HandleSheet(onDismiss = onDismiss) {
+        if (settings) {
+            DetailSettingsPage()
+            return@HandleSheet
+        }
         Column(
             Modifier
                 .fillMaxWidth()
@@ -405,6 +410,44 @@ private fun MoreActionsSheet(
                         fontWeight = FontWeight.Medium,
                         modifier = Modifier.weight(1f),
                     )
+                }
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = {
+                                tick?.invoke()
+                                settings = true
+                            },
+                        )
+                        .padding(horizontal = 14.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_player_settings),
+                        contentDescription = null,
+                        tint = Color.White.copy(alpha = 0.92f),
+                        modifier = Modifier.size(22.dp),
+                    )
+                    Spacer(Modifier.width(14.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.detail_settings),
+                            color = Color.White,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Medium,
+                        )
+                        Spacer(Modifier.height(2.dp))
+                        Text(
+                            text = stringResource(R.string.detail_settings_hint),
+                            color = CinemaMuted,
+                            fontSize = 13.sp,
+                            lineHeight = 17.sp,
+                        )
+                    }
                 }
             }
         }
@@ -841,6 +884,11 @@ private fun DetailContent(
     val shadeTravel = with(density) { 200.dp.toPx() }
     val shade = (scroll.value / shadeTravel).coerceIn(0f, 1f)
     val backdropAlpha = if (colored) 1f - shade else 1f
+    val parallaxOn = settings.gyro && settings.detailParallax && backdrops.isNotEmpty()
+    val tilt = rememberDetailTilt(parallaxOn, detail.id)
+    val parallaxFade = if (parallaxOn) 1f - shade else 0f
+    val contentShift = with(density) { 3.dp.toPx() }
+    val backdropShift = with(density) { 42.dp.toPx() }
     LaunchedEffect(wantTrailer) {
         if (!wantTrailer) return@LaunchedEffect
         val origin = scroll.value
@@ -915,10 +963,16 @@ private fun DetailContent(
                 modifier = Modifier
                     .offset(y = -lift)
                     .fillMaxWidth()
-                    .height(heroHeight),
+                    .height(heroHeight)
+                    .clipToBounds(),
             ) {
                 val media = trailerMedia
                 if (holdTrailer && media != null) {
+                    Box(
+                        modifier = Modifier
+                            .backdropPan(tilt, backdropShift, parallaxFade)
+                            .fillMaxSize(),
+                    ) {
                     Box(
                         modifier = Modifier
                             .align(Alignment.TopCenter)
@@ -937,6 +991,7 @@ private fun DetailContent(
                             )
                         }
                     }
+                    }
                 }
             }
         }
@@ -954,10 +1009,13 @@ private fun DetailContent(
                 modifier = Modifier
                     .offset(y = -lift)
                     .fillMaxWidth()
-                    .height(heroHeight),
+                    .height(heroHeight)
+                    .clipToBounds()
+                    .then(if (parallaxOn) Modifier.backdropFrame() else Modifier),
             ) {
                 Box(
                     modifier = Modifier
+                        .backdropPan(tilt, backdropShift, parallaxFade)
                         .graphicsLayer { alpha = (1f - pageAlpha) * backdropAlpha * trailerStill.value }
                         .fillMaxSize(),
                 ) {
@@ -975,6 +1033,8 @@ private fun DetailContent(
                                 url = backdrops[page],
                                 height = heroHeight,
                                 dim = if (colored) 0f else shade,
+                                alignment = if (parallaxOn) Alignment.Center else Alignment.TopCenter,
+                                mask = !parallaxOn,
                                 onReady = {
                                     loadedStills[backdrops[page]] = true
                                     if (backdrops[page] == shownBackdrop) backdropColorReady = true
@@ -1005,6 +1065,8 @@ private fun DetailContent(
                         resetKey = backdrops,
                         height = heroHeight,
                         dim = if (colored) 0f else shade,
+                        alignment = if (parallaxOn) Alignment.Center else Alignment.TopCenter,
+                        mask = !parallaxOn,
                         onReady = {
                             loadedStills[backdrops[frame]] = true
                             frameReady = true
@@ -1031,6 +1093,8 @@ private fun DetailContent(
                             url = url,
                             height = heroHeight,
                             dim = if (colored) 0f else shade,
+                            alignment = if (parallaxOn) Alignment.Center else Alignment.TopCenter,
+                            mask = !parallaxOn,
                             onReady = {
                                 loadedStills[url] = true
                                 if (url == backdrops.getOrNull(frame)) frameReady = true
@@ -1080,6 +1144,7 @@ private fun DetailContent(
         Column(
             modifier = Modifier
                 .graphicsLayer { alpha = 1f - pageAlpha }
+                .contentParallax(tilt, contentShift, parallaxFade)
                 .fillMaxSize()
                 .verticalScroll(scroll)
                 .windowInsetsPadding(WindowInsets.navigationBars)
@@ -2823,6 +2888,26 @@ private fun Int.asRuntime(): String {
 
 private const val BackdropFadeStart = 0.52f
 
+private fun Modifier.backdropFrame(): Modifier =
+    graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+        .drawWithContent {
+            drawContent()
+            drawBackdropMask()
+        }
+
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawBackdropMask() {
+    drawRect(
+        brush = Brush.verticalGradient(
+            0f to Color.Black,
+            BackdropFadeStart to Color.Black,
+            0.68f to Color.Black.copy(alpha = 0.4f),
+            0.84f to Color.Transparent,
+            1f to Color.Transparent,
+        ),
+        blendMode = BlendMode.DstIn,
+    )
+}
+
 @Composable
 private fun TrailerEdgeFade(
     wash: PosterWash,
@@ -2858,6 +2943,8 @@ private fun DissolveBackdrop(
     dim: Float,
     onReady: () -> Unit,
     onError: () -> Unit,
+    alignment: Alignment = Alignment.TopCenter,
+    mask: Boolean = true,
 ) {
     var front by remember(resetKey) { mutableStateOf(url) }
     var back by remember(resetKey) { mutableStateOf<String?>(null) }
@@ -2884,7 +2971,7 @@ private fun DissolveBackdrop(
                         alpha = 1f - progress
                     },
             ) {
-                BackdropStill(url = leaving, height = height, dim = dim)
+                BackdropStill(url = leaving, height = height, dim = dim, alignment = alignment, mask = mask)
             }
         }
         Box(
@@ -2902,6 +2989,8 @@ private fun DissolveBackdrop(
                 url = front,
                 height = height,
                 dim = dim,
+                alignment = alignment,
+                mask = mask,
                 onReady = { if (front == url) onReady() },
                 onError = { if (front == url) onError() },
             )
@@ -2916,30 +3005,23 @@ private fun BackdropStill(
     dim: Float,
     onReady: () -> Unit = {},
     onError: () -> Unit = {},
+    alignment: Alignment = Alignment.TopCenter,
+    mask: Boolean = true,
 ) {
     AsyncImage(
         model = url,
         contentDescription = null,
         contentScale = ContentScale.Crop,
-        alignment = Alignment.TopCenter,
+        alignment = alignment,
         onSuccess = { onReady() },
         onError = { onError() },
         modifier = Modifier
-            .fillMaxWidth()
-            .height(height)
+            .fillMaxSize()
+            .heightIn(max = height * 2)
             .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
             .drawWithContent {
                 drawContent()
-                drawRect(
-                    brush = Brush.verticalGradient(
-                        0f to Color.Black,
-                        BackdropFadeStart to Color.Black,
-                        0.68f to Color.Black.copy(alpha = 0.4f),
-                        0.84f to Color.Transparent,
-                        1f to Color.Transparent,
-                    ),
-                    blendMode = BlendMode.DstIn,
-                )
+                if (mask) drawBackdropMask()
                 if (dim > 0f) {
                     drawRect(
                         color = Color.Black.copy(alpha = 0.72f * dim),

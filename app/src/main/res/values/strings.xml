@@ -129,6 +129,8 @@
     <string name="alerts_shelf_body">Появилось %1$d</string>
     <string name="alert_channel">Новые серии</string>
     <string name="action_more">Дополнительно</string>
+    <string name="detail_settings">Настройки</string>
+    <string name="detail_settings_hint">Логотип, кадры, цвет и параллакс этой карточки.</string>
     <string name="action_download">Скачать</string>
     <string name="action_downloaded">Скачано</string>
     <string name="download_title">Скачать</string>
@@ -450,6 +452,10 @@
     <string name="settings_detail_iris_hint">При открытии фильма экран закрывается цветом темы из углов. Выключено — обычный сдвиг.</string>
     <string name="settings_watch_glow">Свечение плашки</string>
     <string name="settings_watch_glow_hint">При входе в деталку у «Смотреть» один раз проходит тонкая обводка цветом кадра. Снова только если зайти заново.</string>
+    <string name="settings_gyro">Гироскоп</string>
+    <string name="settings_gyro_hint">Наклон телефона. Включите — ниже появится параллакс в карточке.</string>
+    <string name="settings_parallax">Параллакс</string>
+    <string name="settings_parallax_hint">Логотип, название, метаданные, «Смотреть» и описание чуть смещаются относительно кадра. При прокрутке эффект пропадает вместе с кадром.</string>
     <string name="settings_haptic">Виброотклик</string>
     <string name="settings_haptic_hint">Общий выключатель. Снизу у каждого действия свой отклик.</string>
     <string name="settings_haptic_actions">Действия</string>

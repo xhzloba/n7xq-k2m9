@@ -64,6 +64,10 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
 
     override fun setHaptic(enabled: Boolean) = write { it.copy(haptic = enabled) }
 
+    override fun setGyro(enabled: Boolean) = write { it.copy(gyro = enabled) }
+
+    override fun setDetailParallax(enabled: Boolean) = write { it.copy(detailParallax = enabled) }
+
     override fun setShowPosterTitles(enabled: Boolean) = write { it.copy(showPosterTitles = enabled) }
 
     override fun setLargePosters(enabled: Boolean) = write { it.copy(largePosters = enabled) }
@@ -200,6 +204,8 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
             .putBoolean(KEY_BACKDROP, next.autoBackdrop)
             .putBoolean(KEY_WATCH_GLOW, next.watchGlow)
             .putBoolean(KEY_HAPTIC, next.haptic)
+            .putBoolean(KEY_GYRO, next.gyro)
+            .putBoolean(KEY_DETAIL_PARALLAX, next.detailParallax)
             .putBoolean(KEY_POSTER_TITLES, next.showPosterTitles)
             .putBoolean(KEY_LARGE_POSTERS, next.largePosters)
             .putString(KEY_POSTER_QUALITY, next.posterQuality)
@@ -292,6 +298,8 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
         autoBackdrop = prefs.getBoolean(KEY_BACKDROP, true),
         watchGlow = prefs.getBoolean(KEY_WATCH_GLOW, false),
         haptic = prefs.getBoolean(KEY_HAPTIC, true),
+        gyro = prefs.getBoolean(KEY_GYRO, false),
+        detailParallax = prefs.getBoolean(KEY_DETAIL_PARALLAX, false),
         showPosterTitles = prefs.getBoolean(KEY_POSTER_TITLES, true),
         largePosters = prefs.getBoolean(KEY_LARGE_POSTERS, false),
         posterQuality = when {
@@ -510,6 +518,8 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
         const val KEY_BACKDROP = "auto_backdrop"
         const val KEY_WATCH_GLOW = "watch_glow"
         const val KEY_HAPTIC = "haptic"
+        const val KEY_GYRO = "gyro"
+        const val KEY_DETAIL_PARALLAX = "detail_parallax"
         const val KEY_POSTER_TITLES = "poster_titles"
         const val KEY_LARGE_POSTERS = "large_posters"
         const val KEY_COMPACT_POSTERS = "compact_posters"

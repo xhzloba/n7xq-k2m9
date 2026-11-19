@@ -570,6 +570,28 @@ private fun SettingsLeaf(
                     profile = settings.hapticProfile,
                     enabled = settings.haptic,
                 )
+                Spacer(Modifier.height(22.dp))
+                val sensors = LocalUserSettings.current
+                SettingGroup(
+                    items = listOfNotNull(
+                        SettingItem(
+                            title = stringResource(R.string.settings_gyro),
+                            hint = stringResource(R.string.settings_gyro_hint),
+                            checked = settings.gyro,
+                            onChecked = sensors::setGyro,
+                        ),
+                        if (settings.gyro) {
+                            SettingItem(
+                                title = stringResource(R.string.settings_parallax),
+                                hint = stringResource(R.string.settings_parallax_hint),
+                                checked = settings.detailParallax,
+                                onChecked = sensors::setDetailParallax,
+                            )
+                        } else {
+                            null
+                        },
+                    ),
+                )
             }
         SettingsPage.Data -> DataPage(leafScroll(modifier, scrollTop))
         SettingsPage.About -> AboutPage(scrollTop, modifier.padding(top = 18.dp))
