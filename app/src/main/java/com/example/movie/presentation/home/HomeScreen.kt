@@ -341,7 +341,7 @@ fun HomeScreen(
             }
         } else {
             val density = LocalDensity.current
-            val scrimDistance = with(density) { 28.dp.toPx() }
+            val scrimDistance = with(density) { (if (pageWashOn) 96.dp else 28.dp).toPx() }
             val parkDistance = with(density) { 12.dp.toPx() }
             var brandHeight by remember { mutableIntStateOf(0) }
             val playBlend = remember { androidx.compose.animation.core.Animatable(0f) }

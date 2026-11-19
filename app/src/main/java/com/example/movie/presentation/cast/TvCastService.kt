@@ -16,6 +16,7 @@ import android.os.PowerManager
 import androidx.core.app.NotificationCompat
 import com.example.movie.R
 import com.example.movie.MainActivity
+import com.example.movie.notification.appIcon
 import com.example.movie.data.cast.CastProxy
 import com.example.movie.data.cast.DlnaDevice
 import com.example.movie.data.cast.TvCastHub
@@ -388,7 +389,7 @@ class TvCastService : Service() {
             )
         }
         return NotificationCompat.Builder(this, CHANNEL)
-            .setSmallIcon(R.drawable.ic_stat_bell)
+            .appIcon(this)
             .setContentTitle(headline)
             .setContentText(getString(R.string.cast_notification_text))
             .setContentIntent(openMovie)

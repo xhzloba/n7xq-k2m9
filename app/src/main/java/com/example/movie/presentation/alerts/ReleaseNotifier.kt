@@ -11,6 +11,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.example.movie.MainActivity
 import com.example.movie.R
+import com.example.movie.notification.appIcon
 import com.example.movie.domain.model.FeedKind
 import com.example.movie.domain.model.SeriesAlert
 
@@ -36,7 +37,7 @@ internal object ReleaseNotifier {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
         val note = NotificationCompat.Builder(context, CHANNEL)
-            .setSmallIcon(R.drawable.ic_stat_bell)
+            .appIcon(context)
             .setContentTitle(alert.title)
             .setContentText(context.getString(alert.textRes(), alert.season, alert.episode))
             .setAutoCancel(true)
@@ -61,7 +62,7 @@ internal object ReleaseNotifier {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
         val note = NotificationCompat.Builder(context, CHANNEL)
-            .setSmallIcon(R.drawable.ic_stat_bell)
+            .appIcon(context)
             .setContentTitle(context.getString(categoryTitle(kind)))
             .setContentText(context.getString(R.string.alerts_shelf_body, count))
             .setAutoCancel(true)

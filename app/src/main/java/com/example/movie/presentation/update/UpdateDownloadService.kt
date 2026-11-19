@@ -10,6 +10,7 @@ import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import com.example.movie.MovieApplication
 import com.example.movie.R
+import com.example.movie.notification.appIcon
 import com.example.movie.domain.model.DownloadProgress
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -64,7 +65,7 @@ class UpdateDownloadService : Service() {
                 UpdateDownloadHub.progress = DownloadProgress()
                 val open = installer.installIntent(this@UpdateDownloadService, file)
                 val ready = NotificationCompat.Builder(this@UpdateDownloadService, CHANNEL)
-                    .setSmallIcon(R.drawable.ic_stat_download)
+                    .appIcon(this@UpdateDownloadService)
                     .setContentTitle(getString(R.string.update_notification_title))
                     .setContentText(getString(R.string.update_notification_ready))
                     .setContentIntent(openPending(open))
@@ -115,7 +116,7 @@ class UpdateDownloadService : Service() {
 
     private fun note(text: String, indeterminate: Boolean, percent: Int): android.app.Notification =
         NotificationCompat.Builder(this, CHANNEL)
-            .setSmallIcon(R.drawable.ic_stat_download)
+            .appIcon(this)
             .setContentTitle(getString(R.string.update_notification_title))
             .setContentText(text)
             .setOngoing(true)

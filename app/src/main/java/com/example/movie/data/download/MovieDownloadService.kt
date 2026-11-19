@@ -12,6 +12,7 @@ import androidx.media3.exoplayer.offline.DownloadManager
 import androidx.media3.exoplayer.offline.DownloadService
 import androidx.media3.exoplayer.scheduler.Scheduler
 import com.example.movie.R
+import com.example.movie.notification.appIcon
 
 @OptIn(UnstableApi::class)
 class MovieDownloadService : DownloadService(
@@ -49,7 +50,7 @@ class MovieDownloadService : DownloadService(
             else -> getString(R.string.download_running)
         }
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.stat_sys_download)
+            .appIcon(this)
             .setContentTitle(title)
             .setContentText(text)
             .setOngoing(true)

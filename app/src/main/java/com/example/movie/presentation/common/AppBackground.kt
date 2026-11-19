@@ -6,9 +6,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.BlurEffect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
@@ -137,7 +140,7 @@ internal fun appChrome(): Color {
 
 /** Как у cinema-scrim: строка бренда + хвост. */
 internal val TopScrimBrand = 40.dp
-internal val TopScrimTail = 96.dp
+internal val TopScrimTail = 48.dp
 
 /** Снизу плашки столько же, сколько BrandTopInset сверху строки. */
 private val HeaderFillLip = 16.dp
@@ -227,8 +230,12 @@ internal fun DrawScope.drawTopScrim(
     pools: DrawScope.() -> Unit,
 ) {
     if (!fill) {
-        drawRect(brush = palette.verticalBrush())
-        pools()
+        if (wash != null) {
+            drawCornerFeather(wash.topLeft, wash.topRight)
+        } else {
+            drawRect(brush = palette.verticalBrush())
+            pools()
+        }
         return
     }
     if (wash != null) {
@@ -236,6 +243,26 @@ internal fun DrawScope.drawTopScrim(
         return
     }
     drawRect(brush = theme)
+}
+
+/** Левый и правый угол шапки остаются своими цветами и тают вниз. */
+private fun DrawScope.drawCornerFeather(left: Color, right: Color) {
+    drawContext.canvas.saveLayer(Rect(0f, 0f, size.width, size.height), Paint())
+    drawRect(
+        brush = Brush.horizontalGradient(
+            listOf(left.copy(alpha = 0.84f), right.copy(alpha = 0.84f)),
+        ),
+    )
+    drawRect(
+        brush = Brush.verticalGradient(
+            0f to Color.Black,
+            0.42f to Color.Black.copy(alpha = 0.7f),
+            0.68f to Color.Black.copy(alpha = 0.22f),
+            1f to Color.Transparent,
+        ),
+        blendMode = BlendMode.DstIn,
+    )
+    drawContext.canvas.restore()
 }
 
 @Composable
@@ -249,7 +276,8 @@ internal fun Modifier.topScrimFade(progress: () -> Float): Modifier {
         alpha = if (solid) {
             if (progress() > 0f) 1f else 0f
         } else {
-            progress()
+            val t = progress().coerceIn(0f, 1f)
+            t * t * (3f - 2f * t)
         }
         renderEffect = if (blurPx > 0f) {
             BlurEffect(blurPx, blurPx, TileMode.Clamp)
