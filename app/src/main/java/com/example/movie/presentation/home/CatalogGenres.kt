@@ -1,5 +1,6 @@
 package com.example.movie.presentation.home
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -40,6 +42,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -98,7 +101,44 @@ internal val CatalogGenres = listOf(
 internal fun catalogGenresFor(type: String): List<String> =
     if (type == "movie") CatalogGenres.filter { it != "аниме" } else CatalogGenres
 
-// Как в Plex: stadium-пилюля, тёмный fill, без обводки.
+/** В слайдере чипсов нет. В полном списке жанров остаются. */
+private val SliderHidden = setOf(
+    "военный",
+    "детский",
+    "для взрослых",
+    "документальный",
+    "игра",
+    "концерт",
+    "мюзикл",
+    "ток-шоу",
+    "фильм-нуар",
+)
+
+private fun genreMark(name: String): Int? = when (name) {
+    "аниме" -> R.drawable.genre_anime
+    "биография" -> R.drawable.genre_biography
+    "боевик" -> R.drawable.genre_action
+    "вестерн" -> R.drawable.genre_western
+    "детектив" -> R.drawable.genre_detective
+    "драма" -> R.drawable.genre_drama
+    "история" -> R.drawable.genre_historical
+    "комедия" -> R.drawable.genre_comedy
+    "короткометражка" -> R.drawable.genre_short
+    "криминал" -> R.drawable.genre_crime
+    "мелодрама" -> R.drawable.genre_melodrama
+    "музыка" -> R.drawable.genre_music
+    "мультфильм" -> R.drawable.genre_cartoon
+    "приключения" -> R.drawable.genre_adventure
+    "семейный" -> R.drawable.genre_family
+    "спорт" -> R.drawable.genre_sport
+    "триллер" -> R.drawable.genre_thriller
+    "ужасы" -> R.drawable.genre_horror
+    "фантастика" -> R.drawable.genre_scifi
+    "фэнтези" -> R.drawable.genre_fantasy
+    else -> null
+}
+
+// Как в Plex: stadium-пилюля, тёмный fill, без обводки. Жанры с картинкой — сама подпись, без пилюли.
 private val GenreChipShape = RoundedCornerShape(percent = 50)
 private val GenreChipCinema = Color(0xFF262626)
 private val GenreChipGraphite = Color(0xFF2A2E38)
@@ -112,14 +152,15 @@ internal fun CatalogGenreChips(
 ) {
     val settings by LocalUserSettings.current.settings.collectAsStateWithLifecycle()
     val fill = if (settings.appTheme == THEME_GRAPHITE) GenreChipGraphite else GenreChipCinema
-    val genres = remember(type) { catalogGenresFor(type).filter { it != GenreAll } }
+    val genres = remember(type) {
+        catalogGenresFor(type).filter { it != GenreAll && it !in SliderHidden }
+    }
     val row = rememberLazyListState()
     HapticOnChange(row) { row.firstVisibleItemIndex }
     Column(modifier.fillMaxWidth()) {
         RailTitle(
             title = stringResource(R.string.catalog_genres),
             onClick = onOpenAll,
-            leadingIcon = ShellIcons.genres,
         )
         Spacer(Modifier.height(10.dp))
         LazyRow(
@@ -127,6 +168,7 @@ internal fun CatalogGenreChips(
             modifier = Modifier.fillMaxWidth(),
             contentPadding = PaddingValues(horizontal = PosterGridInset),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             items(genres, key = { it }) { name ->
                 GenreChip(
@@ -149,14 +191,22 @@ private fun GenreChip(
     var pressed by remember(name) { mutableStateOf(false) }
     val scale = rememberPressScale(pressed)
     val wave = remember(name) { PosterWave() }
+    val mark = genreMark(name)
     Box(
         modifier = Modifier
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
             }
-            .clip(GenreChipShape)
-            .background(fill)
+            .then(
+                if (mark == null) {
+                    Modifier
+                        .clip(GenreChipShape)
+                        .background(fill)
+                } else {
+                    Modifier
+                },
+            )
             .posterWave(wave, light = true)
             .pressToOpen(
                 onPressed = { pressed = it },
@@ -168,18 +218,31 @@ private fun GenreChip(
             ),
         contentAlignment = Alignment.Center,
     ) {
-        Text(
-            text = name.replaceFirstChar { ch ->
-                if (ch.isLowerCase()) ch.titlecase(Locale("ru")) else ch.toString()
-            },
-            color = Color.White,
-            fontWeight = FontWeight.Normal,
-            fontSize = 14.sp,
-            lineHeight = 18.sp,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
-        )
+        if (mark == null) {
+            Text(
+                text = name.replaceFirstChar { ch ->
+                    if (ch.isLowerCase()) ch.titlecase(Locale("ru")) else ch.toString()
+                },
+                color = Color.White,
+                fontWeight = FontWeight.Normal,
+                fontSize = 14.sp,
+                lineHeight = 18.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+            )
+        } else {
+            val painter = painterResource(mark)
+            val size = painter.intrinsicSize
+            val aspect = if (size.height > 0f) size.width / size.height else 2.4f
+            Image(
+                painter = painter,
+                contentDescription = name,
+                modifier = Modifier
+                    .height(if (name == "вестерн" || name == "боевик") 32.dp else 44.dp)
+                    .aspectRatio(aspect),
+            )
+        }
     }
 }
 

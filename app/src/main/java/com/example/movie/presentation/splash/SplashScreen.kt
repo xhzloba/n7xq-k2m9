@@ -46,11 +46,11 @@ private val Enter = CubicBezierEasing(0.22f, 0.08f, 0.18f, 1f)
 private fun Vibrator.splashBuzz() {
     if (!hasVibrator()) return
     val effect = if (hasAmplitudeControl()) {
-        VibrationEffect.createWaveform(longArrayOf(0, 160, 50), intArrayOf(0, 255, 220), 0)
+        VibrationEffect.createWaveform(longArrayOf(0, 90, 110), intArrayOf(0, 72, 48), 0)
     } else {
-        VibrationEffect.createWaveform(longArrayOf(0, 180, 40), 0)
+        VibrationEffect.createWaveform(longArrayOf(0, 50, 150), 0)
     }
-    vibrate(effect, VibrationAttributes.createForUsage(VibrationAttributes.USAGE_ALARM))
+    vibrate(effect, VibrationAttributes.createForUsage(VibrationAttributes.USAGE_NOTIFICATION))
 }
 
 @Composable

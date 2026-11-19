@@ -73,6 +73,7 @@ import com.example.movie.domain.model.toMovie
 import com.example.movie.presentation.detail.drawPlexWash
 import com.example.movie.presentation.home.components.BrandLogoBleed
 import com.example.movie.presentation.home.components.LogoAspect
+import com.example.movie.presentation.home.components.LogoHeight
 import com.example.movie.presentation.home.components.BrandRow
 import com.example.movie.presentation.home.components.BrandTopInset
 import com.example.movie.presentation.home.components.HomeContentInset
@@ -538,7 +539,7 @@ private fun BrandScrim(
                 drawTopScrim(fill, plate, fillWash, palette) {
                 val y = top.toPx() + BrandTopInset.toPx() + 20.dp.toPx()
                 val radius = 140.dp.toPx()
-                val logoWidth = 36.dp.toPx() * LogoAspect
+                val logoWidth = LogoHeight.toPx() * LogoAspect
                 val logoX = (HomeContentInset - BrandLogoBleed).toPx() + logoWidth / 2f
                 val searchX = size.width - (HomeContentInset + 11.dp).toPx()
                 fun pool(center: Offset) {

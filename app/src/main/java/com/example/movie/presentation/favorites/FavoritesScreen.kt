@@ -119,6 +119,7 @@ import com.example.movie.presentation.haptic.rememberHaptic
 import com.example.movie.presentation.haptic.rememberHapticTick
 import com.example.movie.presentation.home.components.BrandLogoBleed
 import com.example.movie.presentation.home.components.LogoAspect
+import com.example.movie.presentation.home.components.LogoHeight
 import com.example.movie.presentation.home.components.BrandTopInset
 import com.example.movie.presentation.home.components.PosterGridInset
 import com.example.movie.presentation.home.components.PosterCaption
@@ -461,7 +462,7 @@ private fun LibraryScrim(progress: Float, modifier: Modifier = Modifier) {
                 drawTopScrim(fill, plate, null, palette) {
                 val y = top.toPx() + BrandTopInset.toPx() + 20.dp.toPx()
                 val radius = 140.dp.toPx()
-                val logoWidth = 36.dp.toPx() * LogoAspect
+                val logoWidth = LogoHeight.toPx() * LogoAspect
                 val logoX = (PosterGridInset - BrandLogoBleed).toPx() + logoWidth / 2f
                 val menuX = size.width - (14.dp.toPx() + 20.dp.toPx())
                 fun pool(center: Offset) {
