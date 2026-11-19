@@ -108,6 +108,7 @@ import com.example.movie.domain.model.AppRelease
 import com.example.movie.domain.model.DownloadProgress
 import com.example.movie.presentation.common.HandleSheet
 import com.example.movie.presentation.common.ScrollToTop
+import com.example.movie.presentation.common.glideToStart
 import com.example.movie.presentation.common.THEME_BLACK
 import com.example.movie.presentation.common.THEME_CINEMA
 import com.example.movie.presentation.common.THEME_GRAPHITE
@@ -578,7 +579,7 @@ private fun SettingsLeaf(
 @Composable
 private fun leafScroll(modifier: Modifier, scrollTop: Int): Modifier {
     val state = rememberScrollState()
-    ScrollToTop(scrollTop, atTop = { state.value == 0 }) { state.animateScrollTo(0) }
+    ScrollToTop(scrollTop, atTop = { state.value == 0 }) { state.glideToStart() }
     return modifier
         .verticalScroll(state)
         .padding(top = 18.dp, bottom = 96.dp)
@@ -681,7 +682,7 @@ private fun AboutPage(scrollTop: Int, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val tick = rememberHapticTick()
     val aboutScroll = rememberScrollState()
-    ScrollToTop(scrollTop, atTop = { aboutScroll.value == 0 }) { aboutScroll.animateScrollTo(0) }
+    ScrollToTop(scrollTop, atTop = { aboutScroll.value == 0 }) { aboutScroll.glideToStart() }
     Column(
         modifier = modifier
             .verticalScroll(aboutScroll)
@@ -1021,7 +1022,7 @@ private fun SettingsMenu(
     val pending = LocalAppUpdate.current.pending
     val pages = SettingsPage.entries.filter { it != SettingsPage.Root }
     val menuScroll = rememberScrollState()
-    ScrollToTop(scrollTop, atTop = { menuScroll.value == 0 }) { menuScroll.animateScrollTo(0) }
+    ScrollToTop(scrollTop, atTop = { menuScroll.value == 0 }) { menuScroll.glideToStart() }
     Column(
         modifier
             .verticalScroll(menuScroll)

@@ -42,6 +42,7 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.zIndex
@@ -50,7 +51,6 @@ import com.example.movie.presentation.home.CornerIris
 import kotlin.math.roundToInt
 import com.example.movie.di.LocalAppContainer
 import com.example.movie.presentation.common.LocalShelfNotices
-import com.example.movie.presentation.common.ShelfNoticeHost
 import com.example.movie.presentation.common.ShelfNotices
 import com.example.movie.domain.model.Movie
 import com.example.movie.presentation.detail.DetailRoute
@@ -93,7 +93,8 @@ class MainActivity : ComponentActivity() {
                 MovieTheme {
                     NavigationGesture()
                     val noticeScope = rememberCoroutineScope()
-                    val notices = remember(noticeScope) { ShelfNotices(noticeScope) }
+                    val noticeContext = LocalContext.current
+                    val notices = remember(noticeScope, noticeContext) { ShelfNotices(noticeScope, noticeContext) }
                     CompositionLocalProvider(LocalShelfNotices provides notices) {
                     val session by rememberSaveable { mutableIntStateOf(0) }
                     var splash by rememberSaveable { mutableStateOf(true) }
@@ -274,7 +275,6 @@ class MainActivity : ComponentActivity() {
                         }
                         }
                         if (!splash || revealed) AppUpdateHost()
-                        ShelfNoticeHost()
                         if (splash) {
                             SplashScreen(
                                 onReveal = { revealed = true },
