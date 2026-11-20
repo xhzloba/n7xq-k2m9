@@ -75,6 +75,9 @@ import coil.compose.AsyncImage
 import com.example.movie.domain.model.ContentKind
 import com.example.movie.domain.model.Movie
 import com.example.movie.presentation.detail.DetailSeed
+import com.example.movie.presentation.folders.FolderGlyph
+import com.example.movie.presentation.folders.FolderPickSheet
+import com.example.movie.presentation.folders.FolderTrail
 import com.example.movie.domain.model.ResumeItem
 import com.example.movie.domain.model.resumeClock
 import com.example.movie.domain.model.toSaved
@@ -104,6 +107,7 @@ private enum class PeekPage {
     Menu,
     Summary,
     Seasons,
+    Folders,
 }
 
 internal val PeekEnter =
@@ -149,6 +153,14 @@ internal fun MoviePeek(
                 suppressDismiss = true
                 page = PeekPage.Seasons
             },
+            onFolders = {
+                suppressDismiss = true
+                page = PeekPage.Folders
+            },
+        )
+        PeekPage.Folders -> FolderPickSheet(
+            title = shown.toSaved(),
+            onDismiss = onDismiss,
         )
         PeekPage.Seasons -> SeasonWatchSheet(
             movie = shown,
@@ -174,14 +186,18 @@ private fun MovieMenu(
     onContinue: (() -> Unit)?,
     onSummary: () -> Unit,
     onPickSeasons: () -> Unit,
+    onFolders: () -> Unit,
 ) {
     val favorites = LocalAppContainer.current.favorites
     val watched = LocalAppContainer.current.watched
     val resumeStore = LocalAppContainer.current.resume
     val savedIds by favorites.ids.collectAsStateWithLifecycle()
     val watchedIds by watched.ids.collectAsStateWithLifecycle()
+    val folders by LocalAppContainer.current.folders.items.collectAsStateWithLifecycle()
     val saved = movie.id in savedIds
     val seen = movie.id in watchedIds
+    val held = folders.filter { folder -> folder.titles.any { it.id == movie.id } }
+    val filed = held.isNotEmpty()
     val resume by LocalAppContainer.current.resume.items.collectAsStateWithLifecycle()
     val continued = resume.firstOrNull { it.id == movie.id }
     val tick = rememberHapticTick()
@@ -272,9 +288,24 @@ private fun MovieMenu(
                 },
             )
             MenuRow(
-                icon = ListIcon,
+                icon = FolderGlyph,
                 label = stringResource(R.string.menu_list),
-                enabled = false,
+                quiet = !filed,
+                onClick = {
+                    tick?.invoke()
+                    onFolders()
+                },
+                trail = if (!filed) {
+                    null
+                } else {
+                    {
+                        FolderTrail(
+                            count = held.size,
+                            name = held.firstOrNull()?.name,
+                            tint = RowInk,
+                        )
+                    }
+                },
             )
             MenuRow(
                 icon = CommentIcon,
@@ -565,9 +596,11 @@ private fun MenuRow(
     label: String,
     enabled: Boolean = true,
     marked: Boolean = false,
+    quiet: Boolean = false,
     onClick: () -> Unit = {},
+    trail: @Composable (() -> Unit)? = null,
 ) {
-    val ink = if (enabled) RowInk else CinemaMuted
+    val ink = if (enabled && !quiet) RowInk else CinemaMuted
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -595,6 +628,10 @@ private fun MenuRow(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
+        if (trail != null) {
+            Spacer(Modifier.width(8.dp))
+            trail()
+        }
     }
 }
 
@@ -742,18 +779,6 @@ private val CheckIcon = strokeIcon("check") {
     moveTo(8.3f, 12.2f)
     lineTo(10.9f, 14.8f)
     lineTo(15.8f, 9.4f)
-}
-
-private val ListIcon = strokeIcon("list") {
-    circle(5f, 6.5f, 1.15f)
-    circle(5f, 12f, 1.15f)
-    circle(5f, 17.5f, 1.15f)
-    moveTo(8.6f, 6.5f)
-    lineTo(19.5f, 6.5f)
-    moveTo(8.6f, 12f)
-    lineTo(19.5f, 12f)
-    moveTo(8.6f, 17.5f)
-    lineTo(19.5f, 17.5f)
 }
 
 private val CommentIcon = strokeIcon("comment") {

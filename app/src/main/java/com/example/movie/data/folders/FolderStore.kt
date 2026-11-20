@@ -1,6 +1,7 @@
 package com.example.movie.data.folders
 
 import android.content.Context
+import com.example.movie.domain.model.SavedTitle
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -12,6 +13,7 @@ import kotlinx.serialization.json.Json
 data class LibraryFolder(
     val name: String,
     val description: String = "",
+    val titles: List<SavedTitle> = emptyList(),
 )
 
 class FolderStore(context: Context) {
@@ -24,10 +26,39 @@ class FolderStore(context: Context) {
 
     fun replace(next: List<LibraryFolder>) {
         val clean = next
-            .map { it.copy(name = it.name.trim(), description = it.description.trim()) }
+            .map {
+                it.copy(
+                    name = it.name.trim(),
+                    description = it.description.trim(),
+                    titles = it.titles.filter { title -> title.id.isNotBlank() }.distinctBy { title -> title.id },
+                )
+            }
             .filter { it.name.isNotEmpty() }
         prefs.edit().putString(KEY, json.encodeToString(clean)).commit()
         itemsState.value = clean
+    }
+
+    fun toggle(index: Int, title: SavedTitle): Boolean {
+        if (title.id.isBlank()) return false
+        val current = itemsState.value
+        val folder = current.getOrNull(index) ?: return false
+        val has = folder.titles.any { it.id == title.id }
+        val titles = if (has) {
+            folder.titles.filterNot { it.id == title.id }
+        } else {
+            listOf(title) + folder.titles.filterNot { it.id == title.id }
+        }
+        val next = current.toMutableList()
+        next[index] = folder.copy(titles = titles)
+        replace(next)
+        return !has
+    }
+
+    fun add(name: String, description: String, title: SavedTitle?) {
+        val named = name.trim()
+        if (named.isEmpty()) return
+        val titles = listOfNotNull(title).filter { it.id.isNotBlank() }
+        replace(itemsState.value + LibraryFolder(named, description.trim(), titles))
     }
 
     private fun read(): List<LibraryFolder> {

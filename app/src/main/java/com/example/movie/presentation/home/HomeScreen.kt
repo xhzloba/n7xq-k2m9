@@ -92,9 +92,7 @@ import com.example.movie.presentation.home.components.LogoMood
 import com.example.movie.presentation.home.components.PageRefresh
 import com.example.movie.presentation.home.components.PosterCarousel
 import com.example.movie.presentation.home.components.RecommendationRail
-import com.example.movie.presentation.common.BookmarkFilled
 import com.example.movie.presentation.common.HideBarOnScroll
-import com.example.movie.presentation.common.PlexPlay
 import com.example.movie.presentation.common.THEME_BLACK
 import com.example.movie.presentation.common.THEME_GRAPHITE
 import com.example.movie.presentation.common.appBackground
@@ -107,7 +105,6 @@ import com.example.movie.presentation.common.topScrimFade
 import com.example.movie.presentation.common.topScrimHeight
 import com.example.movie.presentation.common.topScrimPalette
 import com.example.movie.presentation.palette.PosterWash
-import com.example.movie.presentation.shell.ShellIcons
 import com.example.movie.ui.theme.CinemaBlack
 import com.example.movie.ui.theme.MovieTheme
 import com.example.movie.ui.theme.PlayBlue
@@ -746,7 +743,6 @@ private fun HomeOrderedRail(
             onMovieClick = onMovieClick,
             onMoviePeek = onMoviePeek,
             title = title,
-            leadingIcon = ShellIcons.history,
             onOpen = { onOpenSection(HomeSection.History) },
             onSettled = onSettled,
             seeAllGlass = seeAllGlass,
@@ -760,7 +756,6 @@ private fun HomeOrderedRail(
                 onMovieClick = onPlayResume,
                 onMoviePeek = onMoviePeek,
                 title = title,
-                leadingIcon = PlexPlay,
                 onOpen = { onOpenSection(HomeSection.Continue) },
                 onSettled = onSettled,
             seeAllGlass = seeAllGlass,
@@ -775,7 +770,6 @@ private fun HomeOrderedRail(
             onMovieClick = onMovieClick,
             onMoviePeek = onMoviePeek,
             title = title,
-            leadingIcon = BookmarkFilled,
             onOpen = if (state.favorites.size >= HistoryRailSize) {
                 { onOpenSection(HomeSection.Favorites) }
             } else {

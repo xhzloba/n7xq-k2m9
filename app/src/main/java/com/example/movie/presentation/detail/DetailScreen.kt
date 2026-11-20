@@ -168,6 +168,9 @@ import com.example.movie.presentation.common.BookmarkButton
 import com.example.movie.presentation.common.PlexPlay
 import com.example.movie.presentation.common.DownloadRing
 import com.example.movie.presentation.common.HandleSheet
+import com.example.movie.presentation.folders.FolderGlyph
+import com.example.movie.presentation.folders.FolderPickSheet
+import com.example.movie.presentation.folders.FolderTrail
 import com.example.movie.presentation.common.ImdbScore
 import com.example.movie.presentation.common.KpScore
 import com.example.movie.presentation.common.LocalShelfNotices
@@ -349,12 +352,17 @@ private fun RowScope.ActionSlot(label: String, content: @Composable () -> Unit) 
 
 @Composable
 private fun MoreActionsSheet(
+    movieId: String,
     downloadStatus: OfflineStatus?,
     onDownload: () -> Unit,
+    onFolder: () -> Unit,
     onFrames: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     val tick = rememberHapticTick()
+    val folders by LocalAppContainer.current.folders.items.collectAsStateWithLifecycle()
+    val held = folders.filter { folder -> folder.titles.any { it.id == movieId } }
+    val folderInk = if (held.isNotEmpty()) Color.White else CinemaMuted
     var settings by remember { mutableStateOf(false) }
     HandleSheet(onDismiss = onDismiss) {
         if (settings) {
@@ -417,6 +425,46 @@ private fun MoreActionsSheet(
                         fontWeight = FontWeight.Medium,
                         modifier = Modifier.weight(1f),
                     )
+                }
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = {
+                                tick?.invoke()
+                                onFolder()
+                            },
+                        )
+                        .padding(horizontal = 14.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        imageVector = FolderGlyph,
+                        contentDescription = null,
+                        tint = folderInk,
+                        modifier = Modifier.size(22.dp),
+                    )
+                    Spacer(Modifier.width(14.dp))
+                    Text(
+                        text = stringResource(R.string.menu_list),
+                        color = folderInk,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f),
+                    )
+                    if (held.isNotEmpty()) {
+                        Spacer(Modifier.width(8.dp))
+                        FolderTrail(
+                            count = held.size,
+                            name = held.firstOrNull()?.name,
+                            tint = folderInk,
+                        )
+                    }
                 }
                 Row(
                     Modifier
@@ -682,6 +730,7 @@ private fun DetailContent(
     var previewOn by remember(detail.id) { mutableStateOf(true) }
     var downloadSheet by remember(detail.id) { mutableStateOf(false) }
     var moreOpen by remember(detail.id) { mutableStateOf(false) }
+    var folderOpen by remember(detail.id) { mutableStateOf(false) }
     var qualitySheet by remember(detail.id) { mutableStateOf(false) }
     var offlinePlay by remember(detail.id) { mutableStateOf(false) }
     var watchRequested by remember(detail.id) { mutableStateOf(false) }
@@ -1741,16 +1790,26 @@ private fun DetailContent(
         }
         if (moreOpen) {
             MoreActionsSheet(
+                movieId = detail.id,
                 downloadStatus = downloadStatus,
                 onDownload = {
                     moreOpen = false
                     downloadSheet = true
+                },
+                onFolder = {
+                    moreOpen = false
+                    folderOpen = true
                 },
                 onFrames = {
                     moreOpen = false
                     franchisePage = "frames"
                 },
                 onDismiss = { moreOpen = false },
+            )
+        } else if (folderOpen) {
+            FolderPickSheet(
+                title = detail.toSaved(),
+                onDismiss = { folderOpen = false },
             )
         } else if (downloadSheet) {
             DownloadSheet(

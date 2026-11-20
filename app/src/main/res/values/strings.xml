@@ -104,7 +104,7 @@
     <string name="menu_favorite_remove">Убрать из «Буду смотреть»</string>
     <string name="menu_watched">Просмотрено</string>
     <string name="menu_unwatched">Не просмотрено</string>
-    <string name="menu_list">Добавить в список</string>
+    <string name="menu_list">Добавить в папку</string>
     <string name="action_later">Буду смотреть</string>
     <string name="action_seen">Смотрел</string>
     <string name="action_unseen">Не смотрел</string>
@@ -173,10 +173,14 @@
     <string name="favorites_downloaded">Скачанное</string>
     <string name="library_downloads">Загрузки</string>
     <string name="library_watch_empty">Добавляйте в избранное</string>
+    <string name="library_watched">Просмотренное</string>
+    <string name="library_watched_empty">Отмечайте просмотренное</string>
     <string name="library_downloads_empty">Загружайте фильмы и сериалы, чтобы смотреть их без интернета</string>
     <string name="library_downloads_pick">Выбрать что загрузить</string>
     <string name="library_folders">Папки</string>
     <string name="library_folder_new">Новая папка</string>
+    <string name="folder_added_in">Добавлено в</string>
+    <string name="folder_not_added">Другие папки</string>
     <string name="library_folder_name">Название</string>
     <string name="library_folder_about">Описание</string>
     <string name="library_folder_empty">В папке пока пусто.</string>
@@ -194,6 +198,8 @@
     <string name="notice_watched_series">Сериал добавлен в просмотренное</string>
     <string name="notice_watched_movie_off">Фильм убран из просмотренного</string>
     <string name="notice_watched_series_off">Сериал убран из просмотренного</string>
+    <string name="notice_folder_add">Добавлено в «%1$s»</string>
+    <string name="notice_folder_remove">Убрано из «%1$s»</string>
     <string name="notice_favorite_movie">Фильм добавлен в «Буду смотреть»</string>
     <string name="notice_favorite_series">Сериал добавлен в «Буду смотреть»</string>
     <string name="notice_favorite_movie_off">Фильм убран из «Буду смотреть»</string>

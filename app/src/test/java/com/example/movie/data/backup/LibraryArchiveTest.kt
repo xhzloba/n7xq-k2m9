@@ -29,10 +29,15 @@ class LibraryArchiveTest {
 
     @Test
     fun foldersRoundTripAndOldFileLeavesThemOut() {
-        val file = LibraryFile(folders = listOf(LibraryFolder("Ночь", "тихо")))
+        val file = LibraryFile(
+            folders = listOf(
+                LibraryFolder("Ночь", "тихо", listOf(SavedTitle(id = "9", title = "Тишина"))),
+            ),
+        )
         val back = LibraryArchive.decode(LibraryArchive.encode(file))
         assertEquals("Ночь", back?.folders?.single()?.name)
         assertEquals("тихо", back?.folders?.single()?.description)
+        assertEquals("Тишина", back?.folders?.single()?.titles?.single()?.title)
         assertEquals(true, LibraryArchive.hasFolders(LibraryArchive.encode(file)))
         assertEquals(false, LibraryArchive.hasFolders("""{"version":1}"""))
     }

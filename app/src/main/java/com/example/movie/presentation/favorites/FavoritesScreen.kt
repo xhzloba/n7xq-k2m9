@@ -59,6 +59,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.CircularProgressIndicator
@@ -227,6 +228,7 @@ internal fun FavoritesScreen(
     val container = LocalAppContainer.current
     val favorites by container.favorites.items.collectAsStateWithLifecycle()
     val watched by container.watched.items.collectAsStateWithLifecycle()
+    val history by container.viewHistory.items.collectAsStateWithLifecycle()
     val resume by container.resume.items.collectAsStateWithLifecycle()
     val alerts by container.releaseWatch.store.subs.collectAsStateWithLifecycle()
     val downloads by container.offline.items.collectAsStateWithLifecycle()
@@ -257,6 +259,7 @@ internal fun FavoritesScreen(
         null -> emptyList()
         LibrarySection.Favorites -> favorites
         LibrarySection.Continue -> resume.map { it.toSaved() }
+        LibrarySection.History -> history
         LibrarySection.Watched -> watched
         LibrarySection.Alerts -> alerts.map { it.toLibrary() }
         LibrarySection.Downloads -> downloads.map { it.title }
@@ -293,6 +296,8 @@ internal fun FavoritesScreen(
             FolderInside(
                 folder = folders[openedFolder],
                 onBack = { openedFolder = -1 },
+                onMovieClick = onMovieClick,
+                onMoviePeek = onMoviePeek,
             )
         } else if (library == null && foldersOpen) {
             FolderPage(
@@ -307,6 +312,8 @@ internal fun FavoritesScreen(
             LibraryHub(
                 favorites = favorites,
                 resume = resume,
+                history = history,
+                watched = watched,
                 downloads = downloads,
                 onMovieClick = onMovieClick,
                 onMoviePeek = onMoviePeek,
@@ -504,7 +511,9 @@ internal fun FavoritesScreen(
                 onDismiss = { editingFolder = null },
                 onSave = { name, about ->
                     val next = if (editor in folders.indices) {
-                        folders.toMutableList().also { it[editor] = LibraryFolder(name, about) }
+                        folders.toMutableList().also {
+                            it[editor] = folders[editor].copy(name = name, description = about)
+                        }
                     } else {
                         folders + LibraryFolder(name, about)
                     }
@@ -522,6 +531,8 @@ private const val LibraryRailCap = 15
 private fun LibraryHub(
     favorites: List<SavedTitle>,
     resume: List<ResumeItem>,
+    history: List<SavedTitle>,
+    watched: List<SavedTitle>,
     downloads: List<OfflineItem>,
     onMovieClick: (String) -> Unit,
     onMoviePeek: (Movie) -> Unit,
@@ -576,6 +587,32 @@ private fun LibraryHub(
                     onOpen = { onOpen(LibrarySection.Continue) },
                     progressOf = { movie -> rail.firstOrNull { it.id == movie.id }?.fraction },
                     captionOf = { movie -> rail.firstOrNull { it.id == movie.id }?.progressCaption() },
+                )
+            }
+            if (history.isNotEmpty()) {
+                LibraryRail(
+                    title = stringResource(R.string.section_history),
+                    movies = history.take(LibraryRailCap).map { it.toMovie() },
+                    onMovieClick = onMovieClick,
+                    onMoviePeek = onMoviePeek,
+                    onOpen = { onOpen(LibrarySection.History) },
+                )
+            }
+            if (watched.isEmpty()) {
+                LibraryPlaque(
+                    title = stringResource(R.string.library_watched),
+                    body = stringResource(R.string.library_watched_empty),
+                    icon = Icons.Filled.CheckCircle,
+                    iconSize = 92.dp,
+                    onClick = onOpenCatalog,
+                )
+            } else {
+                LibraryRail(
+                    title = stringResource(R.string.library_watched),
+                    movies = watched.take(LibraryRailCap).map { it.toMovie() },
+                    onMovieClick = onMovieClick,
+                    onMoviePeek = onMoviePeek,
+                    onOpen = { onOpen(LibrarySection.Watched) },
                 )
             }
             if (downloads.isEmpty()) {
@@ -1115,36 +1152,78 @@ private fun FolderPage(
 private fun FolderInside(
     folder: LibraryFolder,
     onBack: () -> Unit,
+    onMovieClick: (String) -> Unit,
+    onMoviePeek: (Movie) -> Unit,
 ) {
     Box(Modifier.fillMaxSize()) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(top = libraryTopPadding(), bottom = 96.dp)
-                .padding(horizontal = PosterGridInset),
-        ) {
-            if (folder.description.isNotBlank()) {
-                Text(
-                    text = folder.description,
-                    color = CinemaMuted,
-                    fontSize = 14.sp,
-                    lineHeight = 19.sp,
-                )
-            }
-            Box(
+        if (folder.titles.isEmpty()) {
+            Column(
                 modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth(),
-                contentAlignment = Alignment.Center,
+                    .fillMaxSize()
+                    .padding(top = libraryTopPadding(), bottom = 96.dp)
+                    .padding(horizontal = PosterGridInset),
             ) {
-                Text(
-                    text = stringResource(R.string.library_folder_empty),
-                    color = CinemaMuted,
-                    fontSize = 16.sp,
-                    lineHeight = 22.sp,
-                    textAlign = TextAlign.Center,
-                )
+                if (folder.description.isNotBlank()) {
+                    Text(
+                        text = folder.description,
+                        color = CinemaMuted,
+                        fontSize = 14.sp,
+                        lineHeight = 19.sp,
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth(),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = stringResource(R.string.library_folder_empty),
+                        color = CinemaMuted,
+                        fontSize = 16.sp,
+                        lineHeight = 22.sp,
+                        textAlign = TextAlign.Center,
+                    )
+                }
             }
+        } else {
+            val gridState = rememberLazyGridState()
+            LazyVerticalGrid(
+                state = gridState,
+                columns = GridCells.Fixed(posterGridColumns()),
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    start = PosterGridInset,
+                    end = PosterGridInset,
+                    top = libraryTopPadding(),
+                    bottom = 96.dp,
+                ),
+                horizontalArrangement = Arrangement.spacedBy(PosterGap),
+                verticalArrangement = Arrangement.spacedBy(PosterGap),
+            ) {
+                if (folder.description.isNotBlank()) {
+                    item(key = "about", span = { GridItemSpan(maxLineSpan) }) {
+                        Text(
+                            text = folder.description,
+                            color = CinemaMuted,
+                            fontSize = 14.sp,
+                            lineHeight = 19.sp,
+                            modifier = Modifier.padding(bottom = 6.dp),
+                        )
+                    }
+                }
+                items(folder.titles, key = { it.id }) { item ->
+                    FavoritePoster(
+                        item = item,
+                        onMovieClick = onMovieClick,
+                        onMoviePeek = onMoviePeek,
+                    )
+                }
+            }
+            SectionScrim(
+                progress = gridState.libraryScrim(),
+                modifier = Modifier.align(Alignment.TopCenter),
+            )
         }
         LibraryBar(
             title = folder.name,
@@ -1401,7 +1480,8 @@ private fun LibraryScrim(progress: Float, modifier: Modifier = Modifier) {
 private enum class LibrarySection(@StringRes val label: Int) {
     Favorites(R.string.section_favorites),
     Continue(R.string.section_continue),
-    Watched(R.string.favorites_watched),
+    History(R.string.section_history),
+    Watched(R.string.library_watched),
     Downloads(R.string.favorites_downloaded),
     Alerts(R.string.library_alerts),
     Actors(R.string.favorites_actors),
