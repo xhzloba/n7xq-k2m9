@@ -144,7 +144,6 @@ internal fun CastLivePlaque(
                 url = movie.posterUrl,
                 movieId = movie.id,
                 contentDescription = movie.title,
-                showLabel = false,
                 modifier = Modifier
                     .size(width = 48.dp, height = 72.dp)
                     .clip(PosterShape),

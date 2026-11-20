@@ -51,13 +51,86 @@
             android:launchMode="singleTop"
             android:supportsPictureInPicture="true"
             android:label="@string/app_name"
-            android:theme="@style/Theme.Movie">
+            android:theme="@style/Theme.Movie" />
+
+        <activity-alias
+            android:name=".LauncherBrushed"
+            android:enabled="true"
+            android:exported="true"
+            android:icon="@mipmap/ic_brand_brushed"
+            android:label="@string/app_name"
+            android:roundIcon="@mipmap/ic_brand_brushed"
+            android:targetActivity=".MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-        </activity>
+        </activity-alias>
+        <activity-alias
+            android:name=".LauncherNeon"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_brand_neon"
+            android:label="@string/app_name"
+            android:roundIcon="@mipmap/ic_brand_neon"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name=".LauncherMetal"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_brand_metal"
+            android:label="@string/app_name"
+            android:roundIcon="@mipmap/ic_brand_metal"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name=".LauncherMatte"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_brand_matte"
+            android:label="@string/app_name"
+            android:roundIcon="@mipmap/ic_brand_matte"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name=".LauncherNavy"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_brand_navy"
+            android:label="@string/app_name"
+            android:roundIcon="@mipmap/ic_brand_navy"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name=".LauncherWhite"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_brand_white"
+            android:label="@string/app_name"
+            android:roundIcon="@mipmap/ic_brand_white"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
 
         <receiver
             android:name=".presentation.alerts.ReleaseWatchReceiver"

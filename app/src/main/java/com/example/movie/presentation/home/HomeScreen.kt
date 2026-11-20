@@ -1,5 +1,6 @@
 package com.example.movie.presentation.home
 
+import android.graphics.drawable.ColorDrawable
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -53,7 +54,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.DialogWindowProvider
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -75,6 +81,8 @@ import com.example.movie.presentation.home.components.BrandLogoBleed
 import com.example.movie.presentation.home.components.LogoAspect
 import com.example.movie.presentation.home.components.LogoHeight
 import com.example.movie.presentation.home.components.BrandRow
+import com.example.movie.presentation.home.components.LauncherIconPicker
+import com.example.movie.presentation.home.components.LauncherIcons
 import com.example.movie.presentation.home.components.BrandTopInset
 import com.example.movie.presentation.home.components.HomeContentInset
 import com.example.movie.presentation.home.components.CategoryTabs
@@ -254,6 +262,10 @@ fun HomeScreen(
     }
     val play = playAnim.value
     val logo = remember { LogoMood() }
+    val iconContext = LocalContext.current
+    var pickingIcon by remember { mutableStateOf(false) }
+    var iconOpen by remember { mutableStateOf(false) }
+    var launcherMark by remember { mutableStateOf(LauncherIcons.current(iconContext)) }
     BackHandler(enabled = presentSearch && state.searchOpen, onBack = onCloseSearch)
     val veil = remember { androidx.compose.animation.core.Animatable(0f) }
     var searchCover by remember { mutableStateOf(false) }
@@ -330,6 +342,10 @@ fun HomeScreen(
                     hat = logo.hat,
                     mustache = logo.mustache,
                     onMenuSettled = logo::onSettled,
+                    onLogo = {
+                        iconOpen = true
+                        pickingIcon = true
+                    },
                 )
                 StatusMessage(
                     message = if (state.phase is HomePhase.Failed) {
@@ -485,6 +501,10 @@ fun HomeScreen(
                 onAlerts = onOpenAlerts,
                 hat = logo.hat,
                 mustache = logo.mustache,
+                onLogo = {
+                        iconOpen = true
+                        pickingIcon = true
+                    },
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))
@@ -516,6 +536,45 @@ fun HomeScreen(
                 onMoviePeek = onMoviePeek,
                 modifier = Modifier.graphicsLayer { alpha = veil.value },
             )
+        }
+        if (iconOpen) {
+            Dialog(
+                onDismissRequest = { pickingIcon = false },
+                properties = DialogProperties(
+                    usePlatformDefaultWidth = false,
+                    decorFitsSystemWindows = false,
+                    dismissOnClickOutside = false,
+                    dismissOnBackPress = true,
+                ),
+            ) {
+                val view = LocalView.current
+                SideEffect {
+                    (view.parent as? DialogWindowProvider)?.window?.apply {
+                        setDimAmount(0f)
+                        setBackgroundDrawable(ColorDrawable(android.graphics.Color.TRANSPARENT))
+                        setWindowAnimations(0)
+                    }
+                }
+                val iconVeil = remember { androidx.compose.animation.core.Animatable(0f) }
+                LaunchedEffect(pickingIcon) {
+                    if (pickingIcon) {
+                        iconVeil.animateTo(1f, tween(340, easing = FastOutSlowInEasing))
+                    } else {
+                        iconVeil.animateTo(0f, tween(220, easing = FastOutSlowInEasing))
+                        iconOpen = false
+                    }
+                }
+                LauncherIconPicker(
+                    selected = launcherMark,
+                    onSelect = { id ->
+                        launcherMark = id
+                        LauncherIcons.apply(iconContext, id)
+                        pickingIcon = false
+                    },
+                    onDismiss = { pickingIcon = false },
+                    modifier = Modifier.graphicsLayer { alpha = iconVeil.value },
+                )
+            }
         }
     }
 }
@@ -668,6 +727,8 @@ private fun HomeOrderedRail(
     onPlayResume: (String) -> Unit,
     onSettled: () -> Unit,
 ) {
+    val settings by LocalUserSettings.current.settings.collectAsStateWithLifecycle()
+    val seeAllGlass = settings.heroPosterColors && settings.heroPosterPage
     val title = stringResource(entry.titleRes)
     when (entry.id) {
         HomeRails.Recommendations -> RecommendationRail(
@@ -677,6 +738,7 @@ private fun HomeOrderedRail(
             title = title,
             onOpen = { onOpenSection(HomeSection.Recommendations) },
             onSettled = onSettled,
+            seeAllGlass = seeAllGlass,
             modifier = Modifier.fillMaxWidth(),
         )
         HomeRails.History -> RecommendationRail(
@@ -687,6 +749,7 @@ private fun HomeOrderedRail(
             leadingIcon = ShellIcons.history,
             onOpen = { onOpenSection(HomeSection.History) },
             onSettled = onSettled,
+            seeAllGlass = seeAllGlass,
             stickToStart = true,
             modifier = Modifier.fillMaxWidth(),
         )
@@ -700,6 +763,7 @@ private fun HomeOrderedRail(
                 leadingIcon = PlexPlay,
                 onOpen = { onOpenSection(HomeSection.Continue) },
                 onSettled = onSettled,
+            seeAllGlass = seeAllGlass,
                 stickToStart = true,
                 progressOf = { movie -> rail.firstOrNull { it.id == movie.id }?.fraction },
                 captionOf = { movie -> rail.firstOrNull { it.id == movie.id }?.progressCaption() },
@@ -718,6 +782,7 @@ private fun HomeOrderedRail(
                 null
             },
             onSettled = onSettled,
+            seeAllGlass = seeAllGlass,
             stickToStart = true,
             modifier = Modifier.fillMaxWidth(),
         )
@@ -732,6 +797,7 @@ private fun HomeOrderedRail(
                 null
             },
             onSettled = onSettled,
+            seeAllGlass = seeAllGlass,
             stickToStart = true,
             modifier = Modifier.fillMaxWidth(),
         )
@@ -742,6 +808,7 @@ private fun HomeOrderedRail(
             title = title,
             onOpen = { onOpenSection(HomeSection.Watching) },
             onSettled = onSettled,
+            seeAllGlass = seeAllGlass,
             modifier = Modifier.fillMaxWidth(),
         )
         HomeRails.Best -> RecommendationRail(
@@ -751,6 +818,7 @@ private fun HomeOrderedRail(
             title = title,
             onOpen = { onOpenSection(HomeSection.Best) },
             onSettled = onSettled,
+            seeAllGlass = seeAllGlass,
             modifier = Modifier.fillMaxWidth(),
         )
         else -> {
@@ -762,6 +830,7 @@ private fun HomeOrderedRail(
                 title = title,
                 onOpen = { onOpenSection(HomeSection.valueOf(section)) },
                 onSettled = onSettled,
+            seeAllGlass = seeAllGlass,
                 modifier = Modifier.fillMaxWidth(),
             )
         }

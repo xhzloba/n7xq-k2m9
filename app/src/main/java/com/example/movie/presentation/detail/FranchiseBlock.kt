@@ -1042,7 +1042,6 @@ internal fun SeasonPoster(url: String?, fallback: String?) {
             .clip(RoundedCornerShape(6.dp))
             .background(Color.White.copy(alpha = 0.08f)),
         iconSize = 14.dp,
-        showLabel = false,
     )
     Spacer(Modifier.width(12.dp))
 }

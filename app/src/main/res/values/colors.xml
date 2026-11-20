@@ -9,4 +9,10 @@
     <color name="white">#FFFFFFFF</color>
     <color name="cinema_black">#FF07070A</color>
     <color name="ic_launcher_plate">#FF313131</color>
+    <color name="ic_brand_neon">#FF1F1F28</color>
+    <color name="ic_brand_metal">#FF2A2C2D</color>
+    <color name="ic_brand_matte">#FF222527</color>
+    <color name="ic_brand_navy">#FF161B31</color>
+    <color name="ic_brand_brushed">#FF3D3E43</color>
+    <color name="ic_brand_white">#FFEBECEB</color>
 </resources>

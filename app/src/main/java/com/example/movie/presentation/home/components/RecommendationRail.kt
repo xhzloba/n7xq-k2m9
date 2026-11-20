@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.gestures.snapping.SnapLayoutInfoProvider
 import androidx.compose.foundation.gestures.snapping.SnapPosition
 import androidx.compose.foundation.gestures.snapping.snapFlingBehavior
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -172,6 +173,7 @@ internal fun RecommendationRail(
     stickToStart: Boolean = false,
     progressOf: (Movie) -> Float? = { null },
     captionOf: (Movie) -> String? = { null },
+    seeAllGlass: Boolean = false,
 ) {
     HapticOnAppend(movies.map { it.id })
     Column(modifier = modifier.fillMaxWidth().graphicsLayer()) {
@@ -191,6 +193,7 @@ internal fun RecommendationRail(
                 stickToStart = stickToStart,
                 progressOf = progressOf,
                 captionOf = captionOf,
+                seeAllGlass = seeAllGlass,
             )
         }
     }
@@ -243,6 +246,7 @@ private fun RecommendationPager(
     stickToStart: Boolean = false,
     progressOf: (Movie) -> Float? = { null },
     captionOf: (Movie) -> String? = { null },
+    seeAllGlass: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val listState = rememberLazyListState()
@@ -424,6 +428,7 @@ private fun RecommendationPager(
                     RailSeeAllCard(
                         width = trailWidth,
                         height = posterHeight,
+                        glass = seeAllGlass,
                         onClick = {
                             tick?.invoke()
                             onOpen()
@@ -515,49 +520,39 @@ private fun Modifier.railSideRetouch(
 private fun RailSeeAllCard(
     width: Dp,
     height: Dp,
+    glass: Boolean,
     onClick: () -> Unit,
 ) {
     var pressed by remember { mutableStateOf(false) }
     val pressScale = rememberPressScale(pressed)
     val wave = remember { PosterWave() }
-    Column(Modifier.width(width)) {
-        Box(
+    Box(
+        modifier = Modifier
+            .width(width)
+            .height(height),
+        contentAlignment = Alignment.CenterStart,
+    ) {
+        Text(
+            text = stringResource(R.string.rail_see_all),
+            color = Color.White,
+            fontSize = 17.sp,
+            lineHeight = 20.sp,
+            fontWeight = FontWeight.SemiBold,
+            style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false)),
             modifier = Modifier
-                .width(width)
-                .height(height)
                 .graphicsLayer {
                     scaleX = pressScale
                     scaleY = pressScale
                 }
-                .clip(PosterShape)
-                .background(Color.Black.copy(alpha = 0.28f))
+                .clip(RoundedCornerShape(percent = 50))
+                .background(Color.White.copy(alpha = if (glass) 0.05f else 0.16f))
                 .posterWave(wave)
                 .pressToOpen(
                     onPressed = { pressed = it },
                     onClick = onClick,
                     wave = wave,
-                ),
-            contentAlignment = Alignment.Center,
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(2.dp),
-            ) {
-                Text(
-                    text = stringResource(R.string.rail_see_all),
-                    color = Color.White.copy(alpha = 0.92f),
-                    fontSize = 16.sp,
-                    lineHeight = 16.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false)),
                 )
-                Icon(
-                    imageVector = ShellIcons.chevron,
-                    contentDescription = null,
-                    tint = Color.White.copy(alpha = 0.92f),
-                    modifier = Modifier.size(16.dp),
-                )
-            }
-        }
+                .padding(horizontal = 28.dp, vertical = 14.dp),
+        )
     }
 }

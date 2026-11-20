@@ -236,7 +236,6 @@ private fun AlertRow(alert: SeriesAlert, onClick: () -> Unit) {
                 .clip(PosterShape)
                 .background(Color(0xFF1C1C1E)),
             iconSize = 18.dp,
-            showLabel = false,
         )
         Column(
             modifier = Modifier
