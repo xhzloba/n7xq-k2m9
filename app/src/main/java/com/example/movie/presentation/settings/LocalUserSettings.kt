@@ -13,11 +13,11 @@ val LocalUserSettings = staticCompositionLocalOf<UserSettingsRepository> {
 private object DefaultUserSettings : UserSettingsRepository {
     override val settings: StateFlow<UserSettings> = MutableStateFlow(UserSettings())
 
-    override fun setExtractBackdrop(enabled: Boolean) = Unit
-
     override fun setExtractPlex(enabled: Boolean) = Unit
 
     override fun setPlexBackdrop(enabled: Boolean) = Unit
+
+    override fun setPlexEdit(enabled: Boolean) = Unit
 
     override fun setHeroPosterColors(enabled: Boolean) = Unit
 

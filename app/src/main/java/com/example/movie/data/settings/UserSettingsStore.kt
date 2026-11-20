@@ -36,21 +36,11 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
 
     override val settings: StateFlow<UserSettings> = state.asStateFlow()
 
-    override fun setExtractBackdrop(enabled: Boolean) = write {
-        it.copy(
-            extractBackdrop = enabled,
-            extractPlex = if (enabled) false else it.extractPlex,
-        )
-    }
-
-    override fun setExtractPlex(enabled: Boolean) = write {
-        it.copy(
-            extractPlex = enabled,
-            extractBackdrop = if (enabled) false else it.extractBackdrop,
-        )
-    }
+    override fun setExtractPlex(enabled: Boolean) = write { it.copy(extractPlex = enabled) }
 
     override fun setPlexBackdrop(enabled: Boolean) = write { it.copy(plexBackdrop = enabled) }
+
+    override fun setPlexEdit(enabled: Boolean) = write { it.copy(plexEdit = enabled) }
 
     override fun setHeroPosterColors(enabled: Boolean) = write { it.copy(heroPosterColors = enabled) }
 
@@ -232,9 +222,9 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
         val next = transform(state.value)
         prefs.edit()
             .putBoolean(KEY_COLORS, false)
-            .putBoolean(KEY_BACKDROP_COLORS, next.extractBackdrop)
             .putBoolean(KEY_PLEX, next.extractPlex)
             .putBoolean(KEY_PLEX_BACKDROP, next.plexBackdrop)
+            .putBoolean(KEY_PLEX_EDIT, next.plexEdit)
             .putBoolean(KEY_HERO_COLORS, next.heroPosterColors)
             .putBoolean(KEY_HERO_PAGE, next.heroPosterPage)
             .putFloat(KEY_PLEX_INTENSITY, next.plexIntensity)
@@ -337,6 +327,13 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
         if (prefs.getBoolean(KEY_COLORS, false)) {
             prefs.edit().putBoolean(KEY_COLORS, false).commit()
         }
+        if (prefs.getBoolean(KEY_BACKDROP_COLORS, false)) {
+            prefs.edit()
+                .putBoolean(KEY_BACKDROP_COLORS, false)
+                .putBoolean(KEY_PLEX, true)
+                .putBoolean(KEY_PLEX_BACKDROP, true)
+                .commit()
+        }
         val armHints = !prefs.contains(KEY_HINTS_ARMED)
         if (armHints) {
             prefs.edit()
@@ -346,9 +343,9 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
                 .apply()
         }
         return UserSettings(
-        extractBackdrop = prefs.getBoolean(KEY_BACKDROP_COLORS, false),
         extractPlex = prefs.getBoolean(KEY_PLEX, true),
         plexBackdrop = prefs.getBoolean(KEY_PLEX_BACKDROP, true),
+        plexEdit = prefs.getBoolean(KEY_PLEX_EDIT, false),
         heroPosterColors = prefs.getBoolean(KEY_HERO_COLORS, true),
         heroPosterPage = prefs.getBoolean(KEY_HERO_PAGE, true),
         plexIntensity = prefs.getFloat(KEY_PLEX_INTENSITY, 1f).coerceIn(0.45f, 1.55f),
@@ -573,6 +570,7 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
         const val KEY_BACKDROP_COLORS = "extract_backdrop"
         const val KEY_PLEX = "extract_plex"
         const val KEY_PLEX_BACKDROP = "plex_backdrop"
+        const val KEY_PLEX_EDIT = "plex_edit"
         const val KEY_PLEX_DEFAULT = "plex_color_default"
         const val KEY_FRAME_DEFAULT = "frame_color_default"
         const val KEY_DEFAULTS_230 = "defaults_2_30"

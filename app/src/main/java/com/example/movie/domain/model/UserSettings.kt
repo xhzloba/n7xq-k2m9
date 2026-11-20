@@ -5,9 +5,10 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class UserSettings(
-    val extractBackdrop: Boolean = false,
     val extractPlex: Boolean = true,
     val plexBackdrop: Boolean = true,
+    /** Кнопка правки углов у Chromecast. Свои цвета остаются, даже когда выключено. */
+    val plexEdit: Boolean = false,
     /** UltraBlur на главной с обложки слайдера. По дефолту вкл (полки скрыты — только слайдер). */
     val heroPosterColors: Boolean = true,
     /** true = UltraBlur на всю главную; false = только зона слайдера. */
@@ -173,11 +174,11 @@ fun List<String>.moveHomeRail(id: String, up: Boolean): List<String> {
 interface UserSettingsRepository {
     val settings: StateFlow<UserSettings>
 
-    fun setExtractBackdrop(enabled: Boolean)
-
     fun setExtractPlex(enabled: Boolean)
 
     fun setPlexBackdrop(enabled: Boolean)
+
+    fun setPlexEdit(enabled: Boolean)
 
     fun setHeroPosterColors(enabled: Boolean)
 

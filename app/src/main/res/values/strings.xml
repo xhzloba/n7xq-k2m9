@@ -433,10 +433,8 @@
     <string name="settings_hero_colors_hint">Цвета с обложки слайдера по алгоритму UltraBlur. Выключено — обычный фон темы.</string>
     <string name="settings_hero_page">На всю главную</string>
     <string name="settings_hero_page_hint">Включено — UltraBlur на весь экран и нижнее меню. Выключено — только свечение вокруг слайдера, как раньше.</string>
-    <string name="settings_extract_backdrop">Цвета с кадра</string>
-    <string name="settings_extract_backdrop_hint">Ретушь берётся из текущего backdrop и меняется вместе с кадром. Включено — «Как в Plex» выключается.</string>
     <string name="settings_extract_plex">Как в Plex</string>
-    <string name="settings_extract_plex_hint">Алгоритм UltraBlur из Plex: четыре цвета по углам, тёмные и насыщенные, на чёрном сходятся к центру. Включено — «Цвета с кадра» выключаются.</string>
+    <string name="settings_extract_plex_hint">Алгоритм UltraBlur из Plex: четыре цвета по углам, тёмные и насыщенные, на чёрном сходятся к центру.</string>
     <string name="settings_plex_intensity">Интенсивность</string>
     <string name="settings_plex_intensity_hint">Как далеко цвета углов сходятся к центру. 100 — как посчитал алгоритм.</string>
     <string name="settings_plex_light">Свет</string>
@@ -460,6 +458,8 @@
     <string name="settings_plex_dropper_hint">Сначала нажми угол: левый верх, правый верх, левый низ или правый низ. Потом точку на кадре. Белая рамка — куда встанет цвет. У каждого кадра свои углы.</string>
     <string name="settings_plex_dropper_empty">У фильма нет кадра, цвет угла берёт алгоритм.</string>
     <string name="settings_plex_dropper_fail">Кадр не загрузился.</string>
+    <string name="settings_plex_edit">Править цвета</string>
+    <string name="settings_plex_edit_hint">Кнопка у Chromecast. Можно крутить углы карточки и кадра. Выключено — кнопка спрятана, уже заданные цвета остаются.</string>
     <string name="settings_plex_backdrop">Plex: по кадру</string>
     <string name="settings_plex_backdrop_hint">Цвета считаются по текущему backdrop и перетекают, когда кадр меняется — сам или свайпом. Выключено — по постеру, одни на весь фильм.</string>
     <string name="settings_white_titles">Белые заголовки</string>

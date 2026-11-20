@@ -1,7 +1,7 @@
 package com.example.movie.presentation.detail
 
 import android.graphics.drawable.BitmapDrawable
-import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.Animatable as ColorAnimatable
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.RepeatMode
@@ -746,9 +746,10 @@ private fun DetailContent(
     val cardTones by LocalAppContainer.current.washTones.tones.collectAsStateWithLifecycle()
     val flat = PosterWash(CinemaBlack, CinemaBlack, CinemaBlack, CinemaBlack)
     val hidden = PosterWash(Color.Black, Color.Black, Color.Black, Color.Black)
-    val colored = settings.extractBackdrop || settings.extractPlex
+    val colored = settings.extractPlex
     var target by remember(detail.id) { mutableStateOf(if (colored) hidden else flat) }
     var backdropWash by remember(detail.id) { mutableStateOf(hidden) }
+    var washSource by remember(detail.id) { mutableStateOf<String?>(null) }
     val reveal = remember(detail.id) { Animatable(if (colored) 0f else 1f) }
     val backdropStore = LocalAppContainer.current.backdropSets
     val backdropPicks by backdropStore.sets.collectAsStateWithLifecycle()
@@ -834,13 +835,16 @@ private fun DetailContent(
     } else {
         backdrops[(if (manualBackdrop) pagerState.currentPage else frame).coerceIn(0, backdrops.lastIndex)]
     }
-    val backdropTone = when {
-        settings.extractBackdrop -> shownBackdrop
-        settings.extractPlex && settings.plexBackdrop -> shownBackdrop
-        else -> null
-    }
+    val backdropTone = if (settings.extractPlex && settings.plexBackdrop) shownBackdrop else null
     val toneKey = washToneKey(detail.id, backdropTone)
     val cardTone = cardTones[toneKey] ?: WashTone()
+    val washExpect = when {
+        settings.extractPlex && !settings.plexBackdrop -> posterShown?.let { "poster:$it" }
+        settings.extractPlex && settings.plexBackdrop ->
+            shownBackdrop?.let { "still:$it" } ?: posterShown?.let { "poster:$it" }
+        else -> null
+    }
+    val washMatched = washExpect != null && washSource == washExpect
     val washCache = remember(detail.id) { HashMap<String, PosterWash>() }
     val stillReady = shownBackdrop == null || loadedStills[shownBackdrop] == true
     var cardPlayed by remember(detail.id) { mutableStateOf(false) }
@@ -850,11 +854,11 @@ private fun DetailContent(
             cardBuzz?.invoke()
         }
     }
+    val toneStore = LocalAppContainer.current.washTones
     LaunchedEffect(
         detail.id,
         shownBackdrop,
         posterShown,
-        settings.extractBackdrop,
         settings.extractPlex,
         settings.plexBackdrop,
     ) {
@@ -877,30 +881,31 @@ private fun DetailContent(
                     !settings.plexBackdrop -> fromPoster() ?: fromStill()
                     still == null -> fromPoster()
                     else -> {
+                        val custom = toneStore.tones.value[washToneKey(detail.id, still)]?.plain() == false
                         if (washCache["plex:$still"] == null && loadedStills[still] != true) {
                             val onScreen = snapshotFlow { loadedStills[still] == true }
                             val late = backdropWash == hidden &&
                                 withTimeoutOrNull(PosterStandInDelay) { onScreen.first { it } } == null
-                            if (late) {
+                            if (late && !custom) {
                                 val standIn = fromPoster()
-                                if (standIn != null && loadedStills[still] != true) backdropWash = standIn
+                                if (standIn != null && loadedStills[still] != true) {
+                                    backdropWash = standIn
+                                    washSource = "still:$still"
+                                }
                             }
                             onScreen.first { it }
                         }
                         fromStill()
                     }
                 }
-                if (extracted != null) backdropWash = extracted
-            }
-            settings.extractBackdrop -> {
-                val url = shownBackdrop
-                if (url == null) {
-                    backdropWash = flat
-                    return@LaunchedEffect
+                if (extracted != null) {
+                    backdropWash = extracted
+                    washSource = when {
+                        !settings.plexBackdrop -> poster?.let { "poster:$it" } ?: still?.let { "still:$it" }
+                        still == null -> poster?.let { "poster:$it" }
+                        else -> "still:$still"
+                    }
                 }
-                val key = "frame:$url"
-                val extracted = washCache[key] ?: context.extractBackdrop(url, 320, 180)?.also { washCache[key] = it }
-                if (extracted != null) backdropWash = extracted
             }
             else -> {
                 target = flat
@@ -930,11 +935,31 @@ private fun DetailContent(
     } else {
         target
     }
-    val toneWash = if (colored) {
-        paintWash.graded(cardTone.lights, cardTone.punch, cardTone.pick)
-    } else {
-        paintWash
+    var heldWash by remember(detail.id) { mutableStateOf(hidden) }
+    var heldIntensity by remember(detail.id) { mutableFloatStateOf(1f) }
+    var heldCorner by remember(detail.id) { mutableFloatStateOf(0f) }
+    var heldSource by remember(detail.id) { mutableStateOf<String?>(null) }
+    var glide by remember(detail.id) { mutableStateOf(false) }
+    if (colored && washMatched) {
+        val next = backdropWash.graded(cardTone.lights, cardTone.punch, cardTone.pick)
+        val switching = heldSource != washExpect
+        if (switching) {
+            glide = true
+            heldSource = washExpect
+        } else if (
+            heldWash != next ||
+            heldIntensity != cardTone.intensity ||
+            heldCorner != cardTone.corner
+        ) {
+            glide = false
+        }
+        if (heldWash != next) heldWash = next
+        if (heldIntensity != cardTone.intensity) heldIntensity = cardTone.intensity
+        if (heldCorner != cardTone.corner) heldCorner = cardTone.corner
     }
+    val toneWash = if (colored) animateWash(heldWash, glide) else paintWash
+    val washIntensity = glideFloat(heldIntensity, glide)
+    val washCorner = glideFloat(heldCorner, glide)
     var backdropColorReady by remember(detail.id, shownBackdrop) { mutableStateOf(false) }
     var watchGlow by remember(detail.id) { mutableStateOf<Color?>(null) }
     LaunchedEffect(detail.id, settings.watchGlow) {
@@ -984,8 +1009,8 @@ private fun DetailContent(
                     return@drawBehind
                 }
                 drawRect(Color(0xFF121212))
-                if (settings.extractPlex) {
-                    drawPlexWash(toneWash, washAlpha, cardTone.intensity, cardTone.corner)
+                if (colored) {
+                    drawPlexWash(toneWash, washAlpha, washIntensity, washCorner)
                 } else {
                     val washLift = size.height * 0.035f
                     scale(
@@ -993,18 +1018,8 @@ private fun DetailContent(
                         scaleY = (size.height + washLift) / size.height,
                         pivot = Offset(size.width / 2f, size.height),
                     ) {
-                        drawPosterWash(toneWash, washAlpha, cardTone.intensity, cardTone.corner)
+                        drawPosterWash(toneWash, washAlpha, washIntensity, washCorner)
                     }
-                }
-                if (shade > 0f && colored && !settings.extractPlex) {
-                    val ink = lerp(paintWash.topLeft, paintWash.topRight, 0.5f).sunk()
-                    drawRect(
-                        brush = Brush.verticalGradient(
-                            0f to ink.copy(alpha = 0.94f * shade),
-                            0.28f to ink.copy(alpha = 0.62f * shade),
-                            0.58f to Color.Transparent,
-                        ),
-                    )
                 }
             },
     ) {
@@ -1063,8 +1078,8 @@ private fun DetailContent(
                 wash = toneWash,
                 alpha = washAlpha,
                 plex = settings.extractPlex,
-                intensity = cardTone.intensity,
-                corner = cardTone.corner,
+                intensity = washIntensity,
+                corner = washCorner,
                 bottomFraction = with(density) { contentTop.toPx() / maxHeight.toPx() },
                 modifier = Modifier.fillMaxSize(),
             )
@@ -1541,15 +1556,17 @@ private fun DetailContent(
                 .align(Alignment.TopCenter)
                 .graphicsLayer { alpha = (1f - barIn) * (1f - pageAlpha) },
         ) {
-            WashToneButton(
-                colors = listOf(toneWash.topLeft, toneWash.topRight, toneWash.bottomRight, toneWash.bottomLeft),
-                onClick = {
-                    tick?.invoke()
-                    toneOpen = true
-                },
-                modifier = Modifier.align(Alignment.CenterEnd).padding(end = 64.dp),
-                enabled = barIn < 0.45f && pageAlpha < 0.5f,
-            )
+            if (settings.plexEdit) {
+                WashToneButton(
+                    colors = listOf(toneWash.topLeft, toneWash.topRight, toneWash.bottomRight, toneWash.bottomLeft),
+                    onClick = {
+                        tick?.invoke()
+                        toneOpen = true
+                    },
+                    modifier = Modifier.align(Alignment.CenterEnd).padding(end = 64.dp),
+                    enabled = barIn < 0.45f && pageAlpha < 0.5f,
+                )
+            }
             Box(
                 Modifier
                     .align(Alignment.CenterEnd)
@@ -1574,10 +1591,11 @@ private fun DetailContent(
                 title = detail.title,
                 logoUrl = detail.logoUrl,
                 showLogo = settings.showLogos,
-                color = lerp(paintWash.topLeft, paintWash.topRight, 0.5f).sunk(),
+                color = lerp(toneWash.topLeft, toneWash.topRight, 0.5f).sunk(),
                 progress = barProgress,
                 onBack = onBack,
                 onCast = { castSheet = true },
+                showTune = settings.plexEdit,
                 onTune = {
                     tick?.invoke()
                     toneOpen = true
@@ -1586,7 +1604,7 @@ private fun DetailContent(
                 modifier = Modifier.align(Alignment.TopCenter),
             )
         }
-        if (toneOpen && pageShown == null) {
+        if (toneOpen && settings.plexEdit && pageShown == null) {
             WashToneSheet(
                 movieId = toneKey,
                 wash = paintWash,
@@ -2295,6 +2313,7 @@ private fun DetailLogoBar(
     progress: Float,
     onBack: () -> Unit,
     onCast: () -> Unit,
+    showTune: Boolean,
     onTune: () -> Unit,
     toneColors: List<Color>,
     modifier: Modifier = Modifier,
@@ -2307,8 +2326,8 @@ private fun DetailLogoBar(
         modifier
             .fillMaxWidth()
             .graphicsLayer { alpha = progress }
-            .background(Color.Black.copy(alpha = 0.28f))
-            .background(color.copy(alpha = 0.52f))
+            .background(Color.Black)
+            .background(color.copy(alpha = 0.82f))
             .then(
                 if (progress > 0f) {
                     Modifier.clickable(
@@ -2376,13 +2395,23 @@ private fun DetailLogoBar(
                 modifier = Modifier.size(26.dp),
             )
         }
-        WashToneButton(
-            colors = toneColors,
-            onClick = onTune,
-            modifier = Modifier.align(Alignment.CenterEnd).padding(end = 58.dp),
-            enabled = progress > 0.4f,
-        )
-        ChromeCastMark(Modifier.align(Alignment.CenterEnd).padding(end = 27.dp))
+        if (showTune) {
+            WashToneButton(
+                colors = toneColors,
+                onClick = onTune,
+                modifier = Modifier.align(Alignment.CenterEnd).padding(end = 64.dp),
+                enabled = progress > 0.4f,
+            )
+        }
+        Box(
+            Modifier
+                .align(Alignment.CenterEnd)
+                .padding(end = 18.dp)
+                .size(44.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            ChromeCastMark()
+        }
     }
 }
 
@@ -3237,13 +3266,36 @@ private fun BackdropDots(count: Int, index: Int, modifier: Modifier = Modifier) 
 }
 
 @Composable
-private fun animateWash(target: PosterWash): PosterWash {
-    val spec = tween<Color>(durationMillis = 900, easing = FastOutSlowInEasing)
-    val topLeft by animateColorAsState(target.topLeft, spec, label = "washTl")
-    val topRight by animateColorAsState(target.topRight, spec, label = "washTr")
-    val bottomRight by animateColorAsState(target.bottomRight, spec, label = "washBr")
-    val bottomLeft by animateColorAsState(target.bottomLeft, spec, label = "washBl")
-    return PosterWash(topLeft, topRight, bottomRight, bottomLeft)
+private fun animateWash(target: PosterWash, animate: Boolean = true): PosterWash {
+    val topLeft = remember { ColorAnimatable(target.topLeft) }
+    val topRight = remember { ColorAnimatable(target.topRight) }
+    val bottomRight = remember { ColorAnimatable(target.bottomRight) }
+    val bottomLeft = remember { ColorAnimatable(target.bottomLeft) }
+    LaunchedEffect(target) {
+        val spec = tween<Color>(durationMillis = 900, easing = FastOutSlowInEasing)
+        if (animate) {
+            launch { topLeft.animateTo(target.topLeft, spec) }
+            launch { topRight.animateTo(target.topRight, spec) }
+            launch { bottomRight.animateTo(target.bottomRight, spec) }
+            launch { bottomLeft.animateTo(target.bottomLeft, spec) }
+        } else {
+            topLeft.snapTo(target.topLeft)
+            topRight.snapTo(target.topRight)
+            bottomRight.snapTo(target.bottomRight)
+            bottomLeft.snapTo(target.bottomLeft)
+        }
+    }
+    return PosterWash(topLeft.value, topRight.value, bottomRight.value, bottomLeft.value)
+}
+
+@Composable
+private fun glideFloat(target: Float, animate: Boolean): Float {
+    val anim = remember { Animatable(target) }
+    LaunchedEffect(target) {
+        if (animate) anim.animateTo(target, tween(durationMillis = 900, easing = FastOutSlowInEasing))
+        else anim.snapTo(target)
+    }
+    return anim.value
 }
 
 private suspend fun android.content.Context.extractBackdrop(

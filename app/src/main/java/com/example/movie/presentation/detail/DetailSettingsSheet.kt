@@ -101,12 +101,6 @@ internal fun DetailSettingsPage() {
                 onChecked = store::setDetailShutter,
             )
             DetailToggle(
-                title = stringResource(R.string.settings_extract_backdrop),
-                hint = stringResource(R.string.settings_extract_backdrop_hint),
-                checked = settings.extractBackdrop,
-                onChecked = store::setExtractBackdrop,
-            )
-            DetailToggle(
                 title = stringResource(R.string.settings_extract_plex),
                 hint = stringResource(R.string.settings_extract_plex_hint),
                 checked = settings.extractPlex,
@@ -120,6 +114,12 @@ internal fun DetailSettingsPage() {
                     onChecked = store::setPlexBackdrop,
                 )
             }
+            DetailToggle(
+                title = stringResource(R.string.settings_plex_edit),
+                hint = stringResource(R.string.settings_plex_edit_hint),
+                checked = settings.plexEdit,
+                onChecked = store::setPlexEdit,
+            )
             DetailToggle(
                 title = stringResource(R.string.settings_gyro),
                 hint = stringResource(R.string.settings_gyro_hint),
