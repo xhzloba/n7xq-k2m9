@@ -2,5 +2,5 @@
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
     <background android:drawable="@color/ic_launcher_plate" />
     <foreground android:drawable="@mipmap/ic_lumen_metal" />
-    <monochrome android:drawable="@drawable/ic_stat_lumen" />
+    <monochrome android:drawable="@drawable/ic_stat_notify" />
 </adaptive-icon>

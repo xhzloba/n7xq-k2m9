@@ -49,6 +49,14 @@ internal object Changelog {
 
     val releases: List<Release> = listOf(
         Release(
+            version = "2.69.2",
+            added = emptyList(),
+            fixed = listOf(
+                "Уведомление о новой версии называется «Обновление Lumen». Сообщение о новинках тоже говорит Lumen, не AmigoPlay.",
+                "Старая зелёная картинка Android убрана из приложения. Если в шторке или в статус-баре всё ещё робот, удалите Lumen и поставьте эту версию заново. Обновление поверх старой оставляет прежний значок.",
+            ),
+        ),
+        Release(
             version = "2.69.1",
             added = emptyList(),
             fixed = listOf(
