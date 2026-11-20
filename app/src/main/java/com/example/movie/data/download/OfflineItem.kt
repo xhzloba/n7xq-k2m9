@@ -1,5 +1,8 @@
 package com.example.movie.data.download
 
+import androidx.annotation.OptIn
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.offline.Download
 import com.example.movie.data.player.WatchEpisode
 import com.example.movie.data.player.WatchKind
 import com.example.movie.data.player.WatchPlayback
@@ -78,6 +81,24 @@ internal fun ByteArray.downloadTitle(): String =
 
 internal fun ByteArray.downloadPoster(): String? =
     toString(Charsets.UTF_8).substringAfter('\u0000', "").ifBlank { null }
+
+@OptIn(UnstableApi::class)
+internal fun OfflineItem.completedStream(
+    tasks: Map<String, Download>,
+    season: Int?,
+    episode: Int?,
+): Boolean {
+    val stream = if (season != null && episode != null) {
+        streams.firstOrNull { it.season == season && it.episode == episode }
+    } else {
+        streams.firstOrNull { it.season == 0 && it.episode == 0 } ?: streams.singleOrNull()
+    } ?: return false
+    return tasks[stream.downloadId(title.id)]?.state == Download.STATE_COMPLETED
+}
+
+@OptIn(UnstableApi::class)
+internal fun OfflineItem.hasCompleted(tasks: Map<String, Download>): Boolean =
+    streams.any { tasks[it.downloadId(title.id)]?.state == Download.STATE_COMPLETED }
 
 internal fun OfflineStream.downloadId(movieId: String): String =
     if (season == 0 && episode == 0) movieId else "$movieId#$season#$episode"

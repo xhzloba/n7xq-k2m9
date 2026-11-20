@@ -143,6 +143,8 @@ import coil.request.ImageRequest
 import coil.request.SuccessResult
 import com.example.movie.R
 import com.example.movie.data.download.OfflinePhase
+import com.example.movie.data.download.completedStream
+import com.example.movie.data.download.hasCompleted
 import com.example.movie.domain.model.CastMember
 import com.example.movie.domain.model.DataError
 import com.example.movie.domain.model.FranchiseTrailer
@@ -708,6 +710,90 @@ private data class WatchRequest(
     val episode: Int? = null,
 )
 
+private data class PlayChoice(val season: Int?, val episode: Int?)
+
+@Composable
+private fun PlaySourceSheet(
+    onOnline: () -> Unit,
+    onOffline: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val tick = rememberHapticTick()
+    HandleSheet(onDismiss = onDismiss) {
+        Text(
+            text = stringResource(R.string.play_source_title),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 22.dp),
+            color = Color.White,
+            fontWeight = FontWeight.Bold,
+            fontSize = 18.sp,
+            lineHeight = 23.sp,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.height(8.dp))
+        PlaySourceRow(
+            label = stringResource(R.string.play_source_online),
+            onClick = {
+                tick?.invoke()
+                onOnline()
+            },
+        ) {
+            Icon(
+                imageVector = PlexPlay,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(22.dp),
+            )
+        }
+        PlaySourceRow(
+            label = stringResource(R.string.play_source_offline),
+            onClick = {
+                tick?.invoke()
+                onOffline()
+            },
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_action_download),
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(22.dp),
+            )
+        }
+        Spacer(Modifier.height(10.dp))
+    }
+}
+
+@Composable
+private fun PlaySourceRow(
+    label: String,
+    onClick: () -> Unit,
+    icon: @Composable () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick,
+            )
+            .padding(horizontal = 22.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        icon()
+        Spacer(Modifier.width(16.dp))
+        Text(
+            text = label,
+            color = Color.White,
+            fontSize = 16.sp,
+            lineHeight = 21.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
 @Composable
 private fun DetailContent(
     detail: MovieDetail,
@@ -733,6 +819,9 @@ private fun DetailContent(
     var folderOpen by remember(detail.id) { mutableStateOf(false) }
     var qualitySheet by remember(detail.id) { mutableStateOf(false) }
     var offlinePlay by remember(detail.id) { mutableStateOf(false) }
+    var offlineSeason by remember(detail.id) { mutableStateOf<Int?>(null) }
+    var offlineEpisode by remember(detail.id) { mutableStateOf<Int?>(null) }
+    var playChoice by remember(detail.id) { mutableStateOf<PlayChoice?>(null) }
     var watchRequested by remember(detail.id) { mutableStateOf(false) }
     var franchisePage by remember(detail.id) { mutableStateOf<String?>(null) }
     val pageVeil = remember { Animatable(0f) }
@@ -759,6 +848,38 @@ private fun DetailContent(
     val downloadPending by offline.pending.collectAsStateWithLifecycle()
     val downloaded = downloads.firstOrNull { it.title.id == detail.id }
     val downloadStatus = downloaded?.let { offline.status(it, downloadTasks, downloadPending) }
+    val canStream = !(franchiseReady && unavailable)
+    fun beginOffline(season: Int?, episode: Int?) {
+        offlineSeason = season
+        offlineEpisode = episode
+        offlinePlay = true
+    }
+    fun beginOnline(season: Int?, episode: Int?) {
+        val id = detail.franchise?.watchId
+        val seasons = detail.franchise?.seasons.orEmpty()
+        val serial = seasons.isNotEmpty() ||
+            detail.franchise?.series == true ||
+            detail.type == "serial" ||
+            detail.type == "multserial"
+        if (season != null && episode != null) {
+            if (id != null) watching = WatchRequest(id, season, episode)
+            return
+        }
+        if (seasons.isNotEmpty()) {
+            episodesOpen = true
+            return
+        }
+        if (!serial) watched.remove(detail.id)
+        if (id != null) watching = WatchRequest(id) else onResolveWatch()
+    }
+    fun requestPlay(season: Int?, episode: Int?) {
+        val ready = downloaded?.completedStream(downloadTasks, season, episode) == true
+        when {
+            ready && canStream -> playChoice = PlayChoice(season, episode)
+            ready -> beginOffline(season, episode)
+            canStream -> beginOnline(season, episode)
+        }
+    }
     val continued = resumeItems.firstOrNull { it.id == detail.id }
     val progressMarks = combineMarks(continued?.episodeMarks().orEmpty(), keptMarks[detail.id].orEmpty())
     val releaseWatch = LocalAppContainer.current.releaseWatch
@@ -1415,17 +1536,11 @@ private fun DetailContent(
                 },
                 onWatch = {
                     watchBuzz?.invoke()
-                    if (downloaded != null && downloadStatus?.phase == OfflinePhase.Ready) {
-                        offlinePlay = true
-                        return@WatchBar
-                    }
-                    if (!online) return@WatchBar
                     if (seasonList.isNotEmpty()) {
+                        if (!online && downloaded?.hasCompleted(downloadTasks) != true) return@WatchBar
                         episodesOpen = true
                     } else {
-                        if (!series) watched.remove(detail.id)
-                        val id = watchId
-                        if (id != null) watching = WatchRequest(id) else onResolveWatch()
+                        requestPlay(null, null)
                     }
                 },
             )
@@ -1585,8 +1700,7 @@ private fun DetailContent(
                 FranchiseBlock(
                     detail,
                     onPlayEpisode = { season, episode ->
-                        val id = detail.franchise?.watchId ?: return@FranchiseBlock
-                        watching = WatchRequest(id, season, episode)
+                        requestPlay(season, episode)
                     },
                     marks = progressMarks,
                     onOpenAbout = { franchisePage = "about" },
@@ -1821,9 +1935,24 @@ private fun DetailContent(
                 onDismiss = { downloadSheet = false },
             )
         }
+        playChoice?.let { choice ->
+            PlaySourceSheet(
+                onOnline = {
+                    playChoice = null
+                    beginOnline(choice.season, choice.episode)
+                },
+                onOffline = {
+                    playChoice = null
+                    beginOffline(choice.season, choice.episode)
+                },
+                onDismiss = { playChoice = null },
+            )
+        }
         if (offlinePlay && downloaded != null) {
             OfflinePlayer(
                 item = downloaded,
+                season = offlineSeason,
+                episode = offlineEpisode,
                 onDismiss = { offlinePlay = false },
             )
         }
@@ -1837,8 +1966,7 @@ private fun DetailContent(
                     marks = progressMarks,
                     onPlay = { season, episode ->
                         episodesOpen = false
-                        val id = franchise.watchId ?: return@EpisodeSheet
-                        watching = WatchRequest(id, season, episode)
+                        requestPlay(season, episode)
                     },
                     onDismiss = { episodesOpen = false },
                 )

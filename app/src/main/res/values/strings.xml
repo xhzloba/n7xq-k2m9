@@ -25,6 +25,9 @@
     <string name="poster_content_description">Постер «%1$s»</string>
     <string name="no_poster">No poster</string>
     <string name="watch_now">Смотреть</string>
+    <string name="play_source_title">Как смотреть</string>
+    <string name="play_source_online">Онлайн просмотр</string>
+    <string name="play_source_offline">Офлайн</string>
     <string name="watch_unavailable">Недоступно</string>
     <string name="watch_notify">Уведомить о выходе</string>
     <string name="watch_notify_on">Сообщим о выходе</string>

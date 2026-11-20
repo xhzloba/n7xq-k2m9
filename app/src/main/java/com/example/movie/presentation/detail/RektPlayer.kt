@@ -576,7 +576,7 @@ internal fun RektPlayer(
                     playing = playing,
                     hasEpisodes = playback.episodes.size > 1,
                     onRewind = {
-                        player.seekTo((player.currentPosition - 10_000).coerceAtLeast(0))
+                        player.seekBy(-10_000)
                         showChrome()
                     },
                     onPrevious = {
@@ -592,8 +592,7 @@ internal fun RektPlayer(
                         showChrome()
                     },
                     onForward = {
-                        val end = player.duration.takeIf { it > 0 } ?: Long.MAX_VALUE
-                        player.seekTo((player.currentPosition + 10_000).coerceAtMost(end))
+                        player.seekBy(10_000)
                         showChrome()
                     },
                 )
@@ -687,6 +686,23 @@ internal fun RektPlayer(
             )
         }
     }
+}
+
+@OptIn(UnstableApi::class)
+private fun ExoPlayer.seekBy(deltaMs: Long) {
+    val now = currentPosition.coerceAtLeast(0L)
+    val length = duration
+    val raw = now + deltaMs
+    val target = when {
+        raw < 0L -> 0L
+        length > now && raw > length -> length
+        else -> raw
+    }
+    // CLOSEST_SYNC snaps a short forward jump back to the previous keyframe
+    // when the next one is not in the buffer yet. Exact keeps the +10s.
+    setSeekParameters(SeekParameters.EXACT)
+    seekTo(target)
+    setSeekParameters(SeekParameters.CLOSEST_SYNC)
 }
 
 @OptIn(UnstableApi::class)
