@@ -58,7 +58,7 @@ class FolderStore(context: Context) {
         val named = name.trim()
         if (named.isEmpty()) return
         val titles = listOfNotNull(title).filter { it.id.isNotBlank() }
-        replace(itemsState.value + LibraryFolder(named, description.trim(), titles))
+        replace(listOf(LibraryFolder(named, description.trim(), titles)) + itemsState.value)
     }
 
     private fun read(): List<LibraryFolder> {

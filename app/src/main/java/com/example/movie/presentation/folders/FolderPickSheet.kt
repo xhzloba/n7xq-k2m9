@@ -222,8 +222,8 @@ internal fun FolderTrail(count: Int, name: String?, tint: Color) {
         Text(
             text = count.toString(),
             color = tint,
-            fontSize = 13.sp,
-            lineHeight = 16.sp,
+            fontSize = 11.sp,
+            lineHeight = 14.sp,
             fontWeight = FontWeight.Medium,
         )
         Spacer(Modifier.width(6.dp))
@@ -232,8 +232,8 @@ internal fun FolderTrail(count: Int, name: String?, tint: Color) {
         Text(
             text = name,
             color = tint,
-            fontSize = 13.sp,
-            lineHeight = 16.sp,
+            fontSize = 11.sp,
+            lineHeight = 14.sp,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.widthIn(max = 96.dp),
@@ -292,7 +292,6 @@ private fun FolderSlide(
 ) {
     Row(
         modifier = Modifier
-            .widthIn(max = 210.dp)
             .clip(RoundedCornerShape(14.dp))
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
@@ -316,7 +315,7 @@ private fun FolderSlide(
             lineHeight = 20.sp,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f, fill = false),
+            modifier = Modifier.widthIn(max = 240.dp),
         )
         if (inside) {
             Icon(
@@ -326,6 +325,69 @@ private fun FolderSlide(
                 modifier = Modifier
                     .padding(start = 8.dp)
                     .size(16.dp),
+            )
+        }
+    }
+}
+
+@Composable
+internal fun FolderCreateSheet(
+    onDismiss: () -> Unit,
+    onCreate: (String, String) -> Unit,
+) {
+    var name by remember { mutableStateOf("") }
+    var about by remember { mutableStateOf("") }
+    val ready = name.isNotBlank()
+    val tick = rememberHapticTick()
+    HandleSheet(onDismiss = onDismiss) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .windowInsetsPadding(WindowInsets.ime)
+                .padding(bottom = 6.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.library_folder_new),
+                color = Color.White,
+                fontSize = 16.sp,
+                lineHeight = 20.sp,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier.padding(start = 20.dp, end = 20.dp),
+            )
+            FolderLine(
+                value = name,
+                onValueChange = { name = it.replace('\n', ' ') },
+                label = stringResource(R.string.library_folder_name),
+                singleLine = true,
+                modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 14.dp),
+            )
+            FolderLine(
+                value = about,
+                onValueChange = { about = it },
+                label = stringResource(R.string.library_folder_about),
+                singleLine = false,
+                modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 10.dp),
+            )
+            Text(
+                text = stringResource(R.string.library_folder_create),
+                color = Color.White.copy(alpha = if (ready) 1f else 0.28f),
+                fontWeight = FontWeight.Medium,
+                fontSize = 14.sp,
+                lineHeight = 18.sp,
+                modifier = Modifier
+                    .align(Alignment.End)
+                    .padding(end = 12.dp, top = 4.dp, bottom = 6.dp)
+                    .clip(RoundedCornerShape(percent = 50))
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        enabled = ready,
+                        onClick = {
+                            tick?.invoke()
+                            onCreate(name.trim(), about.trim())
+                        },
+                    )
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
             )
         }
     }

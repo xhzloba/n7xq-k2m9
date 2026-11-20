@@ -121,6 +121,7 @@ import com.example.movie.data.download.OfflineStatus
 import com.example.movie.presentation.common.glideDownloadPercent
 import com.example.movie.presentation.common.inProgress
 import com.example.movie.data.folders.LibraryFolder
+import com.example.movie.presentation.folders.FolderCreateSheet
 import com.example.movie.di.LocalAppContainer
 import com.example.movie.presentation.common.LocalShelfNotices
 import com.example.movie.presentation.common.drawTopScrim
@@ -505,19 +506,24 @@ internal fun FavoritesScreen(
             )
         }
         val editor = editingFolder
-        if (editor != null) {
+        if (editor != null && editor in folders.indices) {
             FolderNameDialog(
-                initial = folders.getOrNull(editor),
+                initial = folders[editor],
                 onDismiss = { editingFolder = null },
                 onSave = { name, about ->
-                    val next = if (editor in folders.indices) {
+                    container.folders.replace(
                         folders.toMutableList().also {
                             it[editor] = folders[editor].copy(name = name, description = about)
-                        }
-                    } else {
-                        folders + LibraryFolder(name, about)
-                    }
-                    container.folders.replace(next)
+                        },
+                    )
+                    editingFolder = null
+                },
+            )
+        } else if (editor != null) {
+            FolderCreateSheet(
+                onDismiss = { editingFolder = null },
+                onCreate = { name, about ->
+                    container.folders.add(name, about, null)
                     editingFolder = null
                 },
             )
@@ -655,6 +661,7 @@ private fun LibraryHub(
                     onOpen = onOpenFolders,
                     onOpenFolder = onOpenFolder,
                     onEditFolder = onEditFolder,
+                    onAdd = onAddFolder,
                 )
             }
         }
@@ -966,20 +973,69 @@ private fun FolderAdd(
 }
 
 @Composable
+private fun FolderTitlePlus(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val tick = rememberHapticTick()
+    Row(
+        modifier
+            .clip(RoundedCornerShape(percent = 50))
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = {
+                    tick?.invoke()
+                    onClick()
+                },
+            )
+            .padding(horizontal = 4.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            imageVector = Icons.Filled.Add,
+            contentDescription = null,
+            tint = Color.White,
+            modifier = Modifier.size(22.dp),
+        )
+        Spacer(Modifier.width(4.dp))
+        Text(
+            text = stringResource(R.string.library_folder_new),
+            color = Color.White,
+            fontSize = 15.sp,
+            lineHeight = 18.sp,
+            fontWeight = FontWeight.Medium,
+            maxLines = 1,
+        )
+    }
+}
+
+@Composable
 private fun FolderRail(
     folders: List<LibraryFolder>,
     onOpen: () -> Unit,
     onOpenFolder: (Int) -> Unit,
     onEditFolder: (Int) -> Unit,
+    onAdd: () -> Unit,
 ) {
     val width = 228.dp
     val height = 124.dp
     val shown = folders.take(LibraryRailCap)
     Column(Modifier.fillMaxWidth()) {
-        RailTitle(
-            title = stringResource(R.string.library_folders),
-            onClick = onOpen,
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            RailTitle(
+                title = stringResource(R.string.library_folders),
+                onClick = onOpen,
+                modifier = Modifier.weight(1f),
+            )
+            FolderTitlePlus(
+                onClick = onAdd,
+                modifier = Modifier.padding(end = PosterGridInset),
+            )
+        }
         Spacer(Modifier.height(10.dp))
         LazyRow(
             contentPadding = PaddingValues(start = PosterGridInset, end = PosterGridInset),
