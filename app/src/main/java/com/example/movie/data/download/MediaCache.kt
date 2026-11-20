@@ -95,7 +95,7 @@ internal object MediaCache {
             return DownloadRequest.Builder(id, Uri.parse(stream.url))
                 .setMimeType(MimeTypes.APPLICATION_M3U8)
                 .setStreamKeys(keys.map { StreamKey(it.group, it.index) })
-                .setData(item.title.title.toByteArray())
+                .setData(item.title.downloadBytes())
                 .build()
         }
         return runCatching { withTimeout(20_000) { helperRequest(item, stream, id) } }
@@ -103,7 +103,7 @@ internal object MediaCache {
                 Log.e(TAG, "dash ${error.javaClass.simpleName}")
                 DownloadRequest.Builder(id, Uri.parse(stream.url))
                     .setMimeType(MimeTypes.APPLICATION_MPD)
-                    .setData(item.title.title.toByteArray())
+                    .setData(item.title.downloadBytes())
                     .build()
             }
     }
@@ -130,7 +130,7 @@ internal object MediaCache {
                     }
                     try {
                         select(helper, stream.height.takeIf { it > 0 } ?: item.height, stream.audioIndex)
-                        val request = helper.getDownloadRequest(id, item.title.title.toByteArray())
+                        val request = helper.getDownloadRequest(id, item.title.downloadBytes())
                         release()
                         cont.resume(request)
                     } catch (error: Exception) {

@@ -67,6 +67,18 @@ internal fun offlineItem(
     return OfflineItem(title, height, streams)
 }
 
+internal fun SavedTitle.downloadBytes(): ByteArray {
+    val poster = posterUrl?.takeIf { it.isNotBlank() }.orEmpty()
+    val raw = if (poster.isEmpty()) title else "$title\u0000$poster"
+    return raw.toByteArray(Charsets.UTF_8)
+}
+
+internal fun ByteArray.downloadTitle(): String =
+    toString(Charsets.UTF_8).substringBefore('\u0000').ifBlank { "" }
+
+internal fun ByteArray.downloadPoster(): String? =
+    toString(Charsets.UTF_8).substringAfter('\u0000', "").ifBlank { null }
+
 internal fun OfflineStream.downloadId(movieId: String): String =
     if (season == 0 && episode == 0) movieId else "$movieId#$season#$episode"
 
