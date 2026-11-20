@@ -169,7 +169,7 @@ internal object MediaCache {
             upstream,
             Executors.newFixedThreadPool(3),
         ).also { manager ->
-            manager.maxParallelDownloads = 2
+            manager.maxParallelDownloads = 1
             managerRef = manager
         }
     }

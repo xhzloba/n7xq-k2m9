@@ -26,6 +26,15 @@ internal fun LazyListState.scrollToTopOn(request: Int) {
 }
 
 @Composable
+internal fun ScrollState.scrollToTopOn(request: Int) {
+    ScrollToTop(
+        request = request,
+        atTop = { value == 0 },
+        scroll = { glideToStart() },
+    )
+}
+
+@Composable
 internal fun LazyGridState.scrollToTopOn(request: Int) {
     ScrollToTop(
         request = request,

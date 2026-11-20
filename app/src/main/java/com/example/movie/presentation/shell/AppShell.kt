@@ -414,6 +414,8 @@ fun AppShell(
                     onMovieClick = onMovieClick,
                     onMoviePeek = { peek = it },
                     onPlayResume = playResume,
+                    onBack = { onTabChange(AppTab.Home.name) },
+                    onOpenCatalog = { onTabChange(AppTab.Catalog.name) },
                     scrollTop = favoritesTop,
                 )
                 AppTab.Settings -> SettingsRoute(scrollTop = settingsTop)

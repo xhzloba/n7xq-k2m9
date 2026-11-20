@@ -64,7 +64,7 @@ internal fun smoothDownloadProgress(status: OfflineStatus): Float {
     LaunchedEffect(status.phase, status.percent, status.indeterminate) {
         when (status.phase) {
             OfflinePhase.Ready -> displayed.animateTo(1f, tween(320, easing = FastOutSlowInEasing))
-            OfflinePhase.Failed -> Unit
+            OfflinePhase.Failed, OfflinePhase.Queued -> Unit
             OfflinePhase.Paused -> {
                 val target = (status.percent / 100f).coerceIn(0f, 1f)
                 if (target > 0f) displayed.snapTo(maxOf(displayed.value, target))
@@ -99,6 +99,28 @@ internal fun smoothDownloadProgress(status: OfflineStatus): Float {
         }
     }
     return displayed.value
+}
+
+/** Плеер отдаёт процент кусками. На экране доезжаем по одному, вниз прыгаем сразу. */
+@Composable
+internal fun glideDownloadPercent(percent: Int): Int {
+    val glide = remember { Animatable(percent.coerceIn(0, 100).toFloat()) }
+    LaunchedEffect(percent) {
+        val target = percent.coerceIn(0, 100).toFloat()
+        if (target <= glide.value) {
+            glide.snapTo(target)
+        } else {
+            val gap = target - glide.value
+            glide.animateTo(
+                target,
+                tween(
+                    durationMillis = (gap * 160f).toInt().coerceIn(240, 900),
+                    easing = LinearEasing,
+                ),
+            )
+        }
+    }
+    return glide.value.roundToInt().coerceIn(0, 100)
 }
 
 @Composable
@@ -243,7 +265,7 @@ internal fun DownloadBar(
                     cornerRadius = CornerRadius(height.toPx(), height.toPx()),
                 )
             }
-            OfflinePhase.Failed -> Canvas(Modifier.fillMaxWidth().height(height)) {
+            OfflinePhase.Queued, OfflinePhase.Failed -> Canvas(Modifier.fillMaxWidth().height(height)) {
                 drawRoundRect(
                     color = track,
                     cornerRadius = CornerRadius(height.toPx(), height.toPx()),
@@ -279,6 +301,7 @@ internal fun offlineProgressTitle(status: OfflineStatus): String = when (status.
     OfflinePhase.Preparing -> stringResource(R.string.download_preparing)
     OfflinePhase.Downloading -> stringResource(R.string.download_running)
     OfflinePhase.Paused -> stringResource(R.string.download_paused)
+    OfflinePhase.Queued -> stringResource(R.string.download_queued)
 }
 
 internal fun OfflinePhase.inProgress(): Boolean =
@@ -327,9 +350,10 @@ internal fun DownloadProgressControls(
                     )
                 }
                 Spacer(Modifier.weight(1f))
-                if (!status.indeterminate && status.percent > 0) {
+                val shown = glideDownloadPercent(status.percent)
+                if (!status.indeterminate && shown > 0) {
                     Text(
-                        text = "${status.percent}%",
+                        text = "$shown%",
                         color = CinemaMuted,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium,

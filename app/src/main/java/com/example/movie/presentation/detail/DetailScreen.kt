@@ -408,6 +408,7 @@ private fun MoreActionsSheet(
                             OfflinePhase.Downloading,
                             OfflinePhase.Preparing,
                             OfflinePhase.Paused,
+                            OfflinePhase.Queued,
                             -> offlineProgressTitle(downloadStatus)
                             else -> stringResource(R.string.action_download)
                         },

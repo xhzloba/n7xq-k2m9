@@ -1,14 +1,17 @@
 package com.example.movie.data.download
 
+import android.Manifest
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.os.Build
 import androidx.annotation.OptIn
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.toBitmap
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.offline.Download
@@ -38,16 +41,44 @@ class MovieDownloadService : DownloadService(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val posters = LinkedHashMap<String, Bitmap>()
     private val posterLoads = HashSet<String>()
+    private val finished = HashSet<String>()
+    private val doneListener = object : DownloadManager.Listener {
+        override fun onDownloadChanged(
+            downloadManager: DownloadManager,
+            download: Download,
+            finalException: Exception?,
+        ) {
+            if (download.state != Download.STATE_COMPLETED || finalException != null) return
+            val id = download.request.id
+            if (!finished.add(id)) return
+            notifyFinished(download)
+        }
+    }
+
     override fun onCreate() {
         val manager = getSystemService(NotificationManager::class.java)
-        if (Build.VERSION.SDK_INT >= 26 && manager.getNotificationChannel(CHANNEL_ID) == null) {
-            manager.createNotificationChannel(
-                NotificationChannel(CHANNEL_ID, getString(R.string.download_channel_name), NotificationManager.IMPORTANCE_LOW).apply {
-                    description = getString(R.string.download_channel_description)
-                },
-            )
+        if (Build.VERSION.SDK_INT >= 26) {
+            if (manager.getNotificationChannel(CHANNEL_ID) == null) {
+                manager.createNotificationChannel(
+                    NotificationChannel(CHANNEL_ID, getString(R.string.download_channel_name), NotificationManager.IMPORTANCE_LOW).apply {
+                        description = getString(R.string.download_channel_description)
+                    },
+                )
+            }
+            if (manager.getNotificationChannel(DONE_CHANNEL_ID) == null) {
+                manager.createNotificationChannel(
+                    NotificationChannel(
+                        DONE_CHANNEL_ID,
+                        getString(R.string.download_done_channel),
+                        NotificationManager.IMPORTANCE_DEFAULT,
+                    ).apply {
+                        description = getString(R.string.download_done_channel_description)
+                    },
+                )
+            }
         }
         super.onCreate()
+        getDownloadManager().addListener(doneListener)
     }
 
     override fun getDownloadManager(): DownloadManager = MediaCache.manager(this)
@@ -90,8 +121,57 @@ class MovieDownloadService : DownloadService(
     }
 
     override fun onDestroy() {
+        runCatching { getDownloadManager().removeListener(doneListener) }
         scope.cancel()
         super.onDestroy()
+    }
+
+    private fun notifyFinished(download: Download) {
+        if (
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            return
+        }
+        val id = download.request.id
+        val payload = download.request.data
+        val name = payload.downloadTitle().ifBlank { getString(R.string.download_channel_name) }
+        val episode = episodeOf(id)
+        val text = if (episode == null) {
+            getString(R.string.download_done)
+        } else {
+            getString(R.string.download_done_episode, episode.first, episode.second)
+        }
+        val movieId = id.substringBefore('#').ifBlank { return }
+        val open = PendingIntent.getActivity(
+            this,
+            movieId.hashCode(),
+            Intent(this, MainActivity::class.java)
+                .putExtra(MainActivity.EXTRA_MOVIE, movieId)
+                .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        val noteId = id.hashCode()
+        val art = poster(payload.downloadPoster())
+        val note = NotificationCompat.Builder(this, DONE_CHANNEL_ID)
+            .appIcon(this)
+            .apply { if (art != null) setLargeIcon(art) }
+            .setContentTitle(name)
+            .setContentText(text)
+            .setContentIntent(open)
+            .setAutoCancel(true)
+            .setOnlyAlertOnce(true)
+            .build()
+        getSystemService(NotificationManager::class.java).notify(noteId, note)
+    }
+
+    private fun episodeOf(id: String): Pair<Int, Int>? {
+        val parts = id.split('#')
+        if (parts.size < 3) return null
+        val season = parts[parts.size - 2].toIntOrNull() ?: return null
+        val episode = parts.last().toIntOrNull() ?: return null
+        if (episode <= 0) return null
+        return season to episode
     }
 
     private fun poster(url: String?): Bitmap? {
@@ -124,6 +204,7 @@ class MovieDownloadService : DownloadService(
 
     private companion object {
         const val CHANNEL_ID = "offline"
+        const val DONE_CHANNEL_ID = "offline_done"
         const val NOTIFICATION_ID = 41
     }
 }

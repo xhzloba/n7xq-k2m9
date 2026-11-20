@@ -32,7 +32,7 @@ data class OfflineItem(
     val streams: List<OfflineStream>,
 )
 
-enum class OfflinePhase { Preparing, Downloading, Paused, Ready, Failed }
+enum class OfflinePhase { Preparing, Downloading, Paused, Queued, Ready, Failed }
 
 data class OfflineStatus(
     val percent: Int,

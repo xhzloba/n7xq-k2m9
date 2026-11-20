@@ -52,13 +52,19 @@ class OfflineStore(context: Context) {
         manager.addListener(object : DownloadManager.Listener {
             override fun onInitialized(downloadManager: DownloadManager) {
                 publish(downloadManager)
+                pump()
                 if (restored.compareAndSet(false, true)) scope.launch { restore() }
             }
 
-            override fun onDownloadChanged(downloadManager: DownloadManager, download: Download, finalException: Exception?) =
+            override fun onDownloadChanged(downloadManager: DownloadManager, download: Download, finalException: Exception?) {
                 publish(downloadManager)
+                pump()
+            }
 
-            override fun onDownloadRemoved(downloadManager: DownloadManager, download: Download) = publish(downloadManager)
+            override fun onDownloadRemoved(downloadManager: DownloadManager, download: Download) {
+                publish(downloadManager)
+                pump()
+            }
         })
         publish(manager)
         scope.launch {
@@ -101,18 +107,21 @@ class OfflineStore(context: Context) {
         if (rows.size == item.streams.size && rows.all { it.state == Download.STATE_COMPLETED }) {
             return OfflineStatus(100, OfflinePhase.Ready, bytes = bytes, totalBytes = totalBytes.takeIf { it > 0 } ?: bytes)
         }
-        val active = rows.any {
-            it.state == Download.STATE_DOWNLOADING ||
-                it.state == Download.STATE_QUEUED ||
-                it.state == Download.STATE_RESTARTING
+        val running = rows.filter {
+            it.state == Download.STATE_DOWNLOADING || it.state == Download.STATE_RESTARTING
         }
-        val paused = !active && rows.any {
-            it.state == Download.STATE_STOPPED && it.stopReason != Download.STOP_REASON_NONE
+        val waiting = rows.any {
+            it.state == Download.STATE_QUEUED ||
+                (it.state == Download.STATE_STOPPED && it.stopReason == STOP_QUEUE)
         }
-        val failed = rows.any { it.state == Download.STATE_FAILED } && !active && !paused
-        val known = rows.map { it.percentDownloaded }.filter { it >= 0f }
+        val paused = running.isEmpty() && rows.any {
+            it.state == Download.STATE_STOPPED && it.stopReason == STOP_USER
+        }
+        val failed = rows.any { it.state == Download.STATE_FAILED } && running.isEmpty() && !paused && !waiting
+        val gauge = if (running.isNotEmpty()) running else rows
+        val known = gauge.map { it.percentDownloaded }.filter { it >= 0f }
         val percent = if (known.isEmpty()) 0 else known.average().toInt().coerceIn(0, 100)
-        val indeterminate = known.isEmpty() || ids.any { it in pending }
+        val indeterminate = running.isNotEmpty() && (known.isEmpty() || ids.any { it in pending })
         val estimatedTotal = when {
             totalBytes > 0L -> totalBytes
             percent in 1..99 && bytes > 0L -> (bytes * 100L / percent).coerceAtLeast(bytes)
@@ -121,7 +130,9 @@ class OfflineStore(context: Context) {
         return when {
             failed -> OfflineStatus(percent, OfflinePhase.Failed, false, bytes, estimatedTotal)
             paused -> OfflineStatus(percent, OfflinePhase.Paused, false, bytes, estimatedTotal)
-            ids.any { it in pending } && !active -> OfflineStatus(percent, OfflinePhase.Preparing, true, bytes, estimatedTotal)
+            running.isNotEmpty() -> OfflineStatus(percent, OfflinePhase.Downloading, indeterminate, bytes, estimatedTotal)
+            ids.any { it in pending } -> OfflineStatus(percent, OfflinePhase.Preparing, true, bytes, estimatedTotal)
+            waiting -> OfflineStatus(percent, OfflinePhase.Queued, false, bytes, estimatedTotal)
             else -> OfflineStatus(percent, OfflinePhase.Downloading, indeterminate, bytes, estimatedTotal)
         }
     }
@@ -146,11 +157,10 @@ class OfflineStore(context: Context) {
                 app,
                 MovieDownloadService::class.java,
                 stream.downloadId(movieId),
-                Download.STOP_REASON_NONE,
+                STOP_QUEUE,
                 false,
             )
         }
-        DownloadService.sendResumeDownloads(app, MovieDownloadService::class.java, false)
     }
 
     fun pauseStream(movieId: String, season: Int, episode: Int) {
@@ -172,10 +182,9 @@ class OfflineStore(context: Context) {
             app,
             MovieDownloadService::class.java,
             stream.downloadId(movieId),
-            Download.STOP_REASON_NONE,
+            STOP_QUEUE,
             false,
         )
-        DownloadService.sendResumeDownloads(app, MovieDownloadService::class.java, false)
     }
 
     fun enqueue(item: OfflineItem) {
@@ -186,7 +195,8 @@ class OfflineStore(context: Context) {
         write(next)
         scope.launch {
             var foreground = true
-            for (stream in item.streams) {
+            val ordered = item.streams.sortedWith(compareBy({ it.season }, { it.episode }))
+            for (stream in ordered) {
                 val id = stream.downloadId(item.title.id)
                 if (itemsState.value.none { it.title.id == item.title.id }) return@launch
                 markPending(id, true)
@@ -208,6 +218,66 @@ class OfflineStore(context: Context) {
                 if (sameFile) continue
                 MediaCache.enqueue(app, request, foreground)
                 foreground = false
+                pump()
+            }
+        }
+    }
+
+    /**
+     * Одна закачка сразу. У сериала серии идут по номеру, фильмы — в порядке очереди.
+     * Уже идущую не прерываем: следующая стартует, когда текущая кончится.
+     */
+    private fun pump() {
+        val tasks = tasksState.value
+        if (tasks.isEmpty()) return
+        data class Slot(
+            val id: String,
+            val movieId: String,
+            val season: Int,
+            val episode: Int,
+            val task: Download,
+        )
+        val slots = ArrayList<Slot>()
+        for (item in itemsState.value) {
+            for (stream in item.streams) {
+                val id = stream.downloadId(item.title.id)
+                val task = tasks[id] ?: continue
+                slots += Slot(id, item.title.id, stream.season, stream.episode, task)
+            }
+        }
+        val open = slots.filter {
+            val state = it.task.state
+            state != Download.STATE_COMPLETED &&
+                state != Download.STATE_FAILED &&
+                state != Download.STATE_REMOVING &&
+                it.task.stopReason != STOP_USER
+        }
+        if (open.isEmpty()) return
+        val groupStart = open.groupBy { it.movieId }.mapValues { (_, list) ->
+            list.minOf { it.task.startTimeMs }
+        }
+        val ordered = open.sortedWith(
+            compareBy(
+                { groupStart[it.movieId] ?: Long.MAX_VALUE },
+                { it.season },
+                { it.episode },
+                { it.task.startTimeMs },
+            ),
+        )
+        val running = ordered.filter {
+            it.task.state == Download.STATE_DOWNLOADING || it.task.state == Download.STATE_RESTARTING
+        }
+        val winner = running.minByOrNull { slot -> ordered.indexOfFirst { it.id == slot.id } } ?: ordered.first()
+        for (slot in ordered) {
+            val want = if (slot.id == winner.id) Download.STOP_REASON_NONE else STOP_QUEUE
+            if (slot.task.stopReason != want) {
+                DownloadService.sendSetStopReason(
+                    app,
+                    MovieDownloadService::class.java,
+                    slot.id,
+                    want,
+                    false,
+                )
             }
         }
     }
@@ -284,5 +354,6 @@ class OfflineStore(context: Context) {
         const val KEY = "items"
         const val TAG = "OfflineStore"
         const val STOP_USER = 1
+        const val STOP_QUEUE = 2
     }
 }

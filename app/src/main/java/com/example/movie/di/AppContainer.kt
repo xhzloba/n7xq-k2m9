@@ -9,6 +9,7 @@ import com.example.movie.data.backdrops.BackdropSetStore
 import com.example.movie.data.palette.WashToneStore
 import com.example.movie.data.download.OfflineStore
 import com.example.movie.data.favorites.FavoriteStore
+import com.example.movie.data.folders.FolderStore
 import com.example.movie.data.favorites.WatchedStore
 import com.example.movie.data.remote.FranchiseApi
 import com.example.movie.data.remote.GithubApi
@@ -44,6 +45,7 @@ class AppContainer(context: Context) {
     val backdropSets = BackdropSetStore(context)
     val washTones = WashToneStore(context)
     val favorites = FavoriteStore(context)
+    val folders = FolderStore(context)
     val watched = WatchedStore(context)
     val offline = OfflineStore(context)
     val searchHistory = SearchHistoryStore(context)

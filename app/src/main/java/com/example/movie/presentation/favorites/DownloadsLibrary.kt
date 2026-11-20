@@ -21,7 +21,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -68,6 +70,7 @@ private val IconBtnShape = RoundedCornerShape(12.dp)
 internal fun DownloadsLibrary(
     items: List<OfflineItem>,
     topPadding: Dp,
+    listState: LazyListState = rememberLazyListState(),
     statusOf: (OfflineItem) -> OfflineStatus,
     onOpen: (OfflineItem) -> Unit,
     onPlay: (OfflineItem) -> Unit,
@@ -92,6 +95,7 @@ internal fun DownloadsLibrary(
         return
     }
     LazyColumn(
+        state = listState,
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = topPadding, bottom = 96.dp),
     ) {
@@ -445,6 +449,9 @@ private fun OfflineItem.libraryCaption(statusOf: (OfflineItem) -> OfflineStatus)
         ).joinToString(" · ")
     }
     if (rows.all { it.second.phase == OfflinePhase.Ready }) return count
+    if (rows.any { it.second.phase == OfflinePhase.Queued }) {
+        return "$count · ${stringResource(R.string.download_queued)}"
+    }
     return "$count · ${stringResource(R.string.download_failed)}"
 }
 

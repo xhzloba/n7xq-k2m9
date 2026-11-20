@@ -1,5 +1,6 @@
 package com.example.movie.data.backup
 
+import com.example.movie.data.folders.LibraryFolder
 import com.example.movie.domain.model.BarScrollAuto
 import com.example.movie.domain.model.BarScrollOff
 import com.example.movie.domain.model.BarScrollScroll
@@ -24,6 +25,16 @@ class LibraryArchiveTest {
         assertEquals(32, back?.settings?.imageParallel)
         assertEquals("Фильм", back?.favorites?.single()?.title)
         assertEquals(listOf("боевик"), back?.search)
+    }
+
+    @Test
+    fun foldersRoundTripAndOldFileLeavesThemOut() {
+        val file = LibraryFile(folders = listOf(LibraryFolder("Ночь", "тихо")))
+        val back = LibraryArchive.decode(LibraryArchive.encode(file))
+        assertEquals("Ночь", back?.folders?.single()?.name)
+        assertEquals("тихо", back?.folders?.single()?.description)
+        assertEquals(true, LibraryArchive.hasFolders(LibraryArchive.encode(file)))
+        assertEquals(false, LibraryArchive.hasFolders("""{"version":1}"""))
     }
 
     @Test

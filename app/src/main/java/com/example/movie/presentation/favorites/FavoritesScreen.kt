@@ -1,10 +1,16 @@
 package com.example.movie.presentation.favorites
 
 import android.graphics.drawable.ColorDrawable
+import androidx.activity.compose.BackHandler
 import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -30,24 +36,32 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalBottomSheet
@@ -73,8 +87,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -92,10 +110,16 @@ import com.example.movie.presentation.home.PeekEnter
 import com.example.movie.presentation.home.PeekExit
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.movie.R
+import com.example.movie.presentation.common.BookmarkFilled
 import com.example.movie.presentation.common.PosterImage
 import com.example.movie.presentation.common.appBackground
 import com.example.movie.presentation.common.appChrome
 import com.example.movie.data.download.OfflineItem
+import com.example.movie.data.download.OfflinePhase
+import com.example.movie.data.download.OfflineStatus
+import com.example.movie.presentation.common.glideDownloadPercent
+import com.example.movie.presentation.common.inProgress
+import com.example.movie.data.folders.LibraryFolder
 import com.example.movie.di.LocalAppContainer
 import com.example.movie.presentation.common.LocalShelfNotices
 import com.example.movie.presentation.common.drawTopScrim
@@ -109,6 +133,7 @@ import com.example.movie.presentation.detail.DetailSeed
 import com.example.movie.presentation.detail.OfflinePlayer
 import com.example.movie.ui.theme.PlayBlue
 import com.example.movie.domain.model.Movie
+import com.example.movie.domain.model.ResumeItem
 import com.example.movie.domain.model.SavedTitle
 import com.example.movie.domain.model.SeriesSub
 import com.example.movie.domain.model.progressCaption
@@ -118,6 +143,12 @@ import com.example.movie.presentation.haptic.HapticOnChange
 import com.example.movie.domain.model.HapticSlot
 import com.example.movie.presentation.haptic.rememberHaptic
 import com.example.movie.presentation.haptic.rememberHapticTick
+import com.example.movie.presentation.home.SectionScrim
+import com.example.movie.presentation.home.components.RailSeeAllCard
+import com.example.movie.presentation.home.components.RailTitle
+import com.example.movie.presentation.home.components.RecommendationRail
+import com.example.movie.presentation.home.components.posterAspect
+import com.example.movie.presentation.home.components.posterSize
 import com.example.movie.presentation.home.components.BrandLogoBleed
 import com.example.movie.presentation.home.components.LogoAspect
 import com.example.movie.presentation.home.components.LogoHeight
@@ -135,6 +166,7 @@ import com.example.movie.presentation.home.components.LogoMood
 import com.example.movie.presentation.home.components.CategoryTabFontSize
 import com.example.movie.presentation.home.components.CategoryTabLetterSpacing
 import com.example.movie.presentation.home.components.CategoryTabLineHeight
+import com.example.movie.presentation.shell.ShellIcons
 import com.example.movie.presentation.home.holdCue
 import com.example.movie.presentation.home.holdToPeek
 import com.example.movie.presentation.home.PosterWave
@@ -188,6 +220,8 @@ internal fun FavoritesScreen(
     onMovieClick: (String) -> Unit,
     onMoviePeek: (Movie) -> Unit,
     onPlayResume: (String) -> Unit = {},
+    onBack: () -> Unit = {},
+    onOpenCatalog: () -> Unit = {},
     scrollTop: Int = 0,
 ) {
     val container = LocalAppContainer.current
@@ -198,7 +232,7 @@ internal fun FavoritesScreen(
     val downloads by container.offline.items.collectAsStateWithLifecycle()
     val downloadTasks by container.offline.tasks.collectAsStateWithLifecycle()
     val downloadPending by container.offline.pending.collectAsStateWithLifecycle()
-    var libraryName by rememberSaveable { mutableStateOf(LibrarySection.Favorites.name) }
+    var libraryName by rememberSaveable { mutableStateOf("") }
     var playing by remember { mutableStateOf<OfflinePlay?>(null) }
     var openedDownload by rememberSaveable { mutableStateOf<String?>(null) }
     val notices = LocalShelfNotices.current
@@ -206,8 +240,21 @@ internal fun FavoritesScreen(
         if (notices.openRequest == 0) return@LaunchedEffect
         if (LibrarySection.entries.any { it.name == notices.section }) libraryName = notices.section
     }
-    val library = LibrarySection.entries.firstOrNull { it.name == libraryName } ?: LibrarySection.Favorites
+    val library = LibrarySection.entries.firstOrNull { it.name == libraryName }
+    val folders by container.folders.items.collectAsStateWithLifecycle()
+    var foldersOpen by rememberSaveable { mutableStateOf(false) }
+    var openedFolder by rememberSaveable { mutableIntStateOf(-1) }
+    var editingFolder by remember { mutableStateOf<Int?>(null) }
+    BackHandler(enabled = library != null || foldersOpen || openedFolder >= 0) {
+        openedDownload = null
+        when {
+            openedFolder >= 0 -> openedFolder = -1
+            library != null -> libraryName = ""
+            else -> foldersOpen = false
+        }
+    }
     val items = when (library) {
+        null -> emptyList()
         LibrarySection.Favorites -> favorites
         LibrarySection.Continue -> resume.map { it.toSaved() }
         LibrarySection.Watched -> watched
@@ -233,76 +280,82 @@ internal fun FavoritesScreen(
     val shown = filtered.sortedFor(sort)
     val gridState = rememberLazyGridState()
     gridState.scrollToTopOn(scrollTop)
-    val density = LocalDensity.current
-    val scrim = if (gridState.firstVisibleItemIndex > 0) {
-        1f
-    } else {
-        val threshold = with(density) { 28.dp.toPx() }
-        (gridState.firstVisibleItemScrollOffset / threshold).coerceIn(0f, 1f)
+    val closePage = {
+        openedDownload = null
+        libraryName = ""
     }
-    var brandHeight by remember { mutableIntStateOf(0) }
-    val brandReserve = if (brandHeight == 0) 40.dp else with(density) { brandHeight.toDp() }
-    val topInset = WindowInsets.safeDrawing.asPaddingValues().calculateTopPadding()
     val onSelect = { next: FavoriteTab ->
         filtersOpen = false
         tabName = next.name
     }
     Box(modifier = Modifier.fillMaxSize()) {
-        if (library == LibrarySection.Downloads) {
-            DownloadsLibrary(
-                items = downloads,
-                topPadding = topInset + BrandTopInset + brandReserve + 12.dp,
-                statusOf = downloadStatus,
-                onOpen = { openedDownload = it.title.id },
-                onPlay = { playing = OfflinePlay(it, null, null) },
-                onPause = { container.offline.pause(it.title.id) },
-                onResume = { container.offline.resume(it.title.id) },
-                onDelete = { container.offline.remove(it.title.id) },
+        if (library == null && openedFolder in folders.indices) {
+            FolderInside(
+                folder = folders[openedFolder],
+                onBack = { openedFolder = -1 },
             )
-            LibraryBrand(
-                hat = logo.hat,
-                mustache = logo.mustache,
-                library = library,
-                onLibrary = {
-                    openedDownload = null
-                    libraryName = it.name
+        } else if (library == null && foldersOpen) {
+            FolderPage(
+                folders = folders,
+                onBack = { foldersOpen = false },
+                onAdd = { editingFolder = -1 },
+                onOpen = { openedFolder = it },
+                onEdit = { editingFolder = it },
+                scrollTop = scrollTop,
+            )
+        } else if (library == null) {
+            LibraryHub(
+                favorites = favorites,
+                resume = resume,
+                downloads = downloads,
+                onMovieClick = onMovieClick,
+                onMoviePeek = onMoviePeek,
+                onPlayResume = onPlayResume,
+                onBack = onBack,
+                onOpenCatalog = onOpenCatalog,
+                onOpen = { libraryName = it.name },
+                onOpenDownload = { item ->
+                    if (item.streams.any { it.season > 0 || it.episode > 0 }) {
+                        openedDownload = item.title.id
+                    } else {
+                        playing = OfflinePlay(item, null, null)
+                    }
                 },
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))
-                    .padding(top = BrandTopInset)
-                    .onSizeChanged { brandHeight = it.height },
+                folders = folders,
+                downloadStatus = downloadStatus,
+                onOpenFolders = { foldersOpen = true },
+                onOpenFolder = { openedFolder = it },
+                onEditFolder = { editingFolder = it },
+                onAddFolder = { editingFolder = -1 },
+                scrollTop = scrollTop,
             )
-            if (opened != null) {
-                DownloadedEpisodes(
-                    item = opened,
+        } else if (library == LibrarySection.Downloads) {
+            val listState = rememberLazyListState()
+            val header = libraryTopPadding()
+            Box(Modifier.fillMaxSize()) {
+                DownloadsLibrary(
+                    items = downloads,
+                    topPadding = header,
+                    listState = listState,
                     statusOf = downloadStatus,
-                    onPlay = { season, episode -> playing = OfflinePlay(opened, season, episode) },
-                    onRemove = { season, episode ->
-                        container.offline.removeStream(opened.title.id, season, episode)
-                    },
-                    onPause = { season, episode ->
-                        container.offline.pauseStream(opened.title.id, season, episode)
-                    },
-                    onResume = { season, episode ->
-                        container.offline.resumeStream(opened.title.id, season, episode)
-                    },
-                    onBack = { openedDownload = null },
+                    onOpen = { openedDownload = it.title.id },
+                    onPlay = { playing = OfflinePlay(it, null, null) },
+                    onPause = { container.offline.pause(it.title.id) },
+                    onResume = { container.offline.resume(it.title.id) },
+                    onDelete = { container.offline.remove(it.title.id) },
+                )
+                SectionScrim(
+                    progress = listState.libraryScrim(),
+                    modifier = Modifier.align(Alignment.TopCenter),
+                )
+                LibraryBar(
+                    title = stringResource(R.string.library_downloads),
+                    onBack = closePage,
+                    modifier = Modifier.align(Alignment.TopCenter),
                 )
             }
         } else if (shown.isEmpty()) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))
-                    .padding(top = BrandTopInset),
-            ) {
-                LibraryBrand(
-                    hat = logo.hat,
-                    mustache = logo.mustache,
-                    library = library,
-                    onLibrary = { libraryName = it.name },
-                )
+            Column(Modifier.fillMaxSize().padding(top = libraryTopPadding())) {
                 FavoriteTabs(
                     selected = tab,
                     genres = genres,
@@ -311,7 +364,6 @@ internal fun FavoritesScreen(
                     onSelect = onSelect,
                     onOpenFilters = { filtersOpen = true },
                     onMenuSettled = logo::onSettled,
-                    modifier = Modifier.padding(top = 12.dp),
                 )
                 Box(
                     modifier = Modifier
@@ -336,7 +388,13 @@ internal fun FavoritesScreen(
                     )
                 }
             }
+            LibraryBar(
+                title = stringResource(library.label),
+                onBack = closePage,
+                modifier = Modifier.align(Alignment.TopCenter),
+            )
         } else {
+            Box(Modifier.fillMaxSize()) {
             LazyVerticalGrid(
                 state = gridState,
                 columns = GridCells.Fixed(posterGridColumns()),
@@ -344,7 +402,7 @@ internal fun FavoritesScreen(
                 contentPadding = PaddingValues(
                     start = PosterGridInset,
                     end = PosterGridInset,
-                    top = topInset + BrandTopInset + brandReserve + 12.dp,
+                    top = libraryTopPadding(),
                     bottom = 96.dp,
                 ),
                 horizontalArrangement = Arrangement.spacedBy(PosterGap),
@@ -388,24 +446,36 @@ internal fun FavoritesScreen(
                     )
                 }
             }
-            LibraryScrim(
-                progress = scrim,
+            SectionScrim(
+                progress = gridState.libraryScrim(),
                 modifier = Modifier.align(Alignment.TopCenter),
             )
-            LibraryBrand(
-                hat = logo.hat,
-                mustache = logo.mustache,
-                library = library,
-                onLibrary = { libraryName = it.name },
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))
-                    .padding(top = BrandTopInset)
-                    .onSizeChanged { brandHeight = it.height },
+            LibraryBar(
+                title = stringResource(library.label),
+                onBack = closePage,
+                modifier = Modifier.align(Alignment.TopCenter),
+            )
+            }
+        }
+        if (opened != null) {
+            DownloadedEpisodes(
+                item = opened,
+                statusOf = downloadStatus,
+                onPlay = { season, episode -> playing = OfflinePlay(opened, season, episode) },
+                onRemove = { season, episode ->
+                    container.offline.removeStream(opened.title.id, season, episode)
+                },
+                onPause = { season, episode ->
+                    container.offline.pauseStream(opened.title.id, season, episode)
+                },
+                onResume = { season, episode ->
+                    container.offline.resumeStream(opened.title.id, season, episode)
+                },
+                onBack = { openedDownload = null },
             )
         }
         LibraryFilterDialog(
-                open = filtersOpen && tab.hasGenres && library != LibrarySection.Downloads,
+                open = filtersOpen && tab.hasGenres && library != null && library != LibrarySection.Downloads,
                 title = stringResource(tab.label),
                 genres = genres,
                 genre = genre,
@@ -427,8 +497,846 @@ internal fun FavoritesScreen(
                 onDismiss = { playing = null },
             )
         }
+        val editor = editingFolder
+        if (editor != null) {
+            FolderNameDialog(
+                initial = folders.getOrNull(editor),
+                onDismiss = { editingFolder = null },
+                onSave = { name, about ->
+                    val next = if (editor in folders.indices) {
+                        folders.toMutableList().also { it[editor] = LibraryFolder(name, about) }
+                    } else {
+                        folders + LibraryFolder(name, about)
+                    }
+                    container.folders.replace(next)
+                    editingFolder = null
+                },
+            )
+        }
     }
 }
+
+private const val LibraryRailCap = 15
+
+@Composable
+private fun LibraryHub(
+    favorites: List<SavedTitle>,
+    resume: List<ResumeItem>,
+    downloads: List<OfflineItem>,
+    onMovieClick: (String) -> Unit,
+    onMoviePeek: (Movie) -> Unit,
+    onPlayResume: (String) -> Unit,
+    onBack: () -> Unit,
+    onOpenCatalog: () -> Unit,
+    onOpen: (LibrarySection) -> Unit,
+    onOpenDownload: (OfflineItem) -> Unit,
+    downloadStatus: (OfflineItem) -> OfflineStatus,
+    folders: List<LibraryFolder>,
+    onOpenFolders: () -> Unit,
+    onOpenFolder: (Int) -> Unit,
+    onEditFolder: (Int) -> Unit,
+    onAddFolder: () -> Unit,
+    scrollTop: Int,
+) {
+    val scroll = rememberScrollState()
+    scroll.scrollToTopOn(scrollTop)
+    val header = libraryTopPadding()
+    Box(Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(scroll)
+                .padding(top = header, bottom = 96.dp),
+            verticalArrangement = Arrangement.spacedBy(22.dp),
+        ) {
+            if (favorites.isEmpty()) {
+                LibraryPlaque(
+                    title = stringResource(R.string.section_favorites),
+                    body = stringResource(R.string.library_watch_empty),
+                    icon = BookmarkFilled,
+                    iconSize = 92.dp,
+                    onClick = onOpenCatalog,
+                )
+            } else {
+                LibraryRail(
+                    title = stringResource(R.string.section_favorites),
+                    movies = favorites.take(LibraryRailCap).map { it.toMovie() },
+                    onMovieClick = onMovieClick,
+                    onMoviePeek = onMoviePeek,
+                    onOpen = { onOpen(LibrarySection.Favorites) },
+                )
+            }
+            if (resume.isNotEmpty()) {
+                val rail = resume.take(LibraryRailCap)
+                LibraryRail(
+                    title = stringResource(R.string.section_continue),
+                    movies = rail.map { it.toMovie() },
+                    onMovieClick = onPlayResume,
+                    onMoviePeek = onMoviePeek,
+                    onOpen = { onOpen(LibrarySection.Continue) },
+                    progressOf = { movie -> rail.firstOrNull { it.id == movie.id }?.fraction },
+                    captionOf = { movie -> rail.firstOrNull { it.id == movie.id }?.progressCaption() },
+                )
+            }
+            if (downloads.isEmpty()) {
+                LibraryPlaque(
+                    title = stringResource(R.string.library_downloads),
+                    body = stringResource(R.string.library_downloads_empty),
+                    action = stringResource(R.string.library_downloads_pick),
+                    onClick = onOpenCatalog,
+                )
+            } else {
+                LibraryRail(
+                    title = stringResource(R.string.library_downloads),
+                    movies = downloads.take(LibraryRailCap).map { it.title.toMovie() },
+                    onMovieClick = { id ->
+                        downloads.firstOrNull { it.title.id == id }?.let(onOpenDownload)
+                    },
+                    onMoviePeek = onMoviePeek,
+                    onOpen = { onOpen(LibrarySection.Downloads) },
+                    titleShimmer = downloads.any { item ->
+                        val phase = downloadStatus(item).phase
+                        phase == OfflinePhase.Downloading || phase == OfflinePhase.Preparing
+                    },
+                    overlay = { movie ->
+                        val item = downloads.firstOrNull { it.title.id == movie.id } ?: return@LibraryRail
+                        val status = downloadStatus(item)
+                        if (status.phase.inProgress()) DownloadRailMark(status)
+                    },
+                )
+            }
+            if (folders.isEmpty()) {
+                LibraryPlaque(
+                    title = stringResource(R.string.library_folders),
+                    icon = FolderMark,
+                    iconSize = 52.dp,
+                    onAdd = onAddFolder,
+                )
+            } else {
+                FolderRail(
+                    folders = folders,
+                    onOpen = onOpenFolders,
+                    onOpenFolder = onOpenFolder,
+                    onEditFolder = onEditFolder,
+                )
+            }
+        }
+        SectionScrim(
+            progress = scroll.libraryScrim(),
+            modifier = Modifier.align(Alignment.TopCenter),
+        )
+        LibraryBar(
+            title = stringResource(R.string.nav_favorites),
+            onBack = onBack,
+            modifier = Modifier.align(Alignment.TopCenter),
+        )
+    }
+}
+
+@Composable
+private fun LibraryBar(
+    title: String,
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+    mark: ImageVector? = null,
+) {
+    val tick = rememberHapticTick()
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))
+            .padding(top = BrandTopInset)
+            .height(36.dp),
+    ) {
+        Row(
+            modifier = Modifier
+                .align(Alignment.Center)
+                .padding(horizontal = 56.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (mark != null) {
+                Icon(
+                    imageVector = mark,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(18.dp),
+                )
+                Spacer(Modifier.width(8.dp))
+            }
+            Text(
+                text = title,
+                color = Color.White,
+                fontSize = 18.sp,
+                lineHeight = 24.sp,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false),
+            )
+        }
+        Box(
+            modifier = Modifier
+                .align(Alignment.CenterStart)
+                .padding(start = PosterGridInset - 7.dp)
+                .size(36.dp)
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = {
+                        tick?.invoke()
+                        onBack()
+                    },
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = ShellIcons.back,
+                contentDescription = stringResource(R.string.section_back),
+                tint = Color.White,
+                modifier = Modifier.size(22.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun LibraryRail(
+    title: String,
+    movies: List<Movie>,
+    onMovieClick: (String) -> Unit,
+    onMoviePeek: (Movie) -> Unit,
+    onOpen: () -> Unit,
+    progressOf: (Movie) -> Float? = { null },
+    captionOf: (Movie) -> String? = { null },
+    overlay: @Composable (Movie) -> Unit = {},
+    titleShimmer: Boolean = false,
+) {
+    RecommendationRail(
+        movies = movies,
+        onMovieClick = onMovieClick,
+        onMoviePeek = onMoviePeek,
+        title = title,
+        onOpen = onOpen,
+        stickToStart = true,
+        progressOf = progressOf,
+        captionOf = captionOf,
+        overlay = overlay,
+        titleShimmer = titleShimmer,
+    )
+}
+
+@Composable
+private fun DownloadRailMark(status: OfflineStatus) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.28f)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            CircularProgressIndicator(
+                color = PlayBlue,
+                strokeWidth = 1.6.dp,
+                modifier = Modifier.size(14.dp),
+            )
+            if (!status.indeterminate) {
+                DownloadPercent(status.percent)
+            }
+        }
+    }
+}
+
+@Composable
+private fun DownloadPercent(percent: Int) {
+    val shown = glideDownloadPercent(percent)
+    var width by remember { mutableIntStateOf(0) }
+    val shift by rememberInfiniteTransition(label = "download-percent").animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            tween(durationMillis = 1400, easing = LinearEasing),
+            RepeatMode.Restart,
+        ),
+        label = "download-percent-shift",
+    )
+    val span = width.toFloat().coerceAtLeast(1f)
+    val band = span * 0.7f
+    val x = -band + (span + band * 2f) * shift
+    Text(
+        text = "$shown%",
+        modifier = Modifier.padding(start = 6.dp),
+        fontSize = 12.sp,
+        fontWeight = FontWeight.Medium,
+        maxLines = 1,
+        onTextLayout = { width = it.size.width },
+        style = TextStyle(
+            brush = Brush.linearGradient(
+                colors = listOf(
+                    Color.White.copy(alpha = 0.4f),
+                    Color.White,
+                    Color.White.copy(alpha = 0.4f),
+                ),
+                start = Offset(x, 0f),
+                end = Offset(x + band, 0f),
+            ),
+        ),
+    )
+}
+
+@Composable
+private fun libraryTopPadding(): Dp {
+    val top = WindowInsets.safeDrawing.asPaddingValues().calculateTopPadding()
+    return top + BrandTopInset + 36.dp + 18.dp
+}
+
+@Composable
+private fun ScrollState.libraryScrim(): Float {
+    val threshold = with(LocalDensity.current) { 28.dp.toPx() }
+    return (value / threshold).coerceIn(0f, 1f)
+}
+
+@Composable
+private fun LazyListState.libraryScrim(): Float {
+    val threshold = with(LocalDensity.current) { 28.dp.toPx() }
+    return if (firstVisibleItemIndex > 0) 1f else (firstVisibleItemScrollOffset / threshold).coerceIn(0f, 1f)
+}
+
+@Composable
+private fun LazyGridState.libraryScrim(): Float {
+    val threshold = with(LocalDensity.current) { 28.dp.toPx() }
+    return if (firstVisibleItemIndex > 0) 1f else (firstVisibleItemScrollOffset / threshold).coerceIn(0f, 1f)
+}
+
+@Composable
+private fun LibraryPlaque(
+    title: String,
+    body: String? = null,
+    icon: ImageVector? = null,
+    iconSize: Dp = 72.dp,
+    action: String? = null,
+    onClick: (() -> Unit)? = null,
+    onAdd: (() -> Unit)? = null,
+) {
+    val shape = RoundedCornerShape(22.dp)
+    Box(
+        modifier = Modifier
+            .padding(horizontal = PosterGridInset)
+            .fillMaxWidth()
+            .clip(shape)
+            .background(Color.White.copy(alpha = 0.06f))
+            .then(
+                if (onClick == null) {
+                    Modifier
+                } else {
+                    Modifier.clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = onClick,
+                    )
+                },
+            ),
+    ) {
+        if (icon != null) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = Color.White.copy(alpha = 0.14f),
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .padding(end = 18.dp)
+                    .size(iconSize),
+            )
+        }
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 18.dp, vertical = 18.dp),
+        ) {
+            Text(
+                text = title,
+                color = Color.White,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 17.sp,
+                lineHeight = 22.sp,
+            )
+            if (body != null) {
+                Text(
+                    text = body,
+                    modifier = Modifier.padding(top = 8.dp, end = if (icon != null) 72.dp else 0.dp),
+                    color = CinemaMuted,
+                    fontSize = 14.sp,
+                    lineHeight = 19.sp,
+                )
+            }
+            if (action != null) {
+                Text(
+                    text = action,
+                    color = Color.White,
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 14.sp,
+                    lineHeight = 18.sp,
+                    modifier = Modifier
+                        .padding(top = 14.dp)
+                        .clip(RoundedCornerShape(percent = 50))
+                        .background(Color.White.copy(alpha = 0.14f))
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                )
+            }
+            if (onAdd != null) {
+                FolderAdd(onClick = onAdd, modifier = Modifier.padding(top = 16.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun FolderAdd(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    size: Dp = 56.dp,
+) {
+    val tick = rememberHapticTick()
+    Box(
+        modifier
+            .size(size)
+            .clip(CircleShape)
+            .background(
+                Brush.linearGradient(
+                    listOf(
+                        Color.White.copy(alpha = 0.22f),
+                        Color.White.copy(alpha = 0.08f),
+                    ),
+                ),
+            )
+            .border(1.dp, Color.White.copy(alpha = 0.28f), CircleShape)
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = {
+                    tick?.invoke()
+                    onClick()
+                },
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = Icons.Filled.Add,
+            contentDescription = stringResource(R.string.library_folder_new),
+            tint = Color.White,
+            modifier = Modifier.size(size * 0.5f),
+        )
+    }
+}
+
+@Composable
+private fun FolderRail(
+    folders: List<LibraryFolder>,
+    onOpen: () -> Unit,
+    onOpenFolder: (Int) -> Unit,
+    onEditFolder: (Int) -> Unit,
+) {
+    val width = 228.dp
+    val height = 124.dp
+    val shown = folders.take(LibraryRailCap)
+    Column(Modifier.fillMaxWidth()) {
+        RailTitle(
+            title = stringResource(R.string.library_folders),
+            onClick = onOpen,
+        )
+        Spacer(Modifier.height(10.dp))
+        LazyRow(
+            contentPadding = PaddingValues(start = PosterGridInset, end = PosterGridInset),
+            horizontalArrangement = Arrangement.spacedBy(PosterGap),
+        ) {
+            itemsIndexed(shown, key = { index, folder -> "$index:${folder.name}" }) { index, folder ->
+                FolderCard(
+                    folder = folder,
+                    modifier = Modifier
+                        .width(width)
+                        .height(height),
+                    onClick = { onOpenFolder(index) },
+                    onEdit = { onEditFolder(index) },
+                )
+            }
+            item(key = "folders-see-all") {
+                RailSeeAllCard(
+                    width = 132.dp,
+                    height = height,
+                    glass = false,
+                    onClick = onOpen,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun FolderCard(
+    folder: LibraryFolder,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    onEdit: (() -> Unit)? = null,
+) {
+    val tick = rememberHapticTick()
+    Box(
+        modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(Color.White.copy(alpha = 0.06f)),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .clickable(
+                    interactionSource = remember(folder.name) { MutableInteractionSource() },
+                    indication = null,
+                    onClick = {
+                        tick?.invoke()
+                        onClick()
+                    },
+                )
+                .padding(start = 14.dp, end = if (onEdit != null) 36.dp else 14.dp, top = 12.dp, bottom = 12.dp),
+        ) {
+            Icon(
+                imageVector = FolderMark,
+                contentDescription = null,
+                tint = Color.White.copy(alpha = 0.28f),
+                modifier = Modifier.size(26.dp),
+            )
+            Text(
+                text = folder.name,
+                modifier = Modifier.padding(top = 8.dp),
+                color = Color.White,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 15.sp,
+                lineHeight = 19.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            if (folder.description.isNotBlank()) {
+                Text(
+                    text = folder.description,
+                    modifier = Modifier.padding(top = 4.dp),
+                    color = CinemaMuted,
+                    fontSize = 13.sp,
+                    lineHeight = 17.sp,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+        if (onEdit != null) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = 6.dp, end = 6.dp)
+                    .size(32.dp)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = {
+                            tick?.invoke()
+                            onEdit()
+                        },
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Edit,
+                    contentDescription = stringResource(R.string.library_folder_edit),
+                    tint = Color.White.copy(alpha = 0.86f),
+                    modifier = Modifier.size(16.dp),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun FolderPage(
+    folders: List<LibraryFolder>,
+    onBack: () -> Unit,
+    onAdd: () -> Unit,
+    onOpen: (Int) -> Unit,
+    onEdit: (Int) -> Unit,
+    scrollTop: Int,
+) {
+    val scroll = rememberScrollState()
+    scroll.scrollToTopOn(scrollTop)
+    Box(Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(scroll)
+                .padding(top = libraryTopPadding(), bottom = 96.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            folders.indices.toList().chunked(2).forEach { indexes ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = PosterGridInset),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    indexes.forEach { index ->
+                        FolderCard(
+                            folder = folders[index],
+                            onClick = { onOpen(index) },
+                            onEdit = { onEdit(index) },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(118.dp),
+                        )
+                    }
+                    if (indexes.size == 1) Spacer(Modifier.weight(1f))
+                }
+            }
+        }
+        SectionScrim(
+            progress = scroll.libraryScrim(),
+            modifier = Modifier.align(Alignment.TopCenter),
+        )
+        LibraryBar(
+            title = stringResource(R.string.library_folders),
+            onBack = onBack,
+            modifier = Modifier.align(Alignment.TopCenter),
+        )
+        FolderAdd(
+            onClick = onAdd,
+            size = 40.dp,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))
+                .padding(top = BrandTopInset, end = PosterGridInset),
+        )
+    }
+}
+
+@Composable
+private fun FolderInside(
+    folder: LibraryFolder,
+    onBack: () -> Unit,
+) {
+    Box(Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(top = libraryTopPadding(), bottom = 96.dp)
+                .padding(horizontal = PosterGridInset),
+        ) {
+            if (folder.description.isNotBlank()) {
+                Text(
+                    text = folder.description,
+                    color = CinemaMuted,
+                    fontSize = 14.sp,
+                    lineHeight = 19.sp,
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = stringResource(R.string.library_folder_empty),
+                    color = CinemaMuted,
+                    fontSize = 16.sp,
+                    lineHeight = 22.sp,
+                    textAlign = TextAlign.Center,
+                )
+            }
+        }
+        LibraryBar(
+            title = folder.name,
+            onBack = onBack,
+            mark = FolderMark,
+            modifier = Modifier.align(Alignment.TopCenter),
+        )
+    }
+}
+
+private val FolderDialogShape = RoundedCornerShape(18.dp)
+
+@Composable
+private fun FolderNameDialog(
+    initial: LibraryFolder?,
+    onDismiss: () -> Unit,
+    onSave: (String, String) -> Unit,
+) {
+    var name by remember(initial) { mutableStateOf(initial?.name.orEmpty()) }
+    var about by remember(initial) { mutableStateOf(initial?.description.orEmpty()) }
+    val ready = name.isNotBlank()
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false,
+        ),
+    ) {
+        val view = LocalView.current
+        SideEffect {
+            (view.parent as? DialogWindowProvider)?.window?.apply {
+                setDimAmount(0f)
+                setBackgroundDrawable(ColorDrawable(android.graphics.Color.TRANSPARENT))
+            }
+        }
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .windowInsetsPadding(WindowInsets.ime),
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.55f))
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = onDismiss,
+                    ),
+            )
+            Column(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .padding(horizontal = 36.dp)
+                    .fillMaxWidth()
+                    .clip(FolderDialogShape)
+                    .background(CinemaSurface)
+                    .border(0.5.dp, Color.White.copy(alpha = 0.08f), FolderDialogShape)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = {},
+                    )
+                    .padding(horizontal = 18.dp, vertical = 16.dp),
+            ) {
+                Text(
+                    text = stringResource(if (initial == null) R.string.library_folder_new else R.string.library_folder_edit),
+                    color = Color.White,
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 16.sp,
+                    lineHeight = 20.sp,
+                )
+                FolderField(
+                    value = name,
+                    onValueChange = { name = it.replace('\n', ' ') },
+                    label = stringResource(R.string.library_folder_name),
+                    singleLine = true,
+                    modifier = Modifier.padding(top = 16.dp),
+                )
+                FolderField(
+                    value = about,
+                    onValueChange = { about = it },
+                    label = stringResource(R.string.library_folder_about),
+                    singleLine = false,
+                    modifier = Modifier.padding(top = 12.dp),
+                )
+                Row(
+                    modifier = Modifier
+                        .padding(top = 14.dp)
+                        .fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = stringResource(R.string.library_folder_cancel),
+                        color = CinemaMuted,
+                        fontSize = 14.sp,
+                        lineHeight = 18.sp,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(percent = 50))
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                onClick = onDismiss,
+                            )
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                    )
+                    Text(
+                        text = stringResource(if (initial == null) R.string.library_folder_create else R.string.library_folder_save),
+                        color = Color.White.copy(alpha = if (ready) 1f else 0.28f),
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 14.sp,
+                        lineHeight = 18.sp,
+                        modifier = Modifier
+                            .padding(start = 4.dp)
+                            .clip(RoundedCornerShape(percent = 50))
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                enabled = ready,
+                                onClick = { onSave(name.trim(), about.trim()) },
+                            )
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FolderField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    singleLine: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier) {
+        Text(
+            text = label,
+            color = CinemaMuted,
+            fontSize = 12.sp,
+            lineHeight = 16.sp,
+        )
+        BasicTextField(
+            value = value,
+            onValueChange = onValueChange,
+            singleLine = singleLine,
+            textStyle = TextStyle(
+                color = Color.White,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Normal,
+                lineHeight = 20.sp,
+            ),
+            cursorBrush = SolidColor(Color.White),
+            modifier = Modifier
+                .padding(top = 6.dp)
+                .fillMaxWidth()
+                .heightIn(min = if (singleLine) 40.dp else 72.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(Color.White.copy(alpha = 0.05f))
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            decorationBox = { inner ->
+                Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.TopStart) {
+                    inner()
+                }
+            },
+        )
+    }
+}
+
+private val FolderMark: ImageVector = ImageVector.Builder(
+    name = "folder",
+    defaultWidth = 24.dp,
+    defaultHeight = 24.dp,
+    viewportWidth = 24f,
+    viewportHeight = 24f,
+).path(fill = SolidColor(Color.Black)) {
+    moveTo(10f, 4f)
+    lineTo(12f, 6f)
+    horizontalLineTo(20f)
+    curveTo(21.1f, 6f, 22f, 6.9f, 22f, 8f)
+    verticalLineTo(18f)
+    curveTo(22f, 19.1f, 21.1f, 20f, 20f, 20f)
+    horizontalLineTo(4f)
+    curveTo(2.9f, 20f, 2f, 19.1f, 2f, 18f)
+    verticalLineTo(6f)
+    curveTo(2f, 4.9f, 2.9f, 4f, 4f, 4f)
+    horizontalLineTo(10f)
+    close()
+}.build()
 
 @Composable
 private fun LibraryBrand(

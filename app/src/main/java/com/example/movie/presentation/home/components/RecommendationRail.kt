@@ -3,8 +3,13 @@
 package com.example.movie.presentation.home.components
 
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.rememberSplineBasedDecay
@@ -101,13 +106,21 @@ internal fun RailTitle(
     onClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
     leadingIcon: ImageVector? = null,
+    shimmer: Boolean = false,
 ) {
     val tick = rememberHapticTick()
     val settings by LocalUserSettings.current.settings.collectAsStateWithLifecycle()
     val white = settings.whiteTitles
     val color = if (white) Color.White else Color(0xFFB4B4B8)
     val titleSize = if (white) 18.sp else CategoryTabFontSize
-    val iconSize = with(LocalDensity.current) { titleSize.toDp() }
+    val density = LocalDensity.current
+    val iconSize = with(density) { titleSize.toDp() }
+    var titleWidth by remember { mutableIntStateOf(0) }
+    val iconPx = with(density) { iconSize.toPx() }
+    val pullPx = with(density) { (-(iconSize * 9f / 24f) + 8.dp).toPx() }
+    val span = titleWidth + pullPx + iconPx
+    val shift = if (shimmer) titleShimmerShift() else 0f
+    val iconOrigin = titleWidth + pullPx
     Row(
         modifier = modifier
             .padding(horizontal = PosterGridInset)
@@ -138,26 +151,77 @@ internal fun RailTitle(
         }
         Text(
             text = title,
-            color = color,
+            color = if (shimmer) Color.Unspecified else color,
             fontWeight = if (white) FontWeight.Bold else FontWeight.Normal,
             fontSize = titleSize,
             lineHeight = titleSize,
             letterSpacing = if (white) TextUnit.Unspecified else CategoryTabLetterSpacing,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false)),
+            onTextLayout = if (shimmer) {
+                { titleWidth = it.size.width }
+            } else {
+                null
+            },
+            style = if (shimmer) {
+                TextStyle(
+                    brush = shimmerBrush(color, span, shift, 0f),
+                    platformStyle = PlatformTextStyle(includeFontPadding = false),
+                )
+            } else {
+                TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false))
+            },
         )
         if (onClick != null) {
+            val chevron = if (shimmer) shimmerBrush(color, span, shift, iconOrigin) else null
             Icon(
                 imageVector = if (white) ShellIcons.chevronBold else ShellIcons.chevron,
                 contentDescription = null,
-                tint = color,
+                tint = if (shimmer) Color.White else color,
                 modifier = Modifier
+                    .offset(x = -(iconSize * 9f / 24f) + 8.dp)
                     .size(iconSize)
-                    .offset(x = -(iconSize * 9f / 24f) + 8.dp),
+                    .then(
+                        if (chevron == null) {
+                            Modifier
+                        } else {
+                            Modifier
+                                .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+                                .drawWithContent {
+                                    drawContent()
+                                    drawRect(brush = chevron, blendMode = BlendMode.SrcIn)
+                                }
+                        },
+                    ),
             )
         }
     }
+}
+
+@Composable
+private fun titleShimmerShift(): Float {
+    val shift by rememberInfiniteTransition(label = "rail-title-shimmer").animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            tween(durationMillis = 1400, easing = LinearEasing),
+            RepeatMode.Restart,
+        ),
+        label = "rail-title-shimmer-shift",
+    )
+    return shift
+}
+
+private fun shimmerBrush(color: Color, span: Float, shift: Float, origin: Float): Brush {
+    val width = span.coerceAtLeast(1f)
+    val band = width * 0.55f
+    val head = -band + (width + band * 2f) * shift
+    val x = head - origin
+    return Brush.linearGradient(
+        colors = listOf(color.copy(alpha = 0.45f), Color.White, color.copy(alpha = 0.45f)),
+        start = Offset(x, 0f),
+        end = Offset(x + band, 0f),
+    )
 }
 
 @Composable
@@ -174,11 +238,13 @@ internal fun RecommendationRail(
     progressOf: (Movie) -> Float? = { null },
     captionOf: (Movie) -> String? = { null },
     seeAllGlass: Boolean = false,
+    overlay: @Composable (Movie) -> Unit = {},
+    titleShimmer: Boolean = false,
 ) {
     HapticOnAppend(movies.map { it.id })
     Column(modifier = modifier.fillMaxWidth().graphicsLayer()) {
         if (title != null) {
-            RailTitle(title = title, onClick = onOpen, leadingIcon = leadingIcon)
+            RailTitle(title = title, onClick = onOpen, leadingIcon = leadingIcon, shimmer = titleShimmer)
             Spacer(Modifier.height(10.dp))
         }
         if (movies.isEmpty()) {
@@ -194,6 +260,7 @@ internal fun RecommendationRail(
                 progressOf = progressOf,
                 captionOf = captionOf,
                 seeAllGlass = seeAllGlass,
+                overlay = overlay,
             )
         }
     }
@@ -247,6 +314,7 @@ private fun RecommendationPager(
     progressOf: (Movie) -> Float? = { null },
     captionOf: (Movie) -> String? = { null },
     seeAllGlass: Boolean = false,
+    overlay: @Composable (Movie) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val listState = rememberLazyListState()
@@ -412,6 +480,7 @@ private fun RecommendationPager(
                                 modifier = Modifier.align(Alignment.BottomCenter),
                             )
                         }
+                        overlay(movie)
                         }
                         if (movie.id in watched) {
                             WatchedBadge(Modifier.align(Alignment.BottomEnd))
@@ -517,7 +586,7 @@ private fun Modifier.railSideRetouch(
         }
 
 @Composable
-private fun RailSeeAllCard(
+internal fun RailSeeAllCard(
     width: Dp,
     height: Dp,
     glass: Boolean,
