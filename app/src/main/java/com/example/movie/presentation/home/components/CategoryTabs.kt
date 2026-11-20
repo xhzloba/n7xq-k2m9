@@ -102,6 +102,7 @@ private val TabSkeletonLabels = listOf(
     "Популярное",
     "Сейчас смотрят",
     "4K",
+    "HDR",
     "Dolby Vision",
     "Обновления",
     "Фильмы",

@@ -20,6 +20,7 @@ internal interface VokinoApi {
         @Query("token") token: String,
         @Query("uhd") uhd: Int? = null,
         @Query("dolbyvision") dolbyVision: Int? = null,
+        @Query("hdr") hdr: Int? = null,
         @Query("genre") genre: String? = null,
     ): CatalogResponseDto
 

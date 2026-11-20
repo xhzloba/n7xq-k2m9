@@ -22,6 +22,7 @@ internal fun MainResponseDto.toShelves(): List<Shelf> {
         shelf("Популярное", "popular", null),
         shelf("Сейчас смотрят", "watching", null),
         shelf("4K", "new", null, uhd = true),
+        shelf("HDR", "new", null, hdr = true),
         shelf("Dolby Vision", "new", null, dolbyVision = true),
         shelf(listTitles["updatings:"] ?: "Обновления", "updatings", null),
         shelf(listTitles["popular:movie"] ?: "Фильмы", "popular", "movie"),
@@ -37,8 +38,9 @@ private fun shelf(
     type: String?,
     uhd: Boolean = false,
     dolbyVision: Boolean = false,
+    hdr: Boolean = false,
 ): Shelf {
-    val query = CatalogQuery(sort = sort, type = type, uhd = uhd, dolbyVision = dolbyVision)
+    val query = CatalogQuery(sort = sort, type = type, uhd = uhd, dolbyVision = dolbyVision, hdr = hdr)
     return Shelf(id = query.id, title = title, query = query)
 }
 

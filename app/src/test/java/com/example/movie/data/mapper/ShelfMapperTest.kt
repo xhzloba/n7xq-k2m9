@@ -35,6 +35,7 @@ class ShelfMapperTest {
                 "Популярное",
                 "Сейчас смотрят",
                 "4K",
+                "HDR",
                 "Dolby Vision",
                 "Обновления",
                 "Фильмы",
@@ -50,10 +51,12 @@ class ShelfMapperTest {
         assertEquals(true, shelves[2].query.uhd)
         assertEquals("new", shelves[2].query.sort)
         assertEquals("new::uhd", shelves[2].id)
-        assertEquals(true, shelves[3].query.dolbyVision)
-        assertEquals("new::dolby", shelves[3].id)
-        assertEquals("multfilm", shelves[7].query.type)
-        assertEquals("anime", shelves[8].query.type)
-        assertEquals("popular:anime", shelves[8].id)
+        assertEquals(true, shelves[3].query.hdr)
+        assertEquals("new::hdr", shelves[3].id)
+        assertEquals(true, shelves[4].query.dolbyVision)
+        assertEquals("new::dolby", shelves[4].id)
+        assertEquals("multfilm", shelves[8].query.type)
+        assertEquals("anime", shelves[9].query.type)
+        assertEquals("popular:anime", shelves[9].id)
     }
 }

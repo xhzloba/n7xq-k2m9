@@ -13,6 +13,6 @@
     <color name="ic_brand_metal">#FF2A2C2D</color>
     <color name="ic_brand_matte">#FF222527</color>
     <color name="ic_brand_navy">#FF161B31</color>
-    <color name="ic_brand_brushed">#FF3D3E43</color>
-    <color name="ic_brand_white">#FFEBECEB</color>
+    <color name="ic_brand_brushed">#FF2A2A2A</color>
+    <color name="ic_brand_white">#FF292B30</color>
 </resources>

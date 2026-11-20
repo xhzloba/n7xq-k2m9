@@ -47,6 +47,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.zIndex
 import com.example.movie.presentation.common.appChrome
+import com.example.movie.presentation.home.components.LauncherIcons
 import com.example.movie.presentation.home.CornerIris
 import com.example.movie.presentation.home.ShutterBlades
 import kotlin.math.roundToInt
@@ -74,6 +75,7 @@ class MainActivity : ComponentActivity() {
         val closed = prefs.getBoolean(KEY_CLOSED, false)
         if (closed) prefs.edit().remove(KEY_CLOSED).commit()
         super.onCreate(if (closed) null else savedInstanceState)
+        LauncherIcons.settle(this)
         if (Build.VERSION.SDK_INT >= 31) {
             splashScreen.setOnExitAnimationListener { view -> view.remove() }
         }

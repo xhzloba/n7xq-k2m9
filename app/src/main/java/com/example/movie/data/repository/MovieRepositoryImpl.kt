@@ -58,9 +58,10 @@ internal class MovieRepositoryImpl(
             token = token,
             uhd = if (query.uhd) 1 else null,
             dolbyVision = if (query.dolbyVision) 1 else null,
+            hdr = if (query.hdr) 1 else null,
             genre = query.genre?.takeIf { it.isNotBlank() },
         )
-        val cap = limit ?: if (query.uhd || query.dolbyVision) 15 else null
+        val cap = limit ?: if (query.uhd || query.dolbyVision || query.hdr) 15 else null
         val movies = response
             .requireChannels()
             .map { it.toDomain() }

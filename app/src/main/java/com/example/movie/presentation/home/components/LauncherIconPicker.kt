@@ -35,15 +35,29 @@ internal enum class LauncherMark(
     val icon: Int,
     val alias: String,
 ) {
-    Neon("neon", R.mipmap.ic_brand_neon_fg, ".LauncherNeon"),
-    Metal("metal", R.mipmap.ic_brand_metal_fg, ".LauncherMetal"),
     Brushed("brushed", R.mipmap.ic_brand_brushed_fg, ".LauncherBrushed"),
-    Matte("matte", R.mipmap.ic_brand_matte_fg, ".LauncherMatte"),
-    Navy("navy", R.mipmap.ic_brand_navy_fg, ".LauncherNavy"),
     White("white", R.mipmap.ic_brand_white_fg, ".LauncherWhite"),
 }
 
 internal object LauncherIcons {
+    private val retired = listOf(
+        ".LauncherNeon",
+        ".LauncherMetal",
+        ".LauncherMatte",
+        ".LauncherNavy",
+    )
+
+    fun settle(context: Context) {
+        val pm = context.packageManager
+        val pkg = context.packageName
+        fun enabled(alias: String) = pm.getComponentEnabledSetting(ComponentName(pkg, pkg + alias)) ==
+            PackageManager.COMPONENT_ENABLED_STATE_ENABLED
+        val live = LauncherMark.entries.filter { enabled(it.alias) }
+        if (retired.any { enabled(it) } || live.size != 1) {
+            apply(context, live.firstOrNull()?.id ?: LauncherMark.Brushed.id)
+        }
+    }
+
     fun current(context: Context): String {
         val pm = context.packageManager
         val pkg = context.packageName
@@ -69,6 +83,13 @@ internal object LauncherIcons {
                 } else {
                     PackageManager.COMPONENT_ENABLED_STATE_DISABLED
                 },
+                PackageManager.DONT_KILL_APP,
+            )
+        }
+        retired.forEach { alias ->
+            pm.setComponentEnabledSetting(
+                ComponentName(pkg, pkg + alias),
+                PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
                 PackageManager.DONT_KILL_APP,
             )
         }
@@ -105,12 +126,7 @@ internal fun LauncherIconPicker(
                 fontWeight = FontWeight.Medium,
             )
             Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                LauncherMark.entries.take(3).forEach { mark ->
-                    Mark(mark, mark.id == selected, shape, onSelect)
-                }
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                LauncherMark.entries.drop(3).forEach { mark ->
+                LauncherMark.entries.forEach { mark ->
                     Mark(mark, mark.id == selected, shape, onSelect)
                 }
             }
