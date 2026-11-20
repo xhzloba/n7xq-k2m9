@@ -16,6 +16,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -115,6 +116,7 @@ import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathMeasure
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.GraphicsLayerScope
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -1126,14 +1128,7 @@ private fun DetailContent(
                             Box(
                                 Modifier
                                     .fillMaxSize()
-                                    .graphicsLayer {
-                                        val clamped = drift.coerceIn(-1f, 1f)
-                                        val distance = abs(clamped)
-                                        translationX = clamped * size.width * 0.82f
-                                        scaleX = lerp(1f, 1.08f, distance)
-                                        scaleY = lerp(1f, 1.08f, distance)
-                                        alpha = 1f - distance
-                                    },
+                                    .graphicsLayer { dissolveCover(drift, stack = true) },
                             ) { still() }
                         } else {
                             still()
@@ -1237,16 +1232,33 @@ private fun DetailContent(
                     .height(contentTop)
                     .pointerInput(manualBackdrop, backdrops.size, wantTrailer) {
                         if (!manualBackdrop || wantTrailer) return@pointerInput
+                        val tracker = VelocityTracker()
+                        var origin = 0
                         detectHorizontalDragGestures(
+                            onDragStart = {
+                                tracker.resetTracking()
+                                origin = pagerState.currentPage
+                            },
                             onHorizontalDrag = { change, drag ->
+                                tracker.addPosition(change.uptimeMillis, change.position)
                                 change.consume()
                                 scope.launch { pagerState.scroll { scrollBy(-drag) } }
                             },
                             onDragEnd = {
-                                val page = (pagerState.currentPage + pagerState.currentPageOffsetFraction)
-                                    .roundToInt()
-                                    .coerceIn(0, backdrops.lastIndex)
+                                val moved = pagerState.currentPage +
+                                    pagerState.currentPageOffsetFraction - origin
+                                val velocityX = tracker.calculateVelocity().x
+                                val commit = when {
+                                    abs(moved) >= 1f -> moved.roundToInt()
+                                    moved > 0.04f && (moved >= 0.16f || velocityX <= -800f) -> 1
+                                    moved < -0.04f && (moved <= -0.16f || velocityX >= 800f) -> -1
+                                    else -> 0
+                                }
+                                val page = (origin + commit).coerceIn(0, backdrops.lastIndex)
                                 scope.launch { pagerState.animateScrollToPage(page) }
+                            },
+                            onDragCancel = {
+                                scope.launch { pagerState.animateScrollToPage(origin) }
                             },
                         )
                     },
@@ -3143,6 +3155,19 @@ private fun TrailerEdgeFade(
     }
 }
 
+/** Кадр чуть увеличивается и остаётся кропом: сдвиг не вытаскивает край в экран. */
+private fun GraphicsLayerScope.dissolveCover(drift: Float, alpha: Float = 1f - abs(drift), stack: Boolean = false) {
+    val clamped = drift.coerceIn(-1f, 1f)
+    val distance = abs(clamped)
+    val scale = lerp(1f, 1.12f, distance)
+    val slack = (scale - 1f) / 2f
+    scaleX = scale
+    scaleY = scale
+    val nudge = clamped * size.width * slack * 0.8f
+    translationX = if (stack) clamped * size.width + nudge else nudge
+    this.alpha = alpha.coerceIn(0f, 1f)
+}
+
 @Composable
 private fun DissolveBackdrop(
     url: String,
@@ -3172,12 +3197,7 @@ private fun DissolveBackdrop(
             Box(
                 Modifier
                     .fillMaxSize()
-                    .graphicsLayer {
-                        translationX = -progress * size.width * 0.18f
-                        scaleX = lerp(1f, 1.08f, progress)
-                        scaleY = lerp(1f, 1.08f, progress)
-                        alpha = 1f - progress
-                    },
+                    .graphicsLayer { dissolveCover(-progress) },
             ) {
                 BackdropStill(url = leaving, height = height, dim = dim, alignment = alignment, mask = mask)
             }
@@ -3185,13 +3205,7 @@ private fun DissolveBackdrop(
         Box(
             Modifier
                 .fillMaxSize()
-                .graphicsLayer {
-                    val distance = 1f - progress
-                    translationX = distance * size.width * 0.18f
-                    scaleX = lerp(1f, 1.08f, distance)
-                    scaleY = lerp(1f, 1.08f, distance)
-                    alpha = progress
-                },
+                .graphicsLayer { dissolveCover(1f - progress, alpha = progress) },
         ) {
             BackdropStill(
                 url = front,
