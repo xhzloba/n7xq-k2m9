@@ -49,6 +49,14 @@ internal object Changelog {
 
     val releases: List<Release> = listOf(
         Release(
+            version = "2.69.4",
+            added = emptyList(),
+            fixed = listOf(
+                "Значок на рабочем столе снова как раньше: металлический, без лишнего фона вокруг.",
+                "В статус-баре и в шторке маленькая иконка — белый силуэт Lumen. Цветную картинку Android туда не берёт и ставит робота.",
+            ),
+        ),
+        Release(
             version = "2.69.3",
             added = emptyList(),
             fixed = listOf(
