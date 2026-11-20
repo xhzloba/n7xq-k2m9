@@ -107,6 +107,7 @@ internal fun RailTitle(
     modifier: Modifier = Modifier,
     leadingIcon: ImageVector? = null,
     shimmer: Boolean = false,
+    onClose: (() -> Unit)? = null,
 ) {
     val tick = rememberHapticTick()
     val settings by LocalUserSettings.current.settings.collectAsStateWithLifecycle()
@@ -123,8 +124,12 @@ internal fun RailTitle(
     val iconOrigin = titleWidth + pullPx
     Row(
         modifier = modifier
-            .padding(horizontal = PosterGridInset)
-            .then(
+            .then(if (onClose != null) Modifier.fillMaxWidth() else Modifier)
+            .padding(horizontal = PosterGridInset),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Row(
+            modifier = Modifier.then(
                 if (onClick == null) {
                     Modifier
                 } else {
@@ -138,8 +143,8 @@ internal fun RailTitle(
                     )
                 },
             ),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
         if (leadingIcon != null) {
             Icon(
                 imageVector = leadingIcon,
@@ -195,6 +200,30 @@ internal fun RailTitle(
                     ),
             )
         }
+        }
+        if (onClose != null) {
+            Spacer(Modifier.weight(1f))
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = {
+                            tick?.invoke()
+                            onClose()
+                        },
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = ShellIcons.close,
+                    contentDescription = stringResource(R.string.player_close),
+                    tint = color,
+                    modifier = Modifier.size(16.dp),
+                )
+            }
+        }
     }
 }
 
@@ -240,11 +269,18 @@ internal fun RecommendationRail(
     seeAllGlass: Boolean = false,
     overlay: @Composable (Movie) -> Unit = {},
     titleShimmer: Boolean = false,
+    onClose: (() -> Unit)? = null,
 ) {
     HapticOnAppend(movies.map { it.id })
     Column(modifier = modifier.fillMaxWidth().graphicsLayer()) {
         if (title != null) {
-            RailTitle(title = title, onClick = onOpen, leadingIcon = leadingIcon, shimmer = titleShimmer)
+            RailTitle(
+                title = title,
+                onClick = onOpen,
+                leadingIcon = leadingIcon,
+                shimmer = titleShimmer,
+                onClose = onClose,
+            )
             Spacer(Modifier.height(10.dp))
         }
         if (movies.isEmpty()) {

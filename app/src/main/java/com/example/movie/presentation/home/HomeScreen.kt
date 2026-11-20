@@ -9,6 +9,7 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,11 +26,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -47,6 +50,7 @@ import com.example.movie.domain.model.GenreRails
 import com.example.movie.presentation.settings.LocalUserSettings
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -61,7 +65,10 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -75,7 +82,12 @@ import com.example.movie.domain.model.DataError
 import com.example.movie.domain.model.Movie
 import com.example.movie.domain.model.Shelf
 import com.example.movie.domain.model.progressCaption
+import com.example.movie.domain.model.folderRailId
+import com.example.movie.domain.model.isFolderRail
+import com.example.movie.domain.model.syncFolderRails
 import com.example.movie.domain.model.toMovie
+import com.example.movie.di.LocalAppContainer
+import com.example.movie.presentation.folders.FolderGlyph
 import com.example.movie.presentation.detail.drawPlexWash
 import com.example.movie.presentation.home.components.BrandLogoBleed
 import com.example.movie.presentation.home.components.LogoAspect
@@ -91,6 +103,7 @@ import com.example.movie.presentation.home.components.CoverStackSkeleton
 import com.example.movie.presentation.home.components.LogoMood
 import com.example.movie.presentation.home.components.PageRefresh
 import com.example.movie.presentation.home.components.PosterCarousel
+import com.example.movie.presentation.home.components.PosterGridInset
 import com.example.movie.presentation.home.components.RecommendationRail
 import com.example.movie.presentation.common.HideBarOnScroll
 import com.example.movie.presentation.common.THEME_BLACK
@@ -106,6 +119,7 @@ import com.example.movie.presentation.common.topScrimHeight
 import com.example.movie.presentation.common.topScrimPalette
 import com.example.movie.presentation.palette.PosterWash
 import com.example.movie.ui.theme.CinemaBlack
+import com.example.movie.ui.theme.CinemaMuted
 import com.example.movie.ui.theme.MovieTheme
 import com.example.movie.ui.theme.PlayBlue
 
@@ -176,6 +190,7 @@ fun HomeScreen(
     onHeroDock: (Color?, Color?, Float) -> Unit = { _, _, _ -> },
     onHideBar: (Boolean) -> Unit = {},
     onOpenRailsLook: () -> Unit = {},
+    onOpenFolder: (String) -> Unit = {},
     presentSearch: Boolean = true,
     scrollTop: Int = 0,
     modifier: Modifier = Modifier,
@@ -198,6 +213,7 @@ fun HomeScreen(
     // Кэш живёт на HomeScreen: LazyColumn уничтожает карусель при скролле вниз.
     val heroWashes = remember { mutableStateMapOf<String, PosterWash>() }
     val settings by LocalUserSettings.current.settings.collectAsStateWithLifecycle()
+    val libraryFolders by LocalAppContainer.current.folders.items.collectAsStateWithLifecycle()
     val pageWashOn = settings.heroPosterColors && settings.heroPosterPage
     val playTintOn = settings.heroPosterColors
     var washPrimed by remember { mutableStateOf(false) }
@@ -450,21 +466,30 @@ fun HomeScreen(
                         )
                     }
                 }
-                val orderedRails = settings.homeRailOrder.mapNotNull { id ->
-                    HomeRails.All.firstOrNull { it.id == id }
-                }.filter { entry ->
-                    homeRailShown(entry.id, state, settings.homeRailVisible(entry.id))
-                }
+                val foldersById = libraryFolders.associateBy { it.id }
+                val orderedRails = settings.homeRailOrder
+                    .syncFolderRails(libraryFolders.map { it.id })
+                    .mapNotNull { id ->
+                        if (id.isFolderRail()) {
+                            foldersById[id.folderRailId()]?.let { HomeRailRow.Folder(id, it) }
+                        } else {
+                            HomeRails.All.firstOrNull { it.id == id }?.let { HomeRailRow.Shelf(it) }
+                        }
+                    }
+                    .filter { row ->
+                        homeRailShown(row.id, state, settings.homeRailVisible(row.id))
+                    }
                 // После героя зазор уже в карусели; между полками — HomeRailGap.
-                orderedRails.forEachIndexed { index, entry ->
-                    item(key = entry.id) {
+                orderedRails.forEachIndexed { index, row ->
+                    item(key = row.id) {
                         if (index > 0) Spacer(Modifier.height(HomeRailGap))
                         HomeOrderedRail(
-                            entry = entry,
+                            row = row,
                             state = state,
                             onMovieClick = onMovieClick,
                             onMoviePeek = onMoviePeek,
                             onOpenSection = onOpenSection,
+                            onOpenFolder = onOpenFolder,
                             onPlayResume = onPlayResume,
                             onSettled = logo::onSettled,
                         )
@@ -700,8 +725,64 @@ private fun HomeScreenPreview() {
     }
 }
 
+private sealed interface HomeRailRow {
+    val id: String
+
+    data class Shelf(val entry: HomeRails.Entry) : HomeRailRow {
+        override val id: String = entry.id
+    }
+
+    data class Folder(override val id: String, val folder: com.example.movie.data.folders.LibraryFolder) : HomeRailRow
+}
+
+@Composable
+private fun FolderHomePlaque(title: String) {
+    val shape = RoundedCornerShape(22.dp)
+    Box(
+        modifier = Modifier
+            .padding(horizontal = PosterGridInset)
+            .fillMaxWidth()
+            .clip(shape)
+            .background(Color.White.copy(alpha = 0.06f)),
+    ) {
+        Icon(
+            imageVector = FolderGlyph,
+            contentDescription = null,
+            tint = Color.White.copy(alpha = 0.14f),
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .padding(end = 18.dp)
+                .size(92.dp),
+        )
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 18.dp, vertical = 18.dp),
+        ) {
+            Text(
+                text = title,
+                color = Color.White,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 17.sp,
+                lineHeight = 22.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(end = 88.dp),
+            )
+            Text(
+                text = stringResource(R.string.home_folder_empty),
+                modifier = Modifier.padding(top = 8.dp, end = 88.dp),
+                color = CinemaMuted,
+                fontSize = 14.sp,
+                lineHeight = 19.sp,
+            )
+        }
+    }
+}
+
 private fun homeRailShown(id: String, state: HomeUiState, visible: Boolean): Boolean {
     if (!visible) return false
+    if (id.isFolderRail()) return true
     return when (id) {
         HomeRails.Recommendations -> !state.recommendationsReady || state.recommendations.isNotEmpty()
         HomeRails.History -> state.history.isNotEmpty()
@@ -716,16 +797,37 @@ private fun homeRailShown(id: String, state: HomeUiState, visible: Boolean): Boo
 
 @Composable
 private fun HomeOrderedRail(
-    entry: HomeRails.Entry,
+    row: HomeRailRow,
     state: HomeUiState,
     onMovieClick: (String) -> Unit,
     onMoviePeek: (Movie) -> Unit,
     onOpenSection: (HomeSection) -> Unit,
+    onOpenFolder: (String) -> Unit,
     onPlayResume: (String) -> Unit,
     onSettled: () -> Unit,
 ) {
     val settings by LocalUserSettings.current.settings.collectAsStateWithLifecycle()
     val seeAllGlass = settings.heroPosterColors && settings.heroPosterPage
+    if (row is HomeRailRow.Folder) {
+        val folder = row.folder
+        if (folder.titles.isEmpty()) {
+            FolderHomePlaque(title = folder.name)
+            return
+        }
+        RecommendationRail(
+            movies = folder.titles.take(HistoryRailSize).map { it.toMovie() },
+            onMovieClick = onMovieClick,
+            onMoviePeek = onMoviePeek,
+            title = folder.name,
+            onOpen = { onOpenFolder(folder.id) },
+            onSettled = onSettled,
+            seeAllGlass = seeAllGlass,
+            stickToStart = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        return
+    }
+    val entry = (row as HomeRailRow.Shelf).entry
     val title = stringResource(entry.titleRes)
     when (entry.id) {
         HomeRails.Recommendations -> RecommendationRail(

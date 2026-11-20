@@ -78,9 +78,15 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlin.math.hypot
 import com.example.movie.R
+import com.example.movie.di.LocalAppContainer
 import com.example.movie.domain.model.DefaultHomeRailOrder
 import com.example.movie.domain.model.GenreRails
+import com.example.movie.domain.model.canMoveHomeRail
+import com.example.movie.domain.model.folderRailId
+import com.example.movie.domain.model.isFolderRail
 import com.example.movie.domain.model.moveHomeRail
+import com.example.movie.domain.model.syncFolderRails
+import com.example.movie.presentation.folders.FolderGlyph
 import com.example.movie.presentation.common.BookmarkFilled
 import com.example.movie.presentation.common.PlexPlay
 import com.example.movie.presentation.common.THEME_GRAPHITE
@@ -92,6 +98,7 @@ import com.example.movie.presentation.home.components.PosterGridInset
 import com.example.movie.presentation.settings.LocalUserSettings
 import com.example.movie.presentation.shell.ShellIcons
 import com.example.movie.ui.theme.CinemaMuted
+import com.example.movie.ui.theme.PlayBlue
 
 /** Id полок главной (главный слайдер не входит — всегда на экране). */
 internal object HomeRails {
@@ -458,8 +465,10 @@ private fun HomeRailsLookBody(page: RailsLookTab) {
                 lineHeight = 18.sp,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
             )
-            val order = settings.homeRailOrder
-            val atDefault = order == DefaultHomeRailOrder
+            val folders by LocalAppContainer.current.folders.items.collectAsStateWithLifecycle()
+            val folderIds = folders.map { it.id }
+            val order = settings.homeRailOrder.syncFolderRails(folderIds)
+            val atDefault = order == DefaultHomeRailOrder.syncFolderRails(folderIds)
             val tick = rememberHapticTick()
             Text(
                 text = stringResource(R.string.home_rails_reset),
@@ -475,24 +484,34 @@ private fun HomeRailsLookBody(page: RailsLookTab) {
                         enabled = !atDefault,
                         onClick = {
                             tick?.invoke()
-                            repository.setHomeRailOrder(DefaultHomeRailOrder)
+                            repository.setHomeRailOrder(DefaultHomeRailOrder.syncFolderRails(folderIds))
                         },
                     )
                     .padding(horizontal = 16.dp, vertical = 14.dp),
             )
             RailsDivider()
-            val entries = order.mapNotNull { id -> HomeRails.All.firstOrNull { it.id == id } }
-            entries.forEachIndexed { index, entry ->
+            val byFolder = folders.associateBy { it.id }
+            val rows = order.mapNotNull { id ->
+                if (id.isFolderRail()) {
+                    byFolder[id.folderRailId()]?.let { folder -> id to folder }
+                } else {
+                    HomeRails.All.firstOrNull { it.id == id }?.let { id to null }
+                }
+            }
+            val folderMark = stringResource(R.string.home_my_folders)
+            rows.forEachIndexed { index, (id, folder) ->
                 if (index > 0) RailsDivider()
+                val entry = if (folder == null) HomeRails.All.first { it.id == id } else null
                 RailOrderRow(
-                    title = stringResource(entry.titleRes),
-                    icon = entry.icon,
-                    checked = settings.homeRailVisible(entry.id),
-                    upEnabled = index > 0,
-                    downEnabled = index < entries.lastIndex,
-                    onUp = { repository.setHomeRailOrder(order.moveHomeRail(entry.id, up = true)) },
-                    onDown = { repository.setHomeRailOrder(order.moveHomeRail(entry.id, up = false)) },
-                    onChecked = { visible -> repository.setHomeRailVisible(entry.id, visible) },
+                    title = folder?.name ?: stringResource(entry!!.titleRes),
+                    icon = if (folder != null) FolderGlyph else entry?.icon,
+                    mark = if (folder != null) folderMark else null,
+                    checked = settings.homeRailVisible(id),
+                    upEnabled = order.canMoveHomeRail(id, up = true),
+                    downEnabled = order.canMoveHomeRail(id, up = false),
+                    onUp = { repository.setHomeRailOrder(order.moveHomeRail(id, up = true)) },
+                    onDown = { repository.setHomeRailOrder(order.moveHomeRail(id, up = false)) },
+                    onChecked = { visible -> repository.setHomeRailVisible(id, visible) },
                 )
             }
         }
@@ -792,6 +811,7 @@ private fun RailOrderRow(
     onUp: () -> Unit,
     onDown: () -> Unit,
     onChecked: (Boolean) -> Unit,
+    mark: String? = null,
 ) {
     val tick = rememberHapticTick()
     Row(
@@ -842,6 +862,16 @@ private fun RailOrderRow(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
             )
+            if (mark != null) {
+                Text(
+                    text = mark,
+                    color = PlayBlue,
+                    fontSize = 12.sp,
+                    lineHeight = 16.sp,
+                    maxLines = 1,
+                    modifier = Modifier.padding(start = 8.dp),
+                )
+            }
             Spacer(Modifier.width(12.dp))
             RailsSwitch(checked)
         }

@@ -224,6 +224,8 @@ internal fun FavoritesScreen(
     onPlayResume: (String) -> Unit = {},
     onBack: () -> Unit = {},
     onOpenCatalog: () -> Unit = {},
+    openFolderId: String? = null,
+    onFolderOpened: () -> Unit = {},
     scrollTop: Int = 0,
 ) {
     val container = LocalAppContainer.current
@@ -248,6 +250,15 @@ internal fun FavoritesScreen(
     var foldersOpen by rememberSaveable { mutableStateOf(false) }
     var openedFolder by rememberSaveable { mutableIntStateOf(-1) }
     var editingFolder by remember { mutableStateOf<Int?>(null) }
+    LaunchedEffect(openFolderId, folders) {
+        val id = openFolderId ?: return@LaunchedEffect
+        val index = folders.indexOfFirst { it.id == id }
+        if (index < 0) return@LaunchedEffect
+        libraryName = ""
+        foldersOpen = false
+        openedFolder = index
+        onFolderOpened()
+    }
     BackHandler(enabled = library != null || foldersOpen || openedFolder >= 0) {
         openedDownload = null
         when {

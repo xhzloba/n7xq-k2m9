@@ -140,9 +140,28 @@ val DefaultHomeRailOrder: List<String> = listOf(
 
 val DefaultHiddenHomeRails: Set<String> = DefaultHomeRailOrder.toSet()
 
+const val FolderRailPrefix = "folder:"
+
+fun String.isFolderRail(): Boolean = startsWith(FolderRailPrefix) && length > FolderRailPrefix.length
+
+fun String.folderRailId(): String = removePrefix(FolderRailPrefix)
+
+fun folderRailKey(id: String): String = "$FolderRailPrefix$id"
+
 fun List<String>.normalizedHomeRailOrder(): List<String> {
-    val kept = map { it.trim() }.filter { it in DefaultHomeRailOrder }.distinct()
+    val kept = map { it.trim() }.filter { it in DefaultHomeRailOrder || it.isFolderRail() }.distinct()
     return kept + DefaultHomeRailOrder.filter { it !in kept }
+}
+
+/** Папки всегда выше остальных полок. Между собой порядок сохраняется, новые встают первыми. */
+fun List<String>.syncFolderRails(folderIds: List<String>): List<String> {
+    val keys = folderIds.map { folderRailKey(it) }
+    val alive = keys.toSet()
+    val normalized = normalizedHomeRailOrder()
+    val kept = normalized.filter { it.isFolderRail() && it in alive }
+    val missing = keys.filter { it !in kept }
+    val rest = normalized.filter { !it.isFolderRail() }
+    return missing + kept + rest
 }
 
 fun List<String>.placedAfter(anchor: String, ids: List<String>): List<String> {
@@ -161,12 +180,19 @@ fun List<String>.genresAlphabetical(): List<String> {
     return map { id -> if (id in rank) sorted[cursor++] else id }
 }
 
+fun List<String>.canMoveHomeRail(id: String, up: Boolean): Boolean {
+    val from = indexOf(id)
+    if (from < 0) return false
+    val to = if (up) from - 1 else from + 1
+    if (to !in indices) return false
+    return if (id.isFolderRail()) this[to].isFolderRail() else !this[to].isFolderRail()
+}
+
 fun List<String>.moveHomeRail(id: String, up: Boolean): List<String> {
     val order = normalizedHomeRailOrder().toMutableList()
+    if (!order.canMoveHomeRail(id, up)) return order
     val from = order.indexOf(id)
-    if (from < 0) return order
     val to = if (up) from - 1 else from + 1
-    if (to !in order.indices) return order
     order.add(to, order.removeAt(from))
     return order
 }

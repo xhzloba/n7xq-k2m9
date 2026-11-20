@@ -1,6 +1,5 @@
 package com.example.movie.presentation.home
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloat
@@ -13,7 +12,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -23,7 +21,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -92,14 +89,13 @@ import com.example.movie.domain.model.HapticSlot
 import com.example.movie.presentation.haptic.rememberHaptic
 import com.example.movie.presentation.haptic.rememberHapticTick
 import com.example.movie.presentation.settings.LocalUserSettings
+import com.example.movie.presentation.common.HandleSheet
 import com.example.movie.presentation.common.appBackground
 import com.example.movie.presentation.common.appChrome
 import com.example.movie.ui.theme.CinemaMuted
 import com.example.movie.ui.theme.PlayBlue
 
 private val SheetShape = RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp)
-private val PopupShape = RoundedCornerShape(22.dp)
-private val Scrim = Color.Black.copy(alpha = 0.55f)
 private val MenuScrim = Color(0xFF3A3A3E).copy(alpha = 0.86f)
 private val RowInk = Color(0xFFE8E8EC)
 
@@ -659,81 +655,53 @@ private fun OverviewPopup(
         loaded.isEmpty() -> stringResource(R.string.menu_overview_empty)
         else -> loaded
     }
-    AnimatedVisibility(
-        visible = true,
-        enter = PeekEnter,
-        exit = PeekExit,
-    ) {
-        androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
-            androidx.compose.foundation.layout.Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Scrim)
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = onDismiss,
-                    ),
+    HandleSheet(onDismiss = onDismiss) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .padding(bottom = 8.dp),
+        ) {
+            Text(
+                text = movie.title,
+                modifier = Modifier.padding(horizontal = 20.dp),
+                color = Color.White,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 16.sp,
+                lineHeight = 20.sp,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
             )
-            Column(
+            Text(
+                text = text,
                 modifier = Modifier
-                    .align(Alignment.Center)
-                    .padding(horizontal = 22.dp)
+                    .padding(start = 20.dp, end = 20.dp, top = 12.dp)
                     .fillMaxWidth()
-                    .clip(PopupShape)
-                    .appBackground()
-                    .border(0.5.dp, Color.White.copy(alpha = 0.10f), PopupShape)
+                    .heightIn(max = 280.dp)
+                    .verticalScroll(rememberScrollState()),
+                color = Color(0xFFD2D2D8),
+                fontSize = 15.sp,
+                lineHeight = 22.sp,
+            )
+            Text(
+                text = stringResource(R.string.menu_open_detail),
+                color = PlayBlue,
+                fontWeight = FontWeight.Medium,
+                fontSize = 14.sp,
+                lineHeight = 18.sp,
+                modifier = Modifier
+                    .align(Alignment.End)
+                    .padding(end = 12.dp, top = 4.dp)
+                    .clip(RoundedCornerShape(percent = 50))
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
-                        onClick = {},
+                        onClick = {
+                            tick?.invoke()
+                            onOpen()
+                        },
                     )
-                    .padding(horizontal = 20.dp, vertical = 18.dp),
-            ) {
-                Text(
-                    text = movie.title,
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp,
-                    lineHeight = 23.sp,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    text = text,
-                    modifier = Modifier
-                        .padding(top = 12.dp)
-                        .fillMaxWidth()
-                        .heightIn(max = 280.dp)
-                        .verticalScroll(rememberScrollState()),
-                    color = Color(0xFFD2D2D8),
-                    fontSize = 15.sp,
-                    lineHeight = 22.sp,
-                )
-                androidx.compose.foundation.layout.Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp)
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null,
-                            onClick = {
-                                tick?.invoke()
-                                onOpen()
-                            },
-                        )
-                        .padding(vertical = 10.dp),
-                    contentAlignment = Alignment.CenterEnd,
-                ) {
-                    Text(
-                        text = stringResource(R.string.menu_open_detail),
-                        color = PlayBlue,
-                        fontSize = 16.sp,
-                        lineHeight = 21.sp,
-                        fontWeight = FontWeight.Medium,
-                    )
-                }
-            }
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+            )
         }
     }
 }

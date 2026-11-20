@@ -97,6 +97,9 @@ import com.example.movie.R
 import com.example.movie.di.LocalAppContainer
 import com.example.movie.domain.model.FranchiseSeason
 import com.example.movie.domain.model.pinsBarAway
+import com.example.movie.domain.model.UserSettings
+import com.example.movie.domain.model.isFolderRail
+import com.example.movie.domain.model.syncFolderRails
 import com.example.movie.domain.model.Movie
 import com.example.movie.domain.model.ResumeItem
 import com.example.movie.domain.model.episodeFinished
@@ -178,6 +181,13 @@ fun AppShell(
         )
     }
     val homeState by homeViewModel.state.collectAsStateWithLifecycle()
+    val railRepository = LocalUserSettings.current
+    val railSettings by railRepository.settings.collectAsStateWithLifecycle()
+    val libraryFolders by container.folders.items.collectAsStateWithLifecycle()
+    LaunchedEffect(libraryFolders.map { it.id }, railSettings.homeRailOrder) {
+        val next = railSettings.homeRailOrder.syncFolderRails(libraryFolders.map { it.id })
+        if (next != railSettings.homeRailOrder) railRepository.setHomeRailOrder(next)
+    }
     val searchVeil = remember { Animatable(0f) }
     var searchShown by remember { mutableStateOf(false) }
     val catalogSearch = tab == AppTab.Catalog && homeState.searchOpen
@@ -202,6 +212,7 @@ fun AppShell(
         if (item != null) resumePlayback = item
     }
     var sectionName by rememberSaveable { mutableStateOf<String?>(null) }
+    var openFolderId by rememberSaveable { mutableStateOf<String?>(null) }
     var searchCover by remember { mutableFloatStateOf(0f) }
     val section = sectionName?.let { runCatching { HomeSection.valueOf(it) }.getOrNull() }
         ?.takeIf { tab == AppTab.Home }
@@ -392,6 +403,11 @@ fun AppShell(
                     onMovieClick = onMovieClick,
                     onMoviePeek = { peek = it },
                     onOpenSection = { sectionName = it.name },
+                    onOpenFolder = { id ->
+                        sectionName = null
+                        openFolderId = id
+                        onTabChange(AppTab.Favorites.name)
+                    },
                     onPlayResume = playResume,
                     onSearchCover = { searchCover = it },
                     onHeroDock = { left, right, alpha ->
@@ -416,6 +432,8 @@ fun AppShell(
                     onPlayResume = playResume,
                     onBack = { onTabChange(AppTab.Home.name) },
                     onOpenCatalog = { onTabChange(AppTab.Catalog.name) },
+                    openFolderId = openFolderId,
+                    onFolderOpened = { openFolderId = null },
                     scrollTop = favoritesTop,
                 )
                 AppTab.Settings -> SettingsRoute(scrollTop = settingsTop)
@@ -614,7 +632,7 @@ fun AppShell(
             val settings = hintSettings
             val hintScope = rememberCoroutineScope()
             val onHome = tab == AppTab.Home && sectionShown == null
-            val shelvesOff = HomeRails.All.none { settings.homeRailVisible(it.id) }
+            val shelvesOff = settings.shelvesHidden()
             val washBar = settings.heroPosterColors &&
                 settings.heroPosterPage &&
                 onHome &&
@@ -665,7 +683,7 @@ fun AppShell(
         }
         val flyoutSettings by LocalUserSettings.current.settings.collectAsStateWithLifecycle()
         val flyoutOnHome = tab == AppTab.Home && sectionShown == null
-        val flyoutShelvesOff = HomeRails.All.none { flyoutSettings.homeRailVisible(it.id) }
+        val flyoutShelvesOff = flyoutSettings.shelvesHidden()
         val flyoutWash = flyoutSettings.heroPosterColors &&
             flyoutSettings.heroPosterPage &&
             flyoutOnHome &&
@@ -1136,6 +1154,10 @@ private fun HomeHoldHint(
         }
     }
 }
+
+private fun UserSettings.shelvesHidden(): Boolean =
+    HomeRails.All.none { homeRailVisible(it.id) } &&
+        homeRailOrder.none { it.isFolderRail() && homeRailVisible(it) }
 
 @Composable
 private fun Modifier.eatClick(): Modifier = this.clickable(

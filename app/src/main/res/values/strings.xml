@@ -408,6 +408,8 @@
     <string name="home_rails_up">Выше</string>
     <string name="home_rails_down">Ниже</string>
     <string name="home_rails_reset">Сбросить по умолчанию</string>
+    <string name="home_my_folders">Мои папки</string>
+    <string name="home_folder_empty">Добавьте фильмы в эту папку</string>
     <string name="home_rails_group_own">Свои</string>
     <string name="home_rails_group_genres">Жанры</string>
     <string name="home_rails_genres_note">Новинки жанра: фильмы и сериалы. На главной 15, полный список листается дальше.</string>

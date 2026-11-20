@@ -21,6 +21,7 @@ fun HomeRoute(
     onHeroDock: (Color?, Color?, Float) -> Unit = { _, _, _ -> },
     onHideBar: (Boolean) -> Unit = {},
     onOpenRailsLook: () -> Unit = {},
+    onOpenFolder: (String) -> Unit = {},
     onOpenAlerts: () -> Unit = {},
     presentSearch: Boolean = true,
     session: Int = 0,
@@ -71,6 +72,7 @@ fun HomeRoute(
         onHeroDock = onHeroDock,
         onHideBar = onHideBar,
         onOpenRailsLook = onOpenRailsLook,
+        onOpenFolder = onOpenFolder,
         presentSearch = presentSearch,
         scrollTop = scrollTop,
     )

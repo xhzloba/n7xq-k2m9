@@ -8,12 +8,14 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import java.util.UUID
 
 @Serializable
 data class LibraryFolder(
     val name: String,
     val description: String = "",
     val titles: List<SavedTitle> = emptyList(),
+    val id: String = "",
 )
 
 class FolderStore(context: Context) {
@@ -28,6 +30,7 @@ class FolderStore(context: Context) {
         val clean = next
             .map {
                 it.copy(
+                    id = it.id.ifBlank { UUID.randomUUID().toString() },
                     name = it.name.trim(),
                     description = it.description.trim(),
                     titles = it.titles.filter { title -> title.id.isNotBlank() }.distinctBy { title -> title.id },
@@ -58,17 +61,34 @@ class FolderStore(context: Context) {
         val named = name.trim()
         if (named.isEmpty()) return
         val titles = listOfNotNull(title).filter { it.id.isNotBlank() }
-        replace(listOf(LibraryFolder(named, description.trim(), titles)) + itemsState.value)
+        replace(
+            listOf(
+                LibraryFolder(
+                    name = named,
+                    description = description.trim(),
+                    titles = titles,
+                    id = UUID.randomUUID().toString(),
+                ),
+            ) + itemsState.value,
+        )
     }
 
     private fun read(): List<LibraryFolder> {
         val raw = prefs.getString(KEY, null)
-        if (raw != null) {
-            return runCatching { json.decodeFromString<List<LibraryFolder>>(raw) }
+        val parsed = if (raw != null) {
+            runCatching { json.decodeFromString<List<LibraryFolder>>(raw) }
                 .getOrDefault(emptyList())
                 .filter { it.name.isNotBlank() }
+        } else {
+            migrate()
         }
-        return migrate()
+        val stamped = parsed.map { folder ->
+            if (folder.id.isNotBlank()) folder else folder.copy(id = UUID.randomUUID().toString())
+        }
+        if (stamped != parsed) {
+            prefs.edit().putString(KEY, json.encodeToString(stamped)).commit()
+        }
+        return stamped
     }
 
     private fun migrate(): List<LibraryFolder> {
