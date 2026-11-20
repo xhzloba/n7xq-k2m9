@@ -1591,7 +1591,9 @@ private fun DetailContent(
                 title = detail.title,
                 logoUrl = detail.logoUrl,
                 showLogo = settings.showLogos,
-                color = lerp(toneWash.topLeft, toneWash.topRight, 0.5f).sunk(),
+                wash = toneWash,
+                intensity = washIntensity,
+                corner = washCorner,
                 progress = barProgress,
                 onBack = onBack,
                 onCast = { castSheet = true },
@@ -2309,7 +2311,9 @@ private fun DetailLogoBar(
     title: String,
     logoUrl: String?,
     showLogo: Boolean,
-    color: Color,
+    wash: PosterWash,
+    intensity: Float,
+    corner: Float,
     progress: Float,
     onBack: () -> Unit,
     onCast: () -> Unit,
@@ -2326,8 +2330,14 @@ private fun DetailLogoBar(
         modifier
             .fillMaxWidth()
             .graphicsLayer { alpha = progress }
-            .background(Color.Black)
-            .background(color.copy(alpha = 0.82f))
+            .drawBehind {
+                drawPlexWash(
+                    wash.copy(bottomLeft = wash.topLeft, bottomRight = wash.topRight),
+                    1f,
+                    intensity,
+                    corner,
+                )
+            }
             .then(
                 if (progress > 0f) {
                     Modifier.clickable(
@@ -2914,13 +2924,6 @@ private fun DataError.message(): String = when (this) {
     is DataError.Http -> stringResource(R.string.popular_http_error, code)
     is DataError.Parsing -> stringResource(R.string.popular_parse_error)
     is DataError.Unknown -> stringResource(R.string.popular_load_error)
-}
-
-private fun Color.sunk(): Color {
-    val hsv = FloatArray(3)
-    android.graphics.Color.colorToHSV(toArgb(), hsv)
-    hsv[2] = (hsv[2] * 0.34f).coerceIn(0.04f, 0.2f)
-    return Color(android.graphics.Color.HSVToColor(hsv))
 }
 
 internal fun DrawScope.drawPosterWash(

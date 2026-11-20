@@ -60,19 +60,15 @@ import com.example.movie.R
 import com.example.movie.data.cast.CastProgram
 import com.example.movie.data.cast.TvCastHub
 import com.example.movie.data.player.videoTrackLabel
-import com.example.movie.domain.model.FranchiseSeason
 import com.example.movie.domain.model.Movie
-import com.example.movie.domain.model.isUnreleased
 import com.example.movie.domain.model.normalizedPlayerCodec
 import com.example.movie.presentation.cast.ChromeCast
 import com.example.movie.presentation.cast.TvCastService
 import com.example.movie.presentation.common.PosterImage
 import com.example.movie.presentation.detail.DetailSeed
-import com.example.movie.presentation.detail.resumeWatchUrl
 import com.example.movie.presentation.haptic.rememberHapticTick
 import com.example.movie.presentation.home.components.PosterGridInset
 import com.example.movie.presentation.settings.LocalUserSettings
-import com.example.movie.presentation.shell.ShellIcons
 import com.example.movie.ui.theme.CinemaMuted
 import com.example.movie.ui.theme.PosterShape
 
@@ -85,12 +81,14 @@ internal fun CastLiveSlot(
 ) {
     val cast by TvCastHub.state.collectAsStateWithLifecycle()
     val program = cast.player ?: return
-    CastLivePlaque(
-        program = program,
-        onClick = { onMovieClick(program.movie.id) },
-        modifier = modifier,
-    )
-    Spacer(Modifier.height(24.dp))
+    Column(Modifier.padding(top = 20.dp)) {
+        CastLivePlaque(
+            program = program,
+            onClick = { onMovieClick(program.movie.id) },
+            modifier = modifier,
+        )
+        Spacer(Modifier.height(24.dp))
+    }
 }
 
 @Composable
@@ -161,13 +159,19 @@ internal fun CastLivePlaque(
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Spacer(Modifier.height(4.dp))
-                Meta(streamLine(cast.quality, settings.playerCodec))
+                StreamFacts(
+                    quality = cast.quality,
+                    codec = settings.playerCodec,
+                    audio = cast.audios.getOrNull(cast.audio),
+                )
             }
             Spacer(Modifier.width(10.dp))
             CastMark()
         }
         Spacer(Modifier.height(8.dp))
-        CastBar(program)
+        Box(Modifier.padding(horizontal = 12.dp)) {
+            StopCast(enabled = true)
+        }
     }
 }
 
@@ -273,19 +277,7 @@ private fun PlaqueTitle(movie: Movie, logos: Boolean, modifier: Modifier = Modif
 }
 
 @Composable
-private fun Meta(text: String) {
-    Text(
-        text = text,
-        color = CinemaMuted,
-        fontSize = 13.sp,
-        lineHeight = 17.sp,
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
-    )
-}
-
-@Composable
-private fun streamLine(quality: Int?, codec: String): String {
+private fun StreamFacts(quality: Int?, codec: String, audio: String?) {
     val height = quality?.let { videoTrackLabel(it, 0) }
         ?: stringResource(R.string.player_quality_auto)
     val name = when (codec.normalizedPlayerCodec()) {
@@ -294,147 +286,23 @@ private fun streamLine(quality: Int?, codec: String): String {
         "h264" -> "H.264"
         else -> stringResource(R.string.player_quality_auto)
     }
-    return "$height · $name"
-}
-
-@Composable
-private fun CastBar(program: CastProgram) {
-    val context = LocalContext.current
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        StopCast(enabled = true)
-        if (program.seasons.isNotEmpty()) {
-            Spacer(Modifier.weight(1f))
-            EpisodeSwitch(program, context)
-        }
+    val voice = audio?.takeIf { it.isNotBlank() } ?: "—"
+    Column {
+        Fact(stringResource(R.string.cast_quality_value, height))
+        Fact(stringResource(R.string.download_codec_value, name))
+        Fact(stringResource(R.string.cast_audio_value, voice))
     }
 }
 
 @Composable
-private fun EpisodeSwitch(program: CastProgram, context: android.content.Context) {
-    val seasons = openSeasons(program.seasons)
-    val seasonSpot = seasons.indexOfFirst { it.number == program.season }
-    val season = seasons.getOrNull(seasonSpot)
-    val episodes = season?.episodes?.filterNot { it.release.isUnreleased() }.orEmpty()
-    val episodeSpot = episodes.indexOfFirst { it.number == program.episode }
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Step(
-            label = stringResource(R.string.franchise_season, program.season),
-            canBack = seasonSpot > 0,
-            canNext = seasonSpot in 0 until seasons.lastIndex,
-            onBack = {
-                val next = seasons.getOrNull(seasonSpot - 1) ?: return@Step
-                val episode = next.episodes.firstOrNull { !it.release.isUnreleased() }?.number ?: return@Step
-                jump(context, program, next.number, episode)
-            },
-            onNext = {
-                val next = seasons.getOrNull(seasonSpot + 1) ?: return@Step
-                val episode = next.episodes.firstOrNull { !it.release.isUnreleased() }?.number ?: return@Step
-                jump(context, program, next.number, episode)
-            },
-        )
-        Spacer(Modifier.width(12.dp))
-        Step(
-            label = stringResource(R.string.cast_episode_value, program.episode),
-            canBack = episodeSpot > 0,
-            canNext = episodeSpot in 0 until episodes.lastIndex,
-            onBack = {
-                val next = episodes.getOrNull(episodeSpot - 1)?.number ?: return@Step
-                jump(context, program, program.season, next)
-            },
-            onNext = {
-                val next = episodes.getOrNull(episodeSpot + 1)?.number ?: return@Step
-                jump(context, program, program.season, next)
-            },
-        )
-    }
-}
-
-private fun jump(context: android.content.Context, program: CastProgram, season: Int, episode: Int) {
-    val watchId = program.watchId ?: return
-    val next = program.copy(season = season, episode = episode)
-    TvCastHub.sync(next)
-    TvCastService.retarget(
-        context,
-        resumeWatchUrl(watchId, season, episode),
-        castTitle(context, next),
-        program.movie.id,
-    )
-}
-
-private fun castTitle(context: android.content.Context, program: CastProgram): String {
-    val title = program.movie.title
-    if (program.seasons.isEmpty()) return context.getString(R.string.cast_now_movie, title)
-    if (program.season <= 0 || program.episode <= 0) return context.getString(R.string.cast_now_series, title)
-    return context.getString(R.string.cast_now_series_episode, title, program.season, program.episode)
-}
-
-private fun openSeasons(seasons: List<FranchiseSeason>): List<FranchiseSeason> =
-    seasons.filter { season -> season.episodes.any { !it.release.isUnreleased() } }
-
-@Composable
-private fun Step(
-    label: String,
-    canBack: Boolean,
-    canNext: Boolean,
-    onBack: () -> Unit,
-    onNext: () -> Unit,
-) {
-    val tick = rememberHapticTick()
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        StepChevron(
-            forward = false,
-            enabled = canBack,
-            onClick = {
-                if (!canBack) return@StepChevron
-                tick?.invoke()
-                onBack()
-            },
-        )
-        Text(
-            text = label,
-            color = Color.White.copy(alpha = 0.88f),
-            fontSize = 12.sp,
-            lineHeight = 15.sp,
-            fontWeight = FontWeight.Medium,
-            maxLines = 1,
-            modifier = Modifier.padding(horizontal = 2.dp),
-        )
-        StepChevron(
-            forward = true,
-            enabled = canNext,
-            onClick = {
-                if (!canNext) return@StepChevron
-                tick?.invoke()
-                onNext()
-            },
-        )
-    }
-}
-
-@Composable
-private fun StepChevron(
-    forward: Boolean,
-    enabled: Boolean,
-    onClick: () -> Unit,
-) {
-    Icon(
-        imageVector = ShellIcons.chevron,
-        contentDescription = null,
-        tint = Color.White.copy(alpha = if (enabled) 0.72f else 0.22f),
-        modifier = Modifier
-            .size(18.dp)
-            .graphicsLayer { rotationZ = if (forward) 0f else 180f }
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                enabled = enabled,
-                onClick = onClick,
-            ),
+private fun Fact(text: String) {
+    Text(
+        text = text,
+        color = CinemaMuted,
+        fontSize = 11.sp,
+        lineHeight = 14.sp,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
     )
 }
 
