@@ -470,26 +470,6 @@ private fun HomeRailsLookBody(page: RailsLookTab) {
             val order = settings.homeRailOrder.syncFolderRails(folderIds)
             val atDefault = order == DefaultHomeRailOrder.syncFolderRails(folderIds)
             val tick = rememberHapticTick()
-            Text(
-                text = stringResource(R.string.home_rails_reset),
-                color = if (atDefault) CinemaMuted else Color.White,
-                fontSize = 15.sp,
-                lineHeight = 20.sp,
-                textDecoration = if (atDefault) null else TextDecoration.Underline,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        enabled = !atDefault,
-                        onClick = {
-                            tick?.invoke()
-                            repository.setHomeRailOrder(DefaultHomeRailOrder.syncFolderRails(folderIds))
-                        },
-                    )
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
-            )
-            RailsDivider()
             val byFolder = folders.associateBy { it.id }
             val rows = order.mapNotNull { id ->
                 if (id.isFolderRail()) {
@@ -498,6 +478,52 @@ private fun HomeRailsLookBody(page: RailsLookTab) {
                     HomeRails.All.firstOrNull { it.id == id }?.let { id to null }
                 }
             }
+            val allOn = rows.isNotEmpty() && rows.all { (id, _) -> settings.homeRailVisible(id) }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = stringResource(R.string.home_rails_reset),
+                    color = if (atDefault) CinemaMuted else Color.White,
+                    fontSize = 15.sp,
+                    lineHeight = 20.sp,
+                    textDecoration = if (atDefault) null else TextDecoration.Underline,
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            enabled = !atDefault,
+                            onClick = {
+                                tick?.invoke()
+                                repository.setHomeRailOrder(DefaultHomeRailOrder.syncFolderRails(folderIds))
+                            },
+                        ),
+                )
+                if (rows.isNotEmpty()) {
+                    Text(
+                        text = stringResource(
+                            if (allOn) R.string.home_rails_disable_all else R.string.home_rails_enable_all,
+                        ),
+                        color = Color.White,
+                        fontSize = 15.sp,
+                        lineHeight = 20.sp,
+                        textDecoration = TextDecoration.Underline,
+                        modifier = Modifier.clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = {
+                                tick?.invoke()
+                                repository.setHomeRailsVisible(rows.map { it.first }, visible = !allOn)
+                            },
+                        ),
+                    )
+                }
+            }
+            RailsDivider()
             val folderMark = stringResource(R.string.home_my_folders)
             rows.forEachIndexed { index, (id, folder) ->
                 if (index > 0) RailsDivider()

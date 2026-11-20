@@ -280,6 +280,8 @@ interface UserSettingsRepository {
 
     fun setHomeRailVisible(id: String, visible: Boolean)
 
+    fun setHomeRailsVisible(ids: Collection<String>, visible: Boolean)
+
     fun setHomeRailOrder(order: List<String>)
 
     fun setHideRailsLookHint(hidden: Boolean)

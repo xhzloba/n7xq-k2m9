@@ -180,6 +180,11 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
         current.copy(hiddenHomeRails = next)
     }
 
+    override fun setHomeRailsVisible(ids: Collection<String>, visible: Boolean) = write { current ->
+        val next = if (visible) current.hiddenHomeRails - ids.toSet() else current.hiddenHomeRails + ids
+        current.copy(hiddenHomeRails = next)
+    }
+
     override fun setAppTheme(theme: String) = write {
         it.copy(
             appTheme = when (theme) {

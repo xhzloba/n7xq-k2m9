@@ -102,6 +102,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -663,8 +664,8 @@ private fun LibraryHub(
                 LibraryPlaque(
                     title = stringResource(R.string.library_folders),
                     icon = FolderMark,
-                    iconSize = 52.dp,
-                    onAdd = onAddFolder,
+                    iconSize = 92.dp,
+                    onCreate = onAddFolder,
                 )
             } else {
                 FolderRail(
@@ -871,6 +872,7 @@ private fun LibraryPlaque(
     action: String? = null,
     onClick: (() -> Unit)? = null,
     onAdd: (() -> Unit)? = null,
+    onCreate: (() -> Unit)? = null,
 ) {
     val shape = RoundedCornerShape(22.dp)
     Box(
@@ -940,6 +942,14 @@ private fun LibraryPlaque(
             if (onAdd != null) {
                 FolderAdd(onClick = onAdd, modifier = Modifier.padding(top = 16.dp))
             }
+            if (onCreate != null) {
+                FolderTitlePlus(
+                    onClick = onCreate,
+                    iconSize = 32.dp,
+                    textSize = 22.sp,
+                    modifier = Modifier.padding(top = 18.dp),
+                )
+            }
         }
     }
 }
@@ -987,6 +997,8 @@ private fun FolderAdd(
 private fun FolderTitlePlus(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    iconSize: Dp = 22.dp,
+    textSize: TextUnit = 15.sp,
 ) {
     val tick = rememberHapticTick()
     Row(
@@ -1007,14 +1019,14 @@ private fun FolderTitlePlus(
             imageVector = Icons.Filled.Add,
             contentDescription = null,
             tint = Color.White,
-            modifier = Modifier.size(22.dp),
+            modifier = Modifier.size(iconSize),
         )
-        Spacer(Modifier.width(4.dp))
+        Spacer(Modifier.width(6.dp))
         Text(
             text = stringResource(R.string.library_folder_new),
             color = Color.White,
-            fontSize = 15.sp,
-            lineHeight = 18.sp,
+            fontSize = textSize,
+            lineHeight = textSize,
             fontWeight = FontWeight.Medium,
             maxLines = 1,
         )
