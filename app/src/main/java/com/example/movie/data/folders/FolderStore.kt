@@ -17,6 +17,8 @@ data class LibraryFolder(
     val titles: List<SavedTitle> = emptyList(),
     val id: String = "",
     val createdAt: Long = 0L,
+    val color: Int = 0,
+    val covers: Boolean = true,
 )
 
 class FolderStore(context: Context) {

@@ -10,6 +10,8 @@ import androidx.activity.compose.BackHandler
 import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.RepeatMode
@@ -23,6 +25,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Column
@@ -32,9 +35,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
@@ -45,6 +50,7 @@ import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -91,8 +97,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.AsyncImage
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.graphics.SolidColor
@@ -100,7 +110,11 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -130,6 +144,7 @@ import com.example.movie.presentation.common.glideDownloadPercent
 import com.example.movie.presentation.common.inProgress
 import com.example.movie.data.folders.LibraryFolder
 import com.example.movie.presentation.folders.FolderCreateSheet
+import com.example.movie.presentation.folders.FolderGlyph
 import com.example.movie.di.LocalAppContainer
 import com.example.movie.presentation.common.LocalShelfNotices
 import com.example.movie.presentation.common.drawTopScrim
@@ -235,6 +250,7 @@ internal fun FavoritesScreen(
     onOpenCatalog: () -> Unit = {},
     openFolderId: String? = null,
     onFolderOpened: () -> Unit = {},
+    handleBack: Boolean = true,
     scrollTop: Int = 0,
 ) {
     val container = LocalAppContainer.current
@@ -273,7 +289,7 @@ internal fun FavoritesScreen(
         openedFolder = index
         onFolderOpened()
     }
-    BackHandler(enabled = library != null || foldersOpen || openedFolder >= 0) {
+    BackHandler(enabled = handleBack && (library != null || foldersOpen || openedFolder >= 0)) {
         openedDownload = null
         when {
             openedFolder >= 0 -> openedFolder = -1
@@ -538,10 +554,15 @@ internal fun FavoritesScreen(
             FolderNameDialog(
                 initial = folders[editor],
                 onDismiss = { editingFolder = null },
-                onSave = { name, about ->
+                onSave = { name, about, color, covers ->
                     container.folders.replace(
                         folders.toMutableList().also {
-                            it[editor] = folders[editor].copy(name = name, description = about)
+                            it[editor] = folders[editor].copy(
+                                name = name,
+                                description = about,
+                                color = color,
+                                covers = covers,
+                            )
                         },
                     )
                     editingFolder = null
@@ -1220,8 +1241,10 @@ private fun FolderRail(
     onAdd: () -> Unit,
 ) {
     val width = 228.dp
-    val height = 158.dp
     val shown = folders.take(LibraryRailCap)
+    val measurer = rememberTextMeasurer()
+    val density = LocalDensity.current
+    val height = shown.maxOf { row -> measureFolderCardHeight(measurer, density, row.folder, width) }
     Column(Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -1274,10 +1297,15 @@ private fun FolderCard(
     onDelete: (() -> Unit)? = null,
 ) {
     val tick = rememberHapticTick()
+    val covers = if (folder.covers) {
+        folder.titles.mapNotNull { it.posterUrl?.takeIf { url -> url.isNotBlank() } }.distinct().take(3)
+    } else {
+        emptyList()
+    }
     Box(
         modifier
             .clip(RoundedCornerShape(16.dp))
-            .background(Color.White.copy(alpha = 0.06f)),
+            .background(folder.folderWash()),
     ) {
         Column(
             modifier = Modifier
@@ -1290,12 +1318,17 @@ private fun FolderCard(
                         onClick()
                     },
                 )
-                .padding(start = 14.dp, end = 14.dp, top = 12.dp, bottom = if (folder.createdAt > 0L) 8.dp else 12.dp),
+                .padding(
+                    start = 14.dp,
+                    end = 14.dp,
+                    top = 12.dp,
+                    bottom = if (covers.isNotEmpty()) 90.dp else if (folder.createdAt > 0L) 8.dp else 12.dp,
+                ),
         ) {
             Icon(
                 imageVector = FolderMark,
                 contentDescription = null,
-                tint = Color.White.copy(alpha = 0.28f),
+                tint = if (folder.color != 0) Color(folder.color.folderInk()) else Color.White.copy(alpha = 0.28f),
                 modifier = Modifier.size(26.dp),
             )
             Text(
@@ -1313,7 +1346,9 @@ private fun FolderCard(
             if (folder.description.isNotBlank()) {
                 Text(
                     text = folder.description,
-                    modifier = Modifier.padding(top = 4.dp),
+                    modifier = Modifier
+                        .padding(top = 4.dp)
+                        .fillMaxWidth(),
                     color = CinemaMuted,
                     fontSize = 13.sp,
                     lineHeight = 17.sp,
@@ -1321,7 +1356,7 @@ private fun FolderCard(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            if (folder.createdAt > 0L) {
+            if (folder.createdAt > 0L && covers.isEmpty()) {
                 Spacer(Modifier.weight(1f))
                 Text(
                     text = folder.createdAt.folderDate(),
@@ -1334,6 +1369,26 @@ private fun FolderCard(
                     maxLines = 1,
                 )
             }
+        }
+        if (covers.isNotEmpty()) {
+            FolderCovers(
+                urls = covers,
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(start = 14.dp, bottom = 10.dp),
+            )
+        }
+        if (folder.createdAt > 0L && covers.isNotEmpty()) {
+            Text(
+                text = folder.createdAt.folderDate(),
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 12.dp, bottom = 12.dp),
+                color = Color(0xFF5C5C62),
+                fontSize = 9.sp,
+                lineHeight = 11.sp,
+                maxLines = 1,
+            )
         }
         if (onEdit != null || onDelete != null) {
             Row(
@@ -1367,6 +1422,97 @@ private fun FolderCard(
     }
 }
 
+private val FolderNameStyle = TextStyle(
+    fontSize = 15.sp,
+    lineHeight = 19.sp,
+    fontWeight = FontWeight.SemiBold,
+)
+
+private val FolderAboutStyle = TextStyle(
+    fontSize = 13.sp,
+    lineHeight = 17.sp,
+)
+
+private fun measureFolderCardHeight(
+    measurer: TextMeasurer,
+    density: Density,
+    folder: LibraryFolder,
+    width: Dp,
+): Dp {
+    val textWidth = with(density) { (width - 28.dp).roundToPx().coerceAtLeast(0) }
+    val name = measurer.measure(
+        text = folder.name,
+        style = FolderNameStyle,
+        maxLines = 2,
+        overflow = TextOverflow.Ellipsis,
+        constraints = Constraints(maxWidth = textWidth),
+    )
+    val about = if (folder.description.isBlank()) {
+        null
+    } else {
+        measurer.measure(
+            text = folder.description,
+            style = FolderAboutStyle,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            constraints = Constraints(maxWidth = textWidth),
+        )
+    }
+    val hasCovers = folder.covers && folder.titles.any { !it.posterUrl.isNullOrBlank() }
+    return with(density) {
+        12.dp + 26.dp + 8.dp + name.size.height.toDp() +
+            (about?.let { 4.dp + it.size.height.toDp() } ?: 0.dp) +
+            when {
+                hasCovers -> 94.dp
+                folder.createdAt > 0L -> 6.dp + 14.dp + 8.dp
+                else -> 12.dp
+            }
+    }
+}
+
+@Composable
+private fun FolderCovers(urls: List<String>, modifier: Modifier = Modifier) {
+    val shape = RoundedCornerShape(8.dp)
+    val order = when (urls.size) {
+        3 -> listOf(0, 2, 1)
+        else -> urls.indices.toList()
+    }
+    Box(modifier.size(width = 108.dp, height = 82.dp)) {
+        order.forEach { index ->
+            val front = urls.size == 1 || index == urls.lastIndex && urls.size == 2 || index == 1
+            val lean = when (urls.size) {
+                1 -> 0f
+                2 -> if (index == 0) -6f else 5f
+                else -> when (index) {
+                    0 -> -8f
+                    2 -> 8f
+                    else -> 0f
+                }
+            }
+            AsyncImage(
+                model = urls[index],
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .offset(x = (index * 16).dp, y = if (front) 0.dp else 4.dp)
+                    .graphicsLayer {
+                        rotationZ = lean
+                        transformOrigin = TransformOrigin(0.5f, 1f)
+                        scaleX = if (front) 1f else 0.94f
+                        scaleY = if (front) 1f else 0.94f
+                        alpha = if (front) 1f else 0.86f
+                        shadowElevation = if (front) 18f else 8f
+                        this.shape = shape
+                        clip = false
+                    }
+                    .size(width = 52.dp, height = 74.dp)
+                    .clip(shape),
+            )
+        }
+    }
+}
+
 @Composable
 private fun FolderPage(
     folders: List<IndexedFolder>,
@@ -1380,7 +1526,10 @@ private fun FolderPage(
 ) {
     val scroll = rememberScrollState()
     scroll.scrollToTopOn(scrollTop)
-    Box(Modifier.fillMaxSize()) {
+    val measurer = rememberTextMeasurer()
+    val density = LocalDensity.current
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        val cardWidth = (maxWidth - PosterGridInset * 2 - 10.dp) / 2
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -1389,6 +1538,9 @@ private fun FolderPage(
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             folders.chunked(2).forEach { row ->
+                val height = row.maxOf { item ->
+                    measureFolderCardHeight(measurer, density, item.folder, cardWidth)
+                }
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -1403,7 +1555,7 @@ private fun FolderPage(
                             onDelete = { onDelete(item.index) },
                             modifier = Modifier
                                 .weight(1f)
-                                .height(152.dp),
+                                .height(height),
                         )
                     }
                     if (row.size == 1) Spacer(Modifier.weight(1f))
@@ -1618,122 +1770,238 @@ private fun FolderDeleteRow(
     }
 }
 
-private val FolderDialogShape = RoundedCornerShape(18.dp)
+private val FolderTagColors = intArrayOf(
+    0xFFFF453A.toInt(),
+    0xFFFF6247.toInt(),
+    0xFFFF8A34.toInt(),
+    0xFFFFB000.toInt(),
+    0xFFFFD60A.toInt(),
+    0xFFB5E04A.toInt(),
+    0xFF30D158.toInt(),
+    0xFF2EE59A.toInt(),
+    0xFF2EC4B6.toInt(),
+    0xFF64D2FF.toInt(),
+    0xFF3B6EF5.toInt(),
+    0xFF5E5CE6.toInt(),
+    0xFFBF5AF2.toInt(),
+    0xFFE040FB.toInt(),
+    0xFFFF4D8D.toInt(),
+    0xFFFF7EB3.toInt(),
+)
+
+private fun Int.folderInk(): Int = if (this == 0xFF0A84FF.toInt()) 0xFF3B6EF5.toInt() else this
+
+private fun LibraryFolder.folderWash(): Brush {
+    if (color == 0) {
+        val glass = Color.White.copy(alpha = 0.06f)
+        return Brush.verticalGradient(listOf(glass, glass))
+    }
+    val ink = Color(color.folderInk())
+    return Brush.verticalGradient(
+        0f to ink.copy(alpha = 0.62f),
+        1f to ink.copy(alpha = 0.40f),
+    )
+}
 
 @Composable
 private fun FolderNameDialog(
     initial: LibraryFolder?,
     onDismiss: () -> Unit,
-    onSave: (String, String) -> Unit,
+    onSave: (String, String, Int, Boolean) -> Unit,
 ) {
     var name by remember(initial) { mutableStateOf(initial?.name.orEmpty()) }
     var about by remember(initial) { mutableStateOf(initial?.description.orEmpty()) }
+    var color by remember(initial) { mutableIntStateOf(initial?.color?.folderInk() ?: 0) }
+    var held by remember(initial) { mutableIntStateOf(initial?.color?.takeIf { it != 0 }?.folderInk() ?: FolderTagColors[0]) }
+    var coversOn by remember(initial) { mutableStateOf(initial?.covers != false) }
     val ready = name.isNotBlank()
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(
-            usePlatformDefaultWidth = false,
-            decorFitsSystemWindows = false,
-        ),
-    ) {
-        val view = LocalView.current
-        SideEffect {
-            (view.parent as? DialogWindowProvider)?.window?.apply {
-                setDimAmount(0f)
-                setBackgroundDrawable(ColorDrawable(android.graphics.Color.TRANSPARENT))
-            }
-        }
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .windowInsetsPadding(WindowInsets.ime),
+    val tick = rememberHapticTick()
+    HandleSheet(onDismiss = onDismiss) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .windowInsetsPadding(WindowInsets.ime)
+                .padding(bottom = 6.dp),
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.55f))
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = onDismiss,
-                    ),
-            )
-            Column(
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .padding(horizontal = 36.dp)
-                    .fillMaxWidth()
-                    .clip(FolderDialogShape)
-                    .background(CinemaSurface)
-                    .border(0.5.dp, Color.White.copy(alpha = 0.08f), FolderDialogShape)
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = {},
-                    )
-                    .padding(horizontal = 18.dp, vertical = 16.dp),
+            Row(
+                modifier = Modifier.padding(start = 20.dp, end = 20.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
+                Icon(
+                    imageVector = FolderGlyph,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(20.dp),
+                )
                 Text(
-                    text = stringResource(if (initial == null) R.string.library_folder_new else R.string.library_folder_edit),
+                    text = stringResource(R.string.library_folder_edit),
                     color = Color.White,
-                    fontWeight = FontWeight.Medium,
                     fontSize = 16.sp,
                     lineHeight = 20.sp,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.padding(start = 8.dp),
                 )
-                FolderField(
-                    value = name,
-                    onValueChange = { name = it.replace('\n', ' ') },
-                    label = stringResource(R.string.library_folder_name),
-                    singleLine = true,
-                    modifier = Modifier.padding(top = 16.dp),
+            }
+            FolderField(
+                value = name,
+                onValueChange = { name = it.replace('\n', ' ') },
+                label = stringResource(R.string.library_folder_name),
+                singleLine = true,
+                modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 14.dp),
+            )
+            FolderField(
+                value = about,
+                onValueChange = { about = it },
+                label = stringResource(R.string.library_folder_about),
+                singleLine = false,
+                modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 12.dp),
+            )
+            Row(
+                modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 14.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                FolderToggle(
+                    label = stringResource(R.string.library_folder_covers),
+                    checked = coversOn,
+                    onChecked = {
+                        tick?.invoke()
+                        coversOn = it
+                    },
                 )
-                FolderField(
-                    value = about,
-                    onValueChange = { about = it },
-                    label = stringResource(R.string.library_folder_about),
-                    singleLine = false,
-                    modifier = Modifier.padding(top = 12.dp),
+                FolderToggle(
+                    label = stringResource(R.string.library_folder_color),
+                    checked = color != 0,
+                    onChecked = { on ->
+                        tick?.invoke()
+                        color = if (on) held else 0
+                    },
                 )
-                Row(
-                    modifier = Modifier
-                        .padding(top = 14.dp)
-                        .fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = stringResource(R.string.library_folder_cancel),
-                        color = CinemaMuted,
-                        fontSize = 14.sp,
-                        lineHeight = 18.sp,
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(percent = 50))
-                            .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null,
-                                onClick = onDismiss,
-                            )
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
-                    )
-                    Text(
-                        text = stringResource(if (initial == null) R.string.library_folder_create else R.string.library_folder_save),
-                        color = Color.White.copy(alpha = if (ready) 1f else 0.28f),
-                        fontWeight = FontWeight.Medium,
-                        fontSize = 14.sp,
-                        lineHeight = 18.sp,
-                        modifier = Modifier
-                            .padding(start = 4.dp)
-                            .clip(RoundedCornerShape(percent = 50))
-                            .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null,
-                                enabled = ready,
-                                onClick = { onSave(name.trim(), about.trim()) },
-                            )
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
+            }
+            Row(
+                modifier = Modifier
+                    .padding(top = 12.dp)
+                    .fillMaxWidth()
+                    .graphicsLayer { alpha = if (color == 0) 0.38f else 1f }
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 20.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                FolderTagColors.forEach { tag ->
+                    FolderColorDot(
+                        color = Color(tag),
+                        selected = color == tag,
+                        onClick = {
+                            tick?.invoke()
+                            held = tag
+                            color = tag
+                        },
                     )
                 }
             }
+            Text(
+                text = stringResource(R.string.library_folder_save),
+                color = Color.White.copy(alpha = if (ready) 1f else 0.28f),
+                fontWeight = FontWeight.Medium,
+                fontSize = 14.sp,
+                lineHeight = 18.sp,
+                modifier = Modifier
+                    .align(Alignment.End)
+                    .padding(end = 12.dp, top = 6.dp, bottom = 6.dp)
+                    .clip(RoundedCornerShape(percent = 50))
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        enabled = ready,
+                        onClick = { onSave(name.trim(), about.trim(), color, coversOn) },
+                    )
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun FolderToggle(
+    label: String,
+    checked: Boolean,
+    onChecked: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(percent = 50))
+            .background(if (checked) PlayBlue.copy(alpha = 0.18f) else Color.White.copy(alpha = 0.05f))
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = { onChecked(!checked) },
+            )
+            .padding(start = 10.dp, end = 5.dp, top = 4.dp, bottom = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = label,
+            color = Color.White.copy(alpha = if (checked) 0.92f else 0.55f),
+            fontSize = 12.sp,
+            lineHeight = 16.sp,
+        )
+        Spacer(Modifier.width(6.dp))
+        FolderMiniSwitch(checked)
+    }
+}
+
+@Composable
+private fun FolderMiniSwitch(checked: Boolean) {
+    val travel by animateDpAsState(
+        targetValue = if (checked) 12.dp else 0.dp,
+        animationSpec = spring(dampingRatio = 1f, stiffness = 500f),
+        label = "folderSwitch",
+    )
+    Box(
+        Modifier
+            .width(28.dp)
+            .height(16.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(if (checked) PlayBlue else Color(0xFF2C2C30))
+            .padding(2.dp),
+    ) {
+        Box(
+            Modifier
+                .offset(x = travel)
+                .size(12.dp)
+                .clip(CircleShape)
+                .background(if (checked) Color.White else Color(0xFF8A8A90)),
+        )
+    }
+}
+
+@Composable
+private fun FolderColorDot(
+    color: Color,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .size(26.dp)
+            .clip(CircleShape)
+            .background(color)
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick,
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (selected) {
+            Icon(
+                imageVector = Icons.Filled.Check,
+                contentDescription = null,
+                tint = if (color.luminance() > 0.62f) Color.Black else Color.White,
+                modifier = Modifier.size(13.dp),
+            )
         }
     }
 }

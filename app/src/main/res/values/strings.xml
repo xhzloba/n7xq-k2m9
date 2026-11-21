@@ -186,6 +186,8 @@
     <string name="folder_not_added">Другие папки</string>
     <string name="library_folder_name">Название</string>
     <string name="library_folder_about">Описание</string>
+    <string name="library_folder_color">Цвет</string>
+    <string name="library_folder_covers">Обложки</string>
     <string name="library_folder_empty">В папке пока пусто.</string>
     <string name="library_folder_edit">Изменить папку</string>
     <string name="library_folder_delete">Удалить папку</string>

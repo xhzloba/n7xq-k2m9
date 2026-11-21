@@ -434,6 +434,7 @@ fun AppShell(
                     onOpenCatalog = { onTabChange(AppTab.Catalog.name) },
                     openFolderId = openFolderId,
                     onFolderOpened = { openFolderId = null },
+                    handleBack = handleBack,
                     scrollTop = favoritesTop,
                 )
                 AppTab.Settings -> SettingsRoute(scrollTop = settingsTop)
