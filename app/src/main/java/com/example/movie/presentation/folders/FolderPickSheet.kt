@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -346,14 +347,25 @@ internal fun FolderCreateSheet(
                 .windowInsetsPadding(WindowInsets.ime)
                 .padding(bottom = 6.dp),
         ) {
-            Text(
-                text = stringResource(R.string.library_folder_new),
-                color = Color.White,
-                fontSize = 16.sp,
-                lineHeight = 20.sp,
-                fontWeight = FontWeight.Medium,
+            Row(
                 modifier = Modifier.padding(start = 20.dp, end = 20.dp),
-            )
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    imageVector = FolderGlyph,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(20.dp),
+                )
+                Text(
+                    text = stringResource(R.string.library_folder_new),
+                    color = Color.White,
+                    fontSize = 16.sp,
+                    lineHeight = 20.sp,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.padding(start = 8.dp),
+                )
+            }
             FolderLine(
                 value = name,
                 onValueChange = { name = it.replace('\n', ' ') },
@@ -401,35 +413,39 @@ private fun FolderLine(
     singleLine: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier) {
-        Text(
-            text = label,
-            color = CinemaMuted,
-            fontSize = 12.sp,
-            lineHeight = 15.sp,
-        )
-        BasicTextField(
-            value = value,
-            onValueChange = onValueChange,
-            singleLine = singleLine,
-            textStyle = TextStyle(
-                color = Color.White,
-                fontSize = 14.sp,
-                lineHeight = 18.sp,
-            ),
-            cursorBrush = SolidColor(Color.White),
-            modifier = Modifier
-                .padding(top = 5.dp)
-                .fillMaxWidth()
-                .heightIn(min = if (singleLine) 36.dp else 56.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(Color.White.copy(alpha = 0.05f))
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            decorationBox = { inner ->
-                Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.TopStart) { inner() }
-            },
-        )
-    }
+    val focus = remember { MutableInteractionSource() }
+    val focused by focus.collectIsFocusedAsState()
+    BasicTextField(
+        value = value,
+        onValueChange = onValueChange,
+        singleLine = singleLine,
+        interactionSource = focus,
+        textStyle = TextStyle(
+            color = Color.White,
+            fontSize = 14.sp,
+            lineHeight = 18.sp,
+        ),
+        cursorBrush = SolidColor(Color.White),
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(min = if (singleLine) 36.dp else 56.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color.White.copy(alpha = 0.05f))
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        decorationBox = { inner ->
+            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.TopStart) {
+                if (value.isEmpty() && !focused) {
+                    Text(
+                        text = label,
+                        color = CinemaMuted,
+                        fontSize = 14.sp,
+                        lineHeight = 18.sp,
+                    )
+                }
+                inner()
+            }
+        },
+    )
 }
 
 internal val FolderGlyph: ImageVector = ImageVector.Builder(

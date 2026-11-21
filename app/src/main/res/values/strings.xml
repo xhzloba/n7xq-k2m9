@@ -188,6 +188,13 @@
     <string name="library_folder_about">Описание</string>
     <string name="library_folder_empty">В папке пока пусто.</string>
     <string name="library_folder_edit">Изменить папку</string>
+    <string name="library_folder_delete">Удалить папку</string>
+    <string name="library_folder_delete_title">Удалить папку?</string>
+    <string name="library_folder_delete_body">«%1$s» пропадёт. Фильмы из неё останутся.</string>
+    <string name="library_folder_delete_confirm">Удалить</string>
+    <string name="library_folder_sort">Сортировка</string>
+    <string name="library_folder_sort_name">По имени</string>
+    <string name="library_folder_sort_date">По дате</string>
     <string name="library_folder_create">Создать</string>
     <string name="library_folder_save">Сохранить</string>
     <string name="library_folder_cancel">Отмена</string>

@@ -16,6 +16,7 @@ data class LibraryFolder(
     val description: String = "",
     val titles: List<SavedTitle> = emptyList(),
     val id: String = "",
+    val createdAt: Long = 0L,
 )
 
 class FolderStore(context: Context) {
@@ -57,6 +58,11 @@ class FolderStore(context: Context) {
         return !has
     }
 
+    fun remove(id: String) {
+        if (id.isBlank()) return
+        replace(itemsState.value.filterNot { it.id == id })
+    }
+
     fun add(name: String, description: String, title: SavedTitle?) {
         val named = name.trim()
         if (named.isEmpty()) return
@@ -68,6 +74,7 @@ class FolderStore(context: Context) {
                     description = description.trim(),
                     titles = titles,
                     id = UUID.randomUUID().toString(),
+                    createdAt = System.currentTimeMillis(),
                 ),
             ) + itemsState.value,
         )

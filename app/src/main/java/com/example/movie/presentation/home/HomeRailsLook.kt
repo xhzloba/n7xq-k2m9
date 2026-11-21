@@ -524,14 +524,13 @@ private fun HomeRailsLookBody(page: RailsLookTab) {
                 }
             }
             RailsDivider()
-            val folderMark = stringResource(R.string.home_my_folders)
             rows.forEachIndexed { index, (id, folder) ->
                 if (index > 0) RailsDivider()
                 val entry = if (folder == null) HomeRails.All.first { it.id == id } else null
                 RailOrderRow(
                     title = folder?.name ?: stringResource(entry!!.titleRes),
                     icon = if (folder != null) FolderGlyph else entry?.icon,
-                    mark = if (folder != null) folderMark else null,
+                    folder = folder != null,
                     checked = settings.homeRailVisible(id),
                     upEnabled = order.canMoveHomeRail(id, up = true),
                     downEnabled = order.canMoveHomeRail(id, up = false),
@@ -837,7 +836,7 @@ private fun RailOrderRow(
     onUp: () -> Unit,
     onDown: () -> Unit,
     onChecked: (Boolean) -> Unit,
-    mark: String? = null,
+    folder: Boolean = false,
 ) {
     val tick = rememberHapticTick()
     Row(
@@ -868,18 +867,19 @@ private fun RailOrderRow(
                 .padding(vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            val ink = if (folder) PlayBlue else Color.White
             if (icon != null) {
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = Color.White,
+                    tint = ink,
                     modifier = Modifier.size(18.dp),
                 )
                 Spacer(Modifier.width(10.dp))
             }
             Text(
                 text = title,
-                color = Color.White,
+                color = ink,
                 fontWeight = FontWeight.Medium,
                 fontSize = 16.sp,
                 lineHeight = 22.sp,
@@ -888,16 +888,6 @@ private fun RailOrderRow(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
             )
-            if (mark != null) {
-                Text(
-                    text = mark,
-                    color = PlayBlue,
-                    fontSize = 12.sp,
-                    lineHeight = 16.sp,
-                    maxLines = 1,
-                    modifier = Modifier.padding(start = 8.dp),
-                )
-            }
             Spacer(Modifier.width(12.dp))
             RailsSwitch(checked)
         }

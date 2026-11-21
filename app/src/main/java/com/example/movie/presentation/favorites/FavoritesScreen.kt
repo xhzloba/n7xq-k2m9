@@ -1,6 +1,11 @@
 package com.example.movie.presentation.favorites
 
 import android.graphics.drawable.ColorDrawable
+import java.text.Collator
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 import androidx.activity.compose.BackHandler
 import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedVisibility
@@ -60,6 +65,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.CircularProgressIndicator
@@ -146,6 +153,7 @@ import com.example.movie.presentation.haptic.HapticOnChange
 import com.example.movie.domain.model.HapticSlot
 import com.example.movie.presentation.haptic.rememberHaptic
 import com.example.movie.presentation.haptic.rememberHapticTick
+import com.example.movie.presentation.common.HandleSheet
 import com.example.movie.presentation.home.SectionScrim
 import com.example.movie.presentation.home.components.RailSeeAllCard
 import com.example.movie.presentation.home.components.RailTitle
@@ -248,9 +256,14 @@ internal fun FavoritesScreen(
     }
     val library = LibrarySection.entries.firstOrNull { it.name == libraryName }
     val folders by container.folders.items.collectAsStateWithLifecycle()
+    var folderOrderName by rememberSaveable { mutableStateOf(FolderOrder.Date.name) }
+    var folderSortOpen by remember { mutableStateOf(false) }
+    val folderOrder = FolderOrder.valueOf(folderOrderName)
+    val orderedFolders = folders.ordered(folderOrder)
     var foldersOpen by rememberSaveable { mutableStateOf(false) }
     var openedFolder by rememberSaveable { mutableIntStateOf(-1) }
     var editingFolder by remember { mutableStateOf<Int?>(null) }
+    var deletingFolder by remember { mutableStateOf<Int?>(null) }
     LaunchedEffect(openFolderId, folders) {
         val id = openFolderId ?: return@LaunchedEffect
         val index = folders.indexOfFirst { it.id == id }
@@ -314,11 +327,13 @@ internal fun FavoritesScreen(
             )
         } else if (library == null && foldersOpen) {
             FolderPage(
-                folders = folders,
+                folders = orderedFolders,
                 onBack = { foldersOpen = false },
                 onAdd = { editingFolder = -1 },
                 onOpen = { openedFolder = it },
                 onEdit = { editingFolder = it },
+                onDelete = { deletingFolder = it },
+                onSort = { folderSortOpen = true },
                 scrollTop = scrollTop,
             )
         } else if (library == null) {
@@ -341,11 +356,12 @@ internal fun FavoritesScreen(
                         playing = OfflinePlay(item, null, null)
                     }
                 },
-                folders = folders,
+                folders = orderedFolders,
                 downloadStatus = downloadStatus,
                 onOpenFolders = { foldersOpen = true },
                 onOpenFolder = { openedFolder = it },
                 onEditFolder = { editingFolder = it },
+                onDeleteFolder = { deletingFolder = it },
                 onAddFolder = { editingFolder = -1 },
                 scrollTop = scrollTop,
             )
@@ -540,10 +556,165 @@ internal fun FavoritesScreen(
                 },
             )
         }
+        val removing = deletingFolder
+        if (removing != null && removing in folders.indices) {
+            val folder = folders[removing]
+            FolderDeleteSheet(
+                name = folder.name,
+                onConfirm = {
+                    container.folders.remove(folder.id)
+                    when {
+                        openedFolder == removing -> openedFolder = -1
+                        openedFolder > removing -> openedFolder -= 1
+                    }
+                    deletingFolder = null
+                },
+                onDismiss = { deletingFolder = null },
+            )
+        }
+        if (folderSortOpen) {
+            FolderSortSheet(
+                current = folderOrder,
+                onPick = {
+                    folderOrderName = it.name
+                    folderSortOpen = false
+                },
+                onDismiss = { folderSortOpen = false },
+            )
+        }
     }
 }
 
 private const val LibraryRailCap = 15
+
+private enum class FolderOrder { Date, Name }
+
+private data class IndexedFolder(val index: Int, val folder: LibraryFolder)
+
+private fun List<LibraryFolder>.ordered(mode: FolderOrder): List<IndexedFolder> {
+    val rows = mapIndexed { index, folder -> IndexedFolder(index, folder) }
+    return when (mode) {
+        FolderOrder.Date -> rows.sortedWith(
+            compareByDescending<IndexedFolder> { it.folder.createdAt }.thenBy { it.index },
+        )
+        FolderOrder.Name -> rows.sortedWith(
+            compareBy(Collator.getInstance(Locale.forLanguageTag("ru"))) { it.folder.name },
+        )
+    }
+}
+
+private val FolderSortIcon: ImageVector = ImageVector.Builder(
+    name = "folderSort",
+    defaultWidth = 24.dp,
+    defaultHeight = 24.dp,
+    viewportWidth = 24f,
+    viewportHeight = 24f,
+).path(fill = SolidColor(Color.Black)) {
+    moveTo(3f, 6f)
+    horizontalLineTo(21f)
+    verticalLineTo(8f)
+    horizontalLineTo(3f)
+    close()
+    moveTo(6f, 11f)
+    horizontalLineTo(18f)
+    verticalLineTo(13f)
+    horizontalLineTo(6f)
+    close()
+    moveTo(9f, 16f)
+    horizontalLineTo(15f)
+    verticalLineTo(18f)
+    horizontalLineTo(9f)
+    close()
+}.build()
+
+private val FolderDateFormat = DateTimeFormatter.ofPattern("d MMM yyyy", Locale.forLanguageTag("ru"))
+
+private fun Long.folderDate(): String =
+    Instant.ofEpochMilli(this).atZone(ZoneId.systemDefault()).format(FolderDateFormat).replace(".", "")
+
+@Composable
+private fun FolderSortButton(onClick: () -> Unit) {
+    val tick = rememberHapticTick()
+    Box(
+        modifier = Modifier
+            .size(32.dp)
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = {
+                    tick?.invoke()
+                    onClick()
+                },
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = FolderSortIcon,
+            contentDescription = stringResource(R.string.library_folder_sort),
+            tint = Color.White.copy(alpha = 0.72f),
+            modifier = Modifier.size(20.dp),
+        )
+    }
+}
+
+@Composable
+private fun FolderSortSheet(
+    current: FolderOrder,
+    onPick: (FolderOrder) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val tick = rememberHapticTick()
+    HandleSheet(onDismiss = onDismiss) {
+        Text(
+            text = stringResource(R.string.library_folder_sort),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 22.dp),
+            color = Color.White,
+            fontWeight = FontWeight.Bold,
+            fontSize = 18.sp,
+            lineHeight = 23.sp,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.height(8.dp))
+        FolderOrder.entries.forEach { mode ->
+            val label = stringResource(
+                if (mode == FolderOrder.Name) R.string.library_folder_sort_name else R.string.library_folder_sort_date,
+            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = {
+                            tick?.invoke()
+                            onPick(mode)
+                        },
+                    )
+                    .padding(horizontal = 22.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = label,
+                    modifier = Modifier.weight(1f),
+                    color = Color.White,
+                    fontSize = 16.sp,
+                    lineHeight = 21.sp,
+                )
+                if (mode == current) {
+                    Icon(
+                        imageVector = Icons.Filled.Check,
+                        contentDescription = null,
+                        tint = PlayBlue,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+    }
+}
 
 @Composable
 private fun LibraryHub(
@@ -560,10 +731,11 @@ private fun LibraryHub(
     onOpen: (LibrarySection) -> Unit,
     onOpenDownload: (OfflineItem) -> Unit,
     downloadStatus: (OfflineItem) -> OfflineStatus,
-    folders: List<LibraryFolder>,
+    folders: List<IndexedFolder>,
     onOpenFolders: () -> Unit,
     onOpenFolder: (Int) -> Unit,
     onEditFolder: (Int) -> Unit,
+    onDeleteFolder: (Int) -> Unit,
     onAddFolder: () -> Unit,
     scrollTop: Int,
 ) {
@@ -673,6 +845,7 @@ private fun LibraryHub(
                     onOpen = onOpenFolders,
                     onOpenFolder = onOpenFolder,
                     onEditFolder = onEditFolder,
+                    onDeleteFolder = onDeleteFolder,
                     onAdd = onAddFolder,
                 )
             }
@@ -695,6 +868,7 @@ private fun LibraryBar(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
     mark: ImageVector? = null,
+    titleAtStart: Boolean = false,
 ) {
     val tick = rememberHapticTick()
     Box(
@@ -706,8 +880,11 @@ private fun LibraryBar(
     ) {
         Row(
             modifier = Modifier
-                .align(Alignment.Center)
-                .padding(horizontal = 56.dp),
+                .align(if (titleAtStart) Alignment.CenterStart else Alignment.Center)
+                .padding(
+                    start = if (titleAtStart) PosterGridInset + 29.dp else 56.dp,
+                    end = if (titleAtStart) 156.dp else 56.dp,
+                ),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (mark != null) {
@@ -1035,14 +1212,15 @@ private fun FolderTitlePlus(
 
 @Composable
 private fun FolderRail(
-    folders: List<LibraryFolder>,
+    folders: List<IndexedFolder>,
     onOpen: () -> Unit,
     onOpenFolder: (Int) -> Unit,
     onEditFolder: (Int) -> Unit,
+    onDeleteFolder: (Int) -> Unit,
     onAdd: () -> Unit,
 ) {
     val width = 228.dp
-    val height = 124.dp
+    val height = 158.dp
     val shown = folders.take(LibraryRailCap)
     Column(Modifier.fillMaxWidth()) {
         Row(
@@ -1064,14 +1242,15 @@ private fun FolderRail(
             contentPadding = PaddingValues(start = PosterGridInset, end = PosterGridInset),
             horizontalArrangement = Arrangement.spacedBy(PosterGap),
         ) {
-            itemsIndexed(shown, key = { index, folder -> "$index:${folder.name}" }) { index, folder ->
+            items(shown, key = { row -> row.folder.id.ifBlank { "${row.index}:${row.folder.name}" } }) { row ->
                 FolderCard(
-                    folder = folder,
+                    folder = row.folder,
                     modifier = Modifier
                         .width(width)
                         .height(height),
-                    onClick = { onOpenFolder(index) },
-                    onEdit = { onEditFolder(index) },
+                    onClick = { onOpenFolder(row.index) },
+                    onEdit = { onEditFolder(row.index) },
+                    onDelete = { onDeleteFolder(row.index) },
                 )
             }
             item(key = "folders-see-all") {
@@ -1092,6 +1271,7 @@ private fun FolderCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     onEdit: (() -> Unit)? = null,
+    onDelete: (() -> Unit)? = null,
 ) {
     val tick = rememberHapticTick()
     Box(
@@ -1110,7 +1290,7 @@ private fun FolderCard(
                         onClick()
                     },
                 )
-                .padding(start = 14.dp, end = if (onEdit != null) 36.dp else 14.dp, top = 12.dp, bottom = 12.dp),
+                .padding(start = 14.dp, end = 14.dp, top = 12.dp, bottom = if (folder.createdAt > 0L) 8.dp else 12.dp),
         ) {
             Icon(
                 imageVector = FolderMark,
@@ -1120,12 +1300,14 @@ private fun FolderCard(
             )
             Text(
                 text = folder.name,
-                modifier = Modifier.padding(top = 8.dp),
+                modifier = Modifier
+                    .padding(top = 8.dp)
+                    .fillMaxWidth(),
                 color = Color.White,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 15.sp,
                 lineHeight = 19.sp,
-                maxLines = 1,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
             if (folder.description.isNotBlank()) {
@@ -1139,29 +1321,47 @@ private fun FolderCard(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
+            if (folder.createdAt > 0L) {
+                Spacer(Modifier.weight(1f))
+                Text(
+                    text = folder.createdAt.folderDate(),
+                    modifier = Modifier
+                        .align(Alignment.End)
+                        .padding(top = 6.dp),
+                    color = Color(0xFF5C5C62),
+                    fontSize = 9.sp,
+                    lineHeight = 11.sp,
+                    maxLines = 1,
+                )
+            }
         }
-        if (onEdit != null) {
-            Box(
+        if (onEdit != null || onDelete != null) {
+            Row(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .padding(top = 6.dp, end = 6.dp)
-                    .size(32.dp)
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
+                    .padding(top = 4.dp, end = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (onEdit != null) {
+                    FolderCardAction(
+                        icon = Icons.Filled.Edit,
+                        description = stringResource(R.string.library_folder_edit),
                         onClick = {
                             tick?.invoke()
                             onEdit()
                         },
-                    ),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.Edit,
-                    contentDescription = stringResource(R.string.library_folder_edit),
-                    tint = Color.White.copy(alpha = 0.86f),
-                    modifier = Modifier.size(16.dp),
-                )
+                    )
+                }
+                if (onDelete != null) {
+                    FolderCardAction(
+                        icon = Icons.Filled.Delete,
+                        description = stringResource(R.string.library_folder_delete),
+                        onClick = {
+                            tick?.invoke()
+                            onDelete()
+                        },
+                    )
+                }
             }
         }
     }
@@ -1169,11 +1369,13 @@ private fun FolderCard(
 
 @Composable
 private fun FolderPage(
-    folders: List<LibraryFolder>,
+    folders: List<IndexedFolder>,
     onBack: () -> Unit,
     onAdd: () -> Unit,
     onOpen: (Int) -> Unit,
     onEdit: (Int) -> Unit,
+    onDelete: (Int) -> Unit,
+    onSort: () -> Unit,
     scrollTop: Int,
 ) {
     val scroll = rememberScrollState()
@@ -1186,24 +1388,25 @@ private fun FolderPage(
                 .padding(top = libraryTopPadding(), bottom = 96.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            folders.indices.toList().chunked(2).forEach { indexes ->
+            folders.chunked(2).forEach { row ->
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = PosterGridInset),
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    indexes.forEach { index ->
+                    row.forEach { item ->
                         FolderCard(
-                            folder = folders[index],
-                            onClick = { onOpen(index) },
-                            onEdit = { onEdit(index) },
+                            folder = item.folder,
+                            onClick = { onOpen(item.index) },
+                            onEdit = { onEdit(item.index) },
+                            onDelete = { onDelete(item.index) },
                             modifier = Modifier
                                 .weight(1f)
-                                .height(118.dp),
+                                .height(152.dp),
                         )
                     }
-                    if (indexes.size == 1) Spacer(Modifier.weight(1f))
+                    if (row.size == 1) Spacer(Modifier.weight(1f))
                 }
             }
         }
@@ -1214,16 +1417,20 @@ private fun FolderPage(
         LibraryBar(
             title = stringResource(R.string.library_folders),
             onBack = onBack,
+            titleAtStart = true,
             modifier = Modifier.align(Alignment.TopCenter),
         )
-        FolderAdd(
-            onClick = onAdd,
-            size = 40.dp,
+        Row(
             modifier = Modifier
                 .align(Alignment.TopEnd)
                 .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))
-                .padding(top = BrandTopInset, end = PosterGridInset),
-        )
+                .padding(top = BrandTopInset, end = PosterGridInset)
+                .height(36.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            FolderSortButton(onClick = onSort)
+            FolderTitlePlus(onClick = onAdd)
+        }
     }
 }
 
@@ -1309,6 +1516,104 @@ private fun FolderInside(
             onBack = onBack,
             mark = FolderMark,
             modifier = Modifier.align(Alignment.TopCenter),
+        )
+    }
+}
+
+@Composable
+private fun FolderCardAction(
+    icon: ImageVector,
+    description: String,
+    onClick: () -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .size(32.dp)
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick,
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = description,
+            tint = Color.White.copy(alpha = 0.46f),
+            modifier = Modifier.size(16.dp),
+        )
+    }
+}
+
+@Composable
+private fun FolderDeleteSheet(
+    name: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val tick = rememberHapticTick()
+    HandleSheet(onDismiss = onDismiss) {
+        Text(
+            text = stringResource(R.string.library_folder_delete_title),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 22.dp),
+            color = Color.White,
+            fontWeight = FontWeight.Bold,
+            fontSize = 18.sp,
+            lineHeight = 23.sp,
+            textAlign = TextAlign.Center,
+        )
+        Text(
+            text = stringResource(R.string.library_folder_delete_body, name),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 22.dp, end = 22.dp, top = 8.dp),
+            color = CinemaMuted,
+            fontSize = 14.sp,
+            lineHeight = 19.sp,
+            textAlign = TextAlign.Center,
+        )
+        FolderDeleteRow(
+            label = stringResource(R.string.library_folder_delete_confirm),
+            onClick = {
+                tick?.invoke()
+                onConfirm()
+            },
+        )
+        FolderDeleteRow(
+            label = stringResource(R.string.library_folder_cancel),
+            onClick = {
+                tick?.invoke()
+                onDismiss()
+            },
+        )
+        Spacer(Modifier.height(8.dp))
+    }
+}
+
+@Composable
+private fun FolderDeleteRow(
+    label: String,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick,
+            )
+            .padding(horizontal = 22.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = label,
+            color = Color.White,
+            fontSize = 16.sp,
+            lineHeight = 21.sp,
+            maxLines = 1,
         )
     }
 }
