@@ -50,6 +50,13 @@ internal object Changelog {
 
     val releases: List<Release> = listOf(
         Release(
+            version = "2.80.1",
+            added = emptyList(),
+            fixed = listOf(
+                "В каталоге при переходе с «Фильмов» на «Сериалы» жанры остаются на месте.",
+            ),
+        ),
+        Release(
             version = "2.80.0",
             added = listOf(
                 "Новая папка из долгого нажатия и из «Дополнительно» тоже задаёт обложки и цвет.",

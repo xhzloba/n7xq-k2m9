@@ -163,12 +163,37 @@ fun CatalogScreen(
                     )
                     Spacer(Modifier.height(HomeRailGap))
                 }
+                val head = rails.firstOrNull()
+                val rest = if (rails.size > 1) rails.subList(1, rails.size) else emptyList()
+                if (head != null) {
+                    item(key = "${tab.type}:${head.sort.name}") {
+                        RecommendationRail(
+                            movies = head.movies,
+                            onMovieClick = onMovieClick,
+                            onMoviePeek = onMoviePeek,
+                            title = stringResource(head.sort.title),
+                            onOpen = { onOpenShelf(tab.type, head.sort.sort) },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                }
+                item(key = "genres") {
+                    if (head != null) Spacer(Modifier.height(CatalogGap))
+                    key(tab.type) {
+                        CatalogGenreChips(
+                            type = tab.type,
+                            onOpenAll = { onGenres(tab.type) },
+                            onGenre = { onOpenGenre(tab.type, it) },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                }
                 items(
-                    count = rails.size,
-                    key = { index -> rails[index].sort.name },
+                    count = rest.size,
+                    key = { index -> "${tab.type}:${rest[index].sort.name}" },
                 ) { index ->
-                    val rail = rails[index]
-                    if (index > 0) Spacer(Modifier.height(CatalogGap))
+                    val rail = rest[index]
+                    Spacer(Modifier.height(CatalogGap))
                     RecommendationRail(
                         movies = rail.movies,
                         onMovieClick = onMovieClick,
@@ -177,15 +202,6 @@ fun CatalogScreen(
                         onOpen = { onOpenShelf(tab.type, rail.sort.sort) },
                         modifier = Modifier.fillMaxWidth(),
                     )
-                    if (index == 0) {
-                        Spacer(Modifier.height(CatalogGap))
-                        CatalogGenreChips(
-                            type = tab.type,
-                            onOpenAll = { onGenres(tab.type) },
-                            onGenre = { onOpenGenre(tab.type, it) },
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    }
                 }
             }
             CatalogScrim(
