@@ -226,6 +226,7 @@ private fun MovieMenu(
                 },
             )
             if (continued != null) {
+                MenuDivider()
                 MenuRow(
                     icon = TrashIcon,
                     label = stringResource(R.string.menu_remove_resume),
@@ -236,6 +237,7 @@ private fun MovieMenu(
                     },
                 )
             }
+            MenuDivider()
             MenuRow(
                 icon = OverviewIcon,
                 label = stringResource(R.string.menu_overview),
@@ -244,6 +246,7 @@ private fun MovieMenu(
                     onSummary()
                 },
             )
+            MenuDivider()
             MenuRow(
                 icon = if (saved) BookmarkFilled else BookmarkOutline,
                 label = stringResource(if (saved) R.string.menu_favorite_remove else R.string.menu_favorite_add),
@@ -259,6 +262,7 @@ private fun MovieMenu(
                     onDismiss()
                 },
             )
+            MenuDivider()
             MenuRow(
                 icon = CheckIcon,
                 label = stringResource(if (seen) R.string.menu_watched else R.string.menu_unwatched),
@@ -283,10 +287,10 @@ private fun MovieMenu(
                     }
                 },
             )
+            MenuDivider()
             MenuRow(
                 icon = FolderGlyph,
                 label = stringResource(R.string.menu_list),
-                quiet = !filed,
                 onClick = {
                     tick?.invoke()
                     onFolders()
@@ -298,11 +302,12 @@ private fun MovieMenu(
                         FolderTrail(
                             count = held.size,
                             name = held.firstOrNull()?.name,
-                            tint = RowInk,
+                            tint = PlayBlue,
                         )
                     }
                 },
             )
+            MenuDivider()
             MenuRow(
                 icon = CommentIcon,
                 label = stringResource(R.string.menu_comment),
@@ -592,11 +597,10 @@ private fun MenuRow(
     label: String,
     enabled: Boolean = true,
     marked: Boolean = false,
-    quiet: Boolean = false,
     onClick: () -> Unit = {},
     trail: @Composable (() -> Unit)? = null,
 ) {
-    val ink = if (enabled && !quiet) RowInk else CinemaMuted
+    val ink = if (enabled) RowInk else CinemaMuted
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -629,6 +633,17 @@ private fun MenuRow(
             trail()
         }
     }
+}
+
+@Composable
+private fun MenuDivider() {
+    Box(
+        Modifier
+            .padding(horizontal = 22.dp)
+            .fillMaxWidth()
+            .height(0.5.dp)
+            .background(Color.White.copy(alpha = 0.18f)),
+    )
 }
 
 @Composable
