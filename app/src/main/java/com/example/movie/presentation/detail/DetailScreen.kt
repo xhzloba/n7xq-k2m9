@@ -364,7 +364,6 @@ private fun MoreActionsSheet(
     val tick = rememberHapticTick()
     val folders by LocalAppContainer.current.folders.items.collectAsStateWithLifecycle()
     val held = folders.filter { folder -> folder.titles.any { it.id == movieId } }
-    val folderInk = if (held.isNotEmpty()) Color.White else CinemaMuted
     var settings by remember { mutableStateOf(false) }
     HandleSheet(onDismiss = onDismiss) {
         if (settings) {
@@ -446,13 +445,13 @@ private fun MoreActionsSheet(
                     Icon(
                         imageVector = FolderGlyph,
                         contentDescription = null,
-                        tint = folderInk,
+                        tint = Color.White,
                         modifier = Modifier.size(22.dp),
                     )
                     Spacer(Modifier.width(14.dp))
                     Text(
                         text = stringResource(R.string.menu_list),
-                        color = folderInk,
+                        color = Color.White,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Medium,
                         maxLines = 1,
@@ -464,7 +463,7 @@ private fun MoreActionsSheet(
                         FolderTrail(
                             count = held.size,
                             name = held.firstOrNull()?.name,
-                            tint = folderInk,
+                            tint = PlayBlue,
                         )
                     }
                 }

@@ -1,5 +1,7 @@
 package com.example.movie.presentation.folders
 
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -12,7 +14,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -20,6 +24,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
@@ -31,6 +36,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -39,6 +45,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.platform.LocalContext
@@ -73,6 +81,8 @@ internal fun FolderPickSheet(
     var creating by remember { mutableStateOf(folders.isEmpty()) }
     var name by remember { mutableStateOf("") }
     var about by remember { mutableStateOf("") }
+    var coversOn by remember { mutableStateOf(true) }
+    var color by remember { mutableIntStateOf(0) }
     val ready = name.isNotBlank()
     HandleSheet(onDismiss = onDismiss) {
         Column(
@@ -165,6 +175,13 @@ internal fun FolderPickSheet(
                         singleLine = false,
                         modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 10.dp),
                     )
+                    FolderLookPicker(
+                        coversOn = coversOn,
+                        onCovers = { coversOn = it },
+                        color = color,
+                        onColor = { color = it },
+                        modifier = Modifier.padding(top = 12.dp),
+                    )
                     Text(
                         text = stringResource(R.string.library_folder_create),
                         color = Color.White.copy(alpha = if (ready) 1f else 0.28f),
@@ -182,13 +199,15 @@ internal fun FolderPickSheet(
                                 onClick = {
                                     tick?.invoke()
                                     val named = name.trim()
-                                    store.add(named, about.trim(), title)
+                                    store.add(named, about.trim(), title, color, coversOn)
                                     notices.show(
                                         context.getString(R.string.notice_folder_add, named),
                                         NoticeShelfFavorites,
                                     )
                                     name = ""
                                     about = ""
+                                    coversOn = true
+                                    color = 0
                                     creating = false
                                 },
                             )
@@ -334,10 +353,12 @@ private fun FolderSlide(
 @Composable
 internal fun FolderCreateSheet(
     onDismiss: () -> Unit,
-    onCreate: (String, String) -> Unit,
+    onCreate: (String, String, Int, Boolean) -> Unit,
 ) {
     var name by remember { mutableStateOf("") }
     var about by remember { mutableStateOf("") }
+    var coversOn by remember { mutableStateOf(true) }
+    var color by remember { mutableIntStateOf(0) }
     val ready = name.isNotBlank()
     val tick = rememberHapticTick()
     HandleSheet(onDismiss = onDismiss) {
@@ -380,6 +401,13 @@ internal fun FolderCreateSheet(
                 singleLine = false,
                 modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 10.dp),
             )
+            FolderLookPicker(
+                coversOn = coversOn,
+                onCovers = { coversOn = it },
+                color = color,
+                onColor = { color = it },
+                modifier = Modifier.padding(top = 12.dp),
+            )
             Text(
                 text = stringResource(R.string.library_folder_create),
                 color = Color.White.copy(alpha = if (ready) 1f else 0.28f),
@@ -396,10 +424,171 @@ internal fun FolderCreateSheet(
                         enabled = ready,
                         onClick = {
                             tick?.invoke()
-                            onCreate(name.trim(), about.trim())
+                            onCreate(name.trim(), about.trim(), color, coversOn)
                         },
                     )
                     .padding(horizontal = 12.dp, vertical = 8.dp),
+            )
+        }
+    }
+}
+
+internal val FolderTagColors = intArrayOf(
+    0xFFFF453A.toInt(),
+    0xFFFF6247.toInt(),
+    0xFFFF8A34.toInt(),
+    0xFFFFB000.toInt(),
+    0xFFFFD60A.toInt(),
+    0xFFB5E04A.toInt(),
+    0xFF30D158.toInt(),
+    0xFF2EE59A.toInt(),
+    0xFF2EC4B6.toInt(),
+    0xFF64D2FF.toInt(),
+    0xFF3B6EF5.toInt(),
+    0xFF5E5CE6.toInt(),
+    0xFFBF5AF2.toInt(),
+    0xFFE040FB.toInt(),
+    0xFFFF4D8D.toInt(),
+    0xFFFF7EB3.toInt(),
+)
+
+@Composable
+internal fun FolderLookPicker(
+    coversOn: Boolean,
+    onCovers: (Boolean) -> Unit,
+    color: Int,
+    onColor: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+    resetKey: Any? = Unit,
+) {
+    var held by remember(resetKey) { mutableIntStateOf(color.takeIf { it != 0 } ?: FolderTagColors[0]) }
+    val tick = rememberHapticTick()
+    Column(modifier) {
+        Row(
+            modifier = Modifier.padding(horizontal = 20.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            FolderToggle(
+                label = stringResource(R.string.library_folder_covers),
+                checked = coversOn,
+                onChecked = {
+                    tick?.invoke()
+                    onCovers(it)
+                },
+            )
+            FolderToggle(
+                label = stringResource(R.string.library_folder_color),
+                checked = color != 0,
+                onChecked = { on ->
+                    tick?.invoke()
+                    onColor(if (on) held else 0)
+                },
+            )
+        }
+        Row(
+            modifier = Modifier
+                .padding(top = 12.dp)
+                .fillMaxWidth()
+                .graphicsLayer { alpha = if (color == 0) 0.38f else 1f }
+                .horizontalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            FolderTagColors.forEach { tag ->
+                FolderColorDot(
+                    color = Color(tag),
+                    selected = color == tag,
+                    onClick = {
+                        tick?.invoke()
+                        held = tag
+                        onColor(tag)
+                    },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun FolderToggle(
+    label: String,
+    checked: Boolean,
+    onChecked: (Boolean) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(percent = 50))
+            .background(if (checked) PlayBlue.copy(alpha = 0.18f) else Color.White.copy(alpha = 0.05f))
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = { onChecked(!checked) },
+            )
+            .padding(start = 10.dp, end = 5.dp, top = 4.dp, bottom = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = label,
+            color = Color.White.copy(alpha = if (checked) 0.92f else 0.55f),
+            fontSize = 12.sp,
+            lineHeight = 16.sp,
+        )
+        Spacer(Modifier.width(6.dp))
+        FolderMiniSwitch(checked)
+    }
+}
+
+@Composable
+private fun FolderMiniSwitch(checked: Boolean) {
+    val travel by animateDpAsState(
+        targetValue = if (checked) 12.dp else 0.dp,
+        animationSpec = spring(dampingRatio = 1f, stiffness = 500f),
+        label = "folderSwitch",
+    )
+    Box(
+        Modifier
+            .width(28.dp)
+            .height(16.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(if (checked) PlayBlue else Color(0xFF2C2C30))
+            .padding(2.dp),
+    ) {
+        Box(
+            Modifier
+                .offset(x = travel)
+                .size(12.dp)
+                .clip(CircleShape)
+                .background(if (checked) Color.White else Color(0xFF8A8A90)),
+        )
+    }
+}
+
+@Composable
+private fun FolderColorDot(
+    color: Color,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .size(26.dp)
+            .clip(CircleShape)
+            .background(color)
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick,
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (selected) {
+            Icon(
+                imageVector = Icons.Filled.Check,
+                contentDescription = null,
+                tint = if (color.luminance() > 0.62f) Color.Black else Color.White,
+                modifier = Modifier.size(13.dp),
             )
         }
     }

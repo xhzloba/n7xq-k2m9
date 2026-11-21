@@ -65,7 +65,13 @@ class FolderStore(context: Context) {
         replace(itemsState.value.filterNot { it.id == id })
     }
 
-    fun add(name: String, description: String, title: SavedTitle?) {
+    fun add(
+        name: String,
+        description: String,
+        title: SavedTitle?,
+        color: Int = 0,
+        covers: Boolean = true,
+    ) {
         val named = name.trim()
         if (named.isEmpty()) return
         val titles = listOfNotNull(title).filter { it.id.isNotBlank() }
@@ -77,6 +83,8 @@ class FolderStore(context: Context) {
                     titles = titles,
                     id = UUID.randomUUID().toString(),
                     createdAt = System.currentTimeMillis(),
+                    color = color,
+                    covers = covers,
                 ),
             ) + itemsState.value,
         )
