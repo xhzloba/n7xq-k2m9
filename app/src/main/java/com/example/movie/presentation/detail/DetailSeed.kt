@@ -22,6 +22,7 @@ internal fun Movie.toPreviewDetail(): MovieDetail = MovieDetail(
     logoUrl = logoUrl,
     posterUrl = posterUrl,
     year = year,
+    releaseDate = releaseDate,
     runtimeMinutes = null,
     age = age,
     genres = genres.split(',').map { it.trim() }.filter { it.isNotEmpty() },

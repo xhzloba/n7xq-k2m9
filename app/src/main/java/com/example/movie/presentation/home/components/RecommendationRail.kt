@@ -310,8 +310,7 @@ internal fun RecommendationRailSkeleton(
         BoxWithConstraints(Modifier.fillMaxWidth()) {
             val posterWidth = posterSize(PosterWidth)
             val posterHeight = posterWidth * posterAspect()
-            val showTitles = posterTitlesOn()
-            val rowHeight = posterHeight + WatchedBadgeHang + if (showTitles) PosterCaptionBlock else 0.dp
+            val rowHeight = posterHeight + WatchedBadgeHang + posterCaptionExtra()
             val count = ((maxWidth - RailStart) / (posterWidth + PosterGap)).toInt().coerceIn(2, 4)
             LazyRow(
                 contentPadding = PaddingValues(start = RailStart, end = RailStart),
@@ -331,7 +330,7 @@ internal fun RecommendationRailSkeleton(
                                 .background(Color.White.copy(alpha = 0.08f)),
                         )
                         Spacer(Modifier.height(WatchedBadgeHang))
-                        if (showTitles) PosterCaptionSkeleton()
+                        PosterCaptionSkeleton()
                     }
                 }
             }
@@ -426,10 +425,9 @@ private fun RecommendationPager(
     }
     val posterWidth = posterSize(PosterWidth)
     val posterHeight = posterWidth * posterAspect()
-    val showTitles = posterTitlesOn()
     val watched = rememberWatchedIds()
     val favorites = rememberFavoriteIds()
-    val rowHeight = posterHeight + WatchedBadgeHang + if (showTitles) PosterCaptionBlock else 0.dp
+    val rowHeight = posterHeight + WatchedBadgeHang + posterCaptionExtra()
     BoxWithConstraints(modifier.fillMaxWidth()) {
         // Плашка «Все» занимает хвост после последнего постера, когда доскроллили до конца.
         val trail = onOpen != null
@@ -525,7 +523,7 @@ private fun RecommendationPager(
                         }
                     }
                     Spacer(Modifier.height(WatchedBadgeHang))
-                    if (showTitles) PosterCaption(movie.title, movie.year)
+                    PosterCaption(movie.title, movie.year, movie.releaseDate)
                 }
             }
             if (onOpen != null) {

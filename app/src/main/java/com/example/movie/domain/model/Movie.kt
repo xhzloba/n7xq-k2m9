@@ -25,4 +25,6 @@ data class Movie(
     val kind: ContentKind,
     val camrip: Boolean,
     val type: String = "",
+    /** ISO `YYYY-MM-DD` из каталога. Пусто — на обложке остаётся год. */
+    val releaseDate: String? = null,
 )

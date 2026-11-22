@@ -51,6 +51,8 @@ private object DefaultUserSettings : UserSettingsRepository {
 
     override fun setShowPosterTitles(enabled: Boolean) = Unit
 
+    override fun setShowReleaseDate(enabled: Boolean) = Unit
+
     override fun setLargePosters(enabled: Boolean) = Unit
 
     override fun setPosterQuality(quality: String) = Unit

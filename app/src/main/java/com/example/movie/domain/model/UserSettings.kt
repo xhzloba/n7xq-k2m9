@@ -34,6 +34,8 @@ data class UserSettings(
     /** Сдвиг первого экрана карточки относительно кадра. */
     val detailParallax: Boolean = false,
     val showPosterTitles: Boolean = true,
+    /** Под названием день и месяц. Выключено — только год. */
+    val showReleaseDate: Boolean = false,
     val largePosters: Boolean = false,
     /** full — полный постер, light — под ячейку, low — маленький файл. */
     val posterQuality: String = PosterQualityFull,
@@ -237,6 +239,8 @@ interface UserSettingsRepository {
     fun setDetailParallax(enabled: Boolean)
 
     fun setShowPosterTitles(enabled: Boolean)
+
+    fun setShowReleaseDate(enabled: Boolean)
 
     fun setLargePosters(enabled: Boolean)
 

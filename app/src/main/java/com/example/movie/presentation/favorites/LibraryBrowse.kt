@@ -80,7 +80,6 @@ import com.example.movie.presentation.home.components.WatchedBadge
 import com.example.movie.presentation.home.components.WatchedBadgeHang
 import com.example.movie.presentation.home.components.rememberWatchedIds
 import com.example.movie.presentation.home.components.WatchProgress
-import com.example.movie.presentation.home.components.posterTitlesOn
 import com.example.movie.presentation.home.components.MenuSombreroEffect
 import com.example.movie.presentation.home.components.CategoryTabFontSize
 import com.example.movie.presentation.home.components.CategoryTabLetterSpacing
@@ -390,7 +389,6 @@ internal fun FavoritePoster(
     var pressed by remember(item.id) { mutableStateOf(false) }
     val pressScale = rememberPressScale(pressed)
     val wave = remember(item.id) { PosterWave() }
-    val showTitles = posterTitlesOn()
     val watched = rememberWatchedIds()
     Column {
         Box {
@@ -451,7 +449,7 @@ internal fun FavoritePoster(
             }
         }
         Spacer(Modifier.height(WatchedBadgeHang))
-        if (showTitles) PosterCaption(item.title, item.year)
+        PosterCaption(item.title, item.year, item.releaseDate)
     }
 }
 

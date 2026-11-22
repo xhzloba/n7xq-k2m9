@@ -94,7 +94,6 @@ import com.example.movie.presentation.home.components.PosterGridInset
 import com.example.movie.presentation.home.components.WatchedBadge
 import com.example.movie.presentation.home.components.WatchedBadgeHang
 import com.example.movie.presentation.home.components.posterGridColumns
-import com.example.movie.presentation.home.components.posterTitlesOn
 import com.example.movie.presentation.home.components.rememberFavoriteIds
 import com.example.movie.presentation.home.components.rememberWatchedIds
 import com.example.movie.presentation.settings.LocalUserSettings
@@ -316,7 +315,6 @@ private fun SearchIdle(
 ) {
     val tick = rememberHapticTick()
     val poster = rememberHaptic(HapticSlot.Poster)
-    val showTitles = posterTitlesOn()
     val watched = rememberWatchedIds()
     val favorites = rememberFavoriteIds()
     val pageBottom = searchPageBottom()
@@ -462,7 +460,7 @@ private fun SearchIdle(
                         }
                     }
                     Spacer(Modifier.height(WatchedBadgeHang))
-                    if (showTitles) PosterCaption(movie.title, movie.year)
+                    PosterCaption(movie.title, movie.year, movie.releaseDate)
                 }
             }
         }
@@ -471,7 +469,6 @@ private fun SearchIdle(
 
 @Composable
 private fun SearchPopularSkeleton(modifier: Modifier = Modifier) {
-    val showTitles = posterTitlesOn()
     val pageBottom = searchPageBottom()
     LazyVerticalGrid(
         columns = GridCells.Fixed(posterGridColumns()),
@@ -495,7 +492,7 @@ private fun SearchPopularSkeleton(modifier: Modifier = Modifier) {
                         .background(Color.White.copy(alpha = 0.08f)),
                 )
                 Spacer(Modifier.height(WatchedBadgeHang))
-                if (showTitles) PosterCaptionSkeleton()
+                PosterCaptionSkeleton()
             }
         }
     }
@@ -539,7 +536,6 @@ private fun SearchResults(
 ) {
     val tick = rememberHapticTick()
     val poster = rememberHaptic(HapticSlot.Poster)
-    val showTitles = posterTitlesOn()
     val watched = rememberWatchedIds()
     val favorites = rememberFavoriteIds()
     val pageBottom = searchPageBottom()
@@ -611,7 +607,7 @@ private fun SearchResults(
                     }
                 }
                 Spacer(Modifier.height(WatchedBadgeHang))
-                if (showTitles) PosterCaption(movie.title, movie.year)
+                PosterCaption(movie.title, movie.year, movie.releaseDate)
             }
         }
         if (loadingMore || error != null) {
@@ -654,7 +650,6 @@ private fun SearchMoreRow(loading: Boolean, error: DataError?, onRetry: () -> Un
 
 @Composable
 private fun SearchSkeleton() {
-    val showTitles = posterTitlesOn()
     LazyVerticalGrid(
         columns = GridCells.Fixed(posterGridColumns()),
         contentPadding = PaddingValues(horizontal = PosterGridInset),
@@ -673,7 +668,7 @@ private fun SearchSkeleton() {
                         .background(Color.White.copy(alpha = 0.08f)),
                 )
                 Spacer(Modifier.height(WatchedBadgeHang))
-                if (showTitles) PosterCaptionSkeleton()
+                PosterCaptionSkeleton()
             }
         }
     }

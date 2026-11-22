@@ -26,6 +26,7 @@ class MovieMapperTest {
                     "name": "Битва моторов",
                     "originalname": "Битва моторов",
                     "released": 2026,
+                    "release_date": "2026-09-23",
                     "about": "текст",
                     "director": "Илья Маланин",
                     "country": "Россия",
@@ -50,6 +51,7 @@ class MovieMapperTest {
         assertEquals("1", movie.id)
         assertEquals("Битва моторов", movie.title)
         assertEquals(2026, movie.year)
+        assertEquals("2026-09-23", movie.releaseDate)
         assertEquals("https://example.com/p.jpg", movie.backdropUrl)
         assertEquals("https://example.com/l.png", movie.logoUrl)
         assertNull(movie.ratingKp)

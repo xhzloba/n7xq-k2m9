@@ -410,6 +410,12 @@ private fun SettingsLeaf(
                             onChecked = onShowPosterTitles,
                         ),
                         SettingItem(
+                            title = stringResource(R.string.settings_release_date),
+                            hint = stringResource(R.string.settings_release_date_hint),
+                            checked = settings.showReleaseDate,
+                            onChecked = LocalUserSettings.current::setShowReleaseDate,
+                        ),
+                        SettingItem(
                             title = stringResource(R.string.settings_white_titles),
                             hint = stringResource(R.string.settings_white_titles_hint),
                             checked = settings.whiteTitles,

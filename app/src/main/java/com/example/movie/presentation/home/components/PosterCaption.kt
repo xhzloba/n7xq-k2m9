@@ -23,15 +23,16 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.movie.domain.model.posterDateLabel
 import com.example.movie.presentation.settings.LocalUserSettings
 import com.example.movie.ui.theme.CinemaMuted
 
 internal val PosterCaptionBlock = 38.dp
 
 @Composable
-internal fun posterTitlesOn(): Boolean {
+internal fun posterCaptionExtra(): Dp {
     val settings by LocalUserSettings.current.settings.collectAsStateWithLifecycle()
-    return settings.showPosterTitles
+    return if (settings.showPosterTitles) PosterCaptionBlock else 0.dp
 }
 
 @Composable
@@ -53,7 +54,14 @@ internal fun posterAspect(): Float = if (largePostersOn()) 1.46f else 1.50f
 internal fun posterGridColumns(): Int = if (largePostersOn()) 2 else 3
 
 @Composable
-internal fun PosterCaption(title: String, year: Int?, modifier: Modifier = Modifier) {
+internal fun PosterCaption(
+    title: String,
+    year: Int?,
+    releaseDate: String? = null,
+    modifier: Modifier = Modifier,
+) {
+    val settings by LocalUserSettings.current.settings.collectAsStateWithLifecycle()
+    if (!settings.showPosterTitles) return
     val style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false))
     Column(modifier.padding(top = 2.dp)) {
         Text(
@@ -68,12 +76,13 @@ internal fun PosterCaption(title: String, year: Int?, modifier: Modifier = Modif
         )
         Spacer(Modifier.height(4.dp))
         Text(
-            text = year?.toString().orEmpty(),
+            text = posterDateLabel(year, releaseDate, full = settings.showReleaseDate),
             color = CinemaMuted,
             fontSize = 12.sp,
             lineHeight = 15.sp,
             style = style,
             maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }
@@ -82,6 +91,8 @@ internal fun PosterCaption(title: String, year: Int?, modifier: Modifier = Modif
 internal fun PosterCaptionSkeleton(modifier: Modifier = Modifier) {
     // Те же слоты, что у PosterCaption: 2.dp, строка 15.sp, 4.dp, строка 15.sp.
     // Иначе нижние ряды подпрыгивают, когда скелетон сменяется текстом.
+    val settings by LocalUserSettings.current.settings.collectAsStateWithLifecycle()
+    if (!settings.showPosterTitles) return
     Column(modifier.padding(top = 2.dp)) {
         CaptionBar(0.82f, 11.dp, 0.10f, FontWeight.SemiBold)
         Spacer(Modifier.height(4.dp))

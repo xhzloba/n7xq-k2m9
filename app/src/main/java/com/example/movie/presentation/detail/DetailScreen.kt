@@ -204,11 +204,10 @@ import com.example.movie.presentation.haptic.rememberHaptic
 import com.example.movie.presentation.haptic.rememberHapticTick
 import com.example.movie.presentation.home.components.MovieLogoShadow
 import com.example.movie.presentation.home.components.PosterCaption
-import com.example.movie.presentation.home.components.PosterCaptionBlock
+import com.example.movie.presentation.home.components.posterCaptionExtra
 import com.example.movie.presentation.home.components.PosterGap
 import com.example.movie.presentation.home.components.posterAspect
 import com.example.movie.presentation.home.components.posterSize
-import com.example.movie.presentation.home.components.posterTitlesOn
 import com.example.movie.presentation.home.holdCue
 import com.example.movie.presentation.home.holdToPeek
 import com.example.movie.presentation.home.SeasonWatchSheet
@@ -3042,7 +3041,6 @@ private fun MovieStrip(
 ) {
     val listState = rememberLazyListState()
     val tick = rememberHaptic(HapticSlot.Poster)
-    val showTitles = posterTitlesOn()
     val posterWidth = posterSize(108.dp)
     val aspect = posterAspect()
     HapticOnChange(listState) { listState.firstVisibleItemIndex }
@@ -3051,7 +3049,7 @@ private fun MovieStrip(
         modifier = Modifier
             .edgeToEdge(DetailInset)
             .fillMaxWidth()
-            .height(posterWidth * aspect + if (showTitles) PosterCaptionBlock else 0.dp),
+            .height(posterWidth * aspect + posterCaptionExtra()),
         contentPadding = PaddingValues(horizontal = DetailInset),
         horizontalArrangement = Arrangement.spacedBy(PosterGap),
     ) {
@@ -3062,11 +3060,8 @@ private fun MovieStrip(
             val pressScale = rememberPressScale(pressed)
             val wave = remember(movie.id) { PosterWave() }
             Column(modifier = Modifier.width(posterWidth)) {
-                PosterImage(
-                    url = movie.posterUrl,
-                    movieId = movie.id,
-                    contentDescription = movie.title,
-                    modifier = Modifier
+                Box(
+                    Modifier
                         .fillMaxWidth()
                         .aspectRatio(1f / aspect)
                         .graphicsLayer {
@@ -3074,22 +3069,30 @@ private fun MovieStrip(
                             scaleY = pressScale
                         }
                         .clip(PosterShape)
-                        .background(Color.White.copy(alpha = 0.12f))
-                        .posterWave(wave)
-                        .holdToPeek(
-                            onPeek = { onMoviePeek(movie) },
-                            onProgress = { holdProgress = it },
-                            onPressed = { pressed = it },
-                            onClick = {
-                                tick?.invoke()
-                                DetailSeed.put(movie)
-                                onOpenMovie(movie.id)
-                            },
-                            wave = wave,
-                        )
-                        .holdCue(holdProgress),
-                )
-                if (showTitles) PosterCaption(movie.title, movie.year)
+                        .background(Color.White.copy(alpha = 0.12f)),
+                ) {
+                    PosterImage(
+                        url = movie.posterUrl,
+                        movieId = movie.id,
+                        contentDescription = movie.title,
+                        modifier = Modifier
+                            .matchParentSize()
+                            .posterWave(wave)
+                            .holdToPeek(
+                                onPeek = { onMoviePeek(movie) },
+                                onProgress = { holdProgress = it },
+                                onPressed = { pressed = it },
+                                onClick = {
+                                    tick?.invoke()
+                                    DetailSeed.put(movie)
+                                    onOpenMovie(movie.id)
+                                },
+                                wave = wave,
+                            )
+                            .holdCue(holdProgress),
+                    )
+                }
+                PosterCaption(movie.title, movie.year, movie.releaseDate)
             }
         }
     }

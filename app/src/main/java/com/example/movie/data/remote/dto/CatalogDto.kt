@@ -30,6 +30,7 @@ internal data class MovieDetailsDto(
     val name: String = "",
     val originalname: String = "",
     val released: Int = 0,
+    @SerialName("release_date") val releaseDate: JsonElement? = null,
     val runtime: Int = 0,
     val about: String = "",
     val director: String = "",

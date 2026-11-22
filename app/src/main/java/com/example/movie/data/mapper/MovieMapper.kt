@@ -26,6 +26,7 @@ internal fun ChannelDto.toDomain(): Movie {
         title = details.name.trim(),
         originalTitle = details.originalname.trim(),
         year = details.released.takeIf { it > 0 },
+        releaseDate = details.releaseDate.isoDate(),
         overview = details.about.trim(),
         genres = details.genre.trim(),
         country = details.country.trim(),
@@ -95,6 +96,7 @@ internal fun MovieDetailsDto.toDetail(): MovieDetail {
         logoUrl = logoPoster.orNullIfBlank(),
         posterUrl = poster.orNullIfBlank(),
         year = released.takeIf { it > 0 },
+        releaseDate = releaseDate.isoDate(),
         runtimeMinutes = runtime.takeIf { it > 0 },
         age = age?.takeIf { it > 0 },
         genres = genre.split(',').map { it.trim() }.filter { it.isNotEmpty() },
@@ -121,6 +123,17 @@ private fun String?.orNullIfBlank(): String? = this?.trim()?.takeIf { it.isNotEm
 private val BackdropSize = Regex("/t/p/w\\d+/")
 
 private fun String.fullBackdrop(): String = replace(BackdropSize, "/t/p/original/")
+
+private fun JsonElement?.isoDate(): String? {
+    val raw = when (this) {
+        null, is JsonNull -> return null
+        is JsonPrimitive -> contentOrNull?.trim().orEmpty()
+        else -> return null
+    }
+    if (raw.length != 10 || raw[4] != '-' || raw[7] != '-') return null
+    if (!raw.all { it.isDigit() || it == '-' }) return null
+    return raw
+}
 
 private fun JsonElement?.positiveRating(): Float? {
     val raw = when (this) {

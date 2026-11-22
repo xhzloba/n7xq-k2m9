@@ -512,6 +512,8 @@
     <string name="settings_white_titles_hint">Заголовки полок белые и жирные. Выключено — серые.</string>
     <string name="settings_poster_titles">Названия под обложками</string>
     <string name="settings_poster_titles_hint">Название и год под постером. Длинное название обрезается.</string>
+    <string name="settings_release_date">Дата релиза</string>
+    <string name="settings_release_date_hint">Под названием день и месяц, если каталог их даёт: «23 сен. 2026». Выключено — только год.</string>
     <string name="settings_large_posters">Крупные постеры</string>
     <string name="settings_large_posters_hint">Больше обложки в полках и в полном списке фильмов. Выключено — размер как сейчас.</string>
     <string name="settings_poster_quality">Качество обложек</string>

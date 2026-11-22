@@ -91,6 +91,8 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
 
     override fun setShowPosterTitles(enabled: Boolean) = write { it.copy(showPosterTitles = enabled) }
 
+    override fun setShowReleaseDate(enabled: Boolean) = write { it.copy(showReleaseDate = enabled) }
+
     override fun setLargePosters(enabled: Boolean) = write { it.copy(largePosters = enabled) }
 
     override fun setPosterQuality(quality: String) = write {
@@ -245,6 +247,7 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
             .putBoolean(KEY_GYRO, next.gyro)
             .putBoolean(KEY_DETAIL_PARALLAX, next.detailParallax)
             .putBoolean(KEY_POSTER_TITLES, next.showPosterTitles)
+            .putBoolean(KEY_SHOW_RELEASE_DATE, next.showReleaseDate)
             .putBoolean(KEY_LARGE_POSTERS, next.largePosters)
             .putString(KEY_POSTER_QUALITY, next.posterQuality)
             .putInt(KEY_IMAGE_PARALLEL, next.imageParallel)
@@ -366,6 +369,7 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
         gyro = prefs.getBoolean(KEY_GYRO, false),
         detailParallax = prefs.getBoolean(KEY_DETAIL_PARALLAX, false),
         showPosterTitles = prefs.getBoolean(KEY_POSTER_TITLES, true),
+        showReleaseDate = prefs.getBoolean(KEY_SHOW_RELEASE_DATE, false),
         largePosters = prefs.getBoolean(KEY_LARGE_POSTERS, false),
         posterQuality = when {
             prefs.contains(KEY_POSTER_QUALITY) ->
@@ -594,6 +598,7 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
         const val KEY_GYRO = "gyro"
         const val KEY_DETAIL_PARALLAX = "detail_parallax"
         const val KEY_POSTER_TITLES = "poster_titles"
+        const val KEY_SHOW_RELEASE_DATE = "show_release_date"
         const val KEY_LARGE_POSTERS = "large_posters"
         const val KEY_COMPACT_POSTERS = "compact_posters"
         const val KEY_POSTER_QUALITY = "poster_quality"

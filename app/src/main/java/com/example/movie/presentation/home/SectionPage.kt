@@ -85,7 +85,6 @@ import com.example.movie.presentation.home.components.WatchProgress
 import com.example.movie.presentation.home.components.PosterGap
 import com.example.movie.presentation.home.components.posterGridColumns
 import com.example.movie.presentation.home.components.posterAspect
-import com.example.movie.presentation.home.components.posterTitlesOn
 import com.example.movie.presentation.home.holdCue
 import com.example.movie.presentation.home.holdToPeek
 import com.example.movie.presentation.home.PosterWave
@@ -638,7 +637,6 @@ private fun PosterCell(
     var pressed by remember(movie.id) { mutableStateOf(false) }
     val pressScale = rememberPressScale(pressed)
     val wave = remember(movie.id) { PosterWave() }
-    val showTitles = posterTitlesOn()
     val watched = rememberWatchedIds()
     val favorites = rememberFavoriteIds()
     Column {
@@ -692,13 +690,12 @@ private fun PosterCell(
             }
         }
         Spacer(Modifier.height(WatchedBadgeHang))
-        if (showTitles) PosterCaption(movie.title, movie.year)
+        PosterCaption(movie.title, movie.year, movie.releaseDate)
     }
 }
 
 @Composable
 private fun SkeletonPoster() {
-    val showTitles = posterTitlesOn()
     Column {
         Box(
             Modifier
@@ -708,7 +705,7 @@ private fun SkeletonPoster() {
                 .background(Color.White.copy(alpha = 0.08f)),
         )
         Spacer(Modifier.height(WatchedBadgeHang))
-        if (showTitles) PosterCaptionSkeleton()
+        PosterCaptionSkeleton()
     }
 }
 

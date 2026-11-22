@@ -444,6 +444,13 @@ private fun HomeRailsLookBody(page: RailsLookTab) {
             )
             RailsDivider()
             RailsToggle(
+                title = stringResource(R.string.settings_release_date),
+                hint = stringResource(R.string.settings_release_date_hint),
+                checked = settings.showReleaseDate,
+                onChecked = repository::setShowReleaseDate,
+            )
+            RailsDivider()
+            RailsToggle(
                 title = stringResource(R.string.settings_white_titles),
                 hint = stringResource(R.string.settings_white_titles_hint),
                 checked = settings.whiteTitles,
