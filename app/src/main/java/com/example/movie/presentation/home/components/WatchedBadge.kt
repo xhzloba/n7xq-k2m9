@@ -63,29 +63,24 @@ internal fun FavoriteBadge(modifier: Modifier = Modifier) {
             .offset(x = (-4).dp, y = 6.dp),
     ) {
         drawCircle(color = Color.White, radius = size.minDimension / 2f)
-        drawPath(favoriteMark(), Color.Black)
+        drawPath(favoriteHeart(), Color.Black)
     }
 }
 
-private fun DrawScope.favoriteMark(): Path {
-    val inset = 5.4.dp.toPx()
-    val left = inset
-    val top = inset
-    val width = size.width - inset * 2
-    val height = size.height - inset * 2
-    fun x(value: Float) = left + (value - 6f) / 35f * width
-    fun y(value: Float) = top + (value - 3f) / 42f * height
+private fun DrawScope.favoriteHeart(): Path {
+    val pad = 3.6.dp.toPx()
+    val span = size.minDimension - pad * 2
+    fun x(value: Float) = pad + value / 24f * span
+    fun y(value: Float) = pad + value / 24f * span
     return Path().apply {
-        moveTo(x(38f), y(3f))
-        lineTo(x(9f), y(3f))
-        cubicTo(x(8.20435f), y(3f), x(7.44129f), y(3.31607f), x(6.87868f), y(3.87868f))
-        cubicTo(x(6.31607f), y(4.44129f), x(6f), y(5.20435f), x(6f), y(6f))
-        lineTo(x(6f), y(45f))
-        lineTo(x(23.5f), y(36.5f))
-        lineTo(x(41f), y(45f))
-        lineTo(x(41f), y(6f))
-        cubicTo(x(41f), y(5.20435f), x(40.6839f), y(4.44129f), x(40.1213f), y(3.87868f))
-        cubicTo(x(39.5587f), y(3.31607f), x(38.7957f), y(3f), x(38f), y(3f))
+        moveTo(x(12f), y(21.35f))
+        lineTo(x(10.55f), y(20.03f))
+        cubicTo(x(5.4f), y(15.36f), x(2f), y(12.28f), x(2f), y(8.5f))
+        cubicTo(x(2f), y(5.42f), x(4.42f), y(3f), x(7.5f), y(3f))
+        cubicTo(x(9.24f), y(3f), x(10.91f), y(3.81f), x(12f), y(5.09f))
+        cubicTo(x(13.09f), y(3.81f), x(14.76f), y(3f), x(16.5f), y(3f))
+        cubicTo(x(19.58f), y(3f), x(22f), y(5.42f), x(22f), y(8.5f))
+        cubicTo(x(22f), y(12.28f), x(18.6f), y(15.36f), x(13.45f), y(20.04f))
         close()
     }
 }
