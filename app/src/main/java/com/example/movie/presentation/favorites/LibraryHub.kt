@@ -249,6 +249,8 @@ internal fun LibraryBar(
     modifier: Modifier = Modifier,
     mark: ImageVector? = null,
     titleAtStart: Boolean = false,
+    titleColor: Color = Color.White,
+    markTint: Color = Color.White,
 ) {
     val tick = rememberHapticTick()
     Box(
@@ -271,14 +273,14 @@ internal fun LibraryBar(
                 Icon(
                     imageVector = mark,
                     contentDescription = null,
-                    tint = Color.White,
+                    tint = markTint,
                     modifier = Modifier.size(18.dp),
                 )
                 Spacer(Modifier.width(8.dp))
             }
             Text(
                 text = title,
-                color = Color.White,
+                color = titleColor,
                 fontSize = 18.sp,
                 lineHeight = 24.sp,
                 fontWeight = FontWeight.Medium,

@@ -76,7 +76,9 @@ import com.example.movie.domain.model.HapticSlot
 import com.example.movie.presentation.haptic.rememberHaptic
 import com.example.movie.presentation.home.components.PosterGridInset
 import com.example.movie.presentation.home.components.PosterCaption
+import com.example.movie.presentation.home.components.WatchedBadge
 import com.example.movie.presentation.home.components.WatchedBadgeHang
+import com.example.movie.presentation.home.components.rememberWatchedIds
 import com.example.movie.presentation.home.components.WatchProgress
 import com.example.movie.presentation.home.components.posterTitlesOn
 import com.example.movie.presentation.home.components.MenuSombreroEffect
@@ -389,6 +391,7 @@ internal fun FavoritePoster(
     val pressScale = rememberPressScale(pressed)
     val wave = remember(item.id) { PosterWave() }
     val showTitles = posterTitlesOn()
+    val watched = rememberWatchedIds()
     Column {
         Box {
             Box(
@@ -429,6 +432,9 @@ internal fun FavoritePoster(
                         modifier = Modifier.align(Alignment.BottomCenter),
                     )
                 }
+            }
+            if (item.id in watched) {
+                WatchedBadge(Modifier.align(Alignment.BottomEnd))
             }
             if (badge != null) {
                 Text(

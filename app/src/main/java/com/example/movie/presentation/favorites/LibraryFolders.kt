@@ -5,6 +5,8 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -56,6 +58,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -83,13 +86,16 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.movie.R
+import com.example.movie.di.LocalAppContainer
 import com.example.movie.data.folders.LibraryFolder
 import com.example.movie.presentation.folders.FolderGlyph
 import com.example.movie.presentation.folders.FolderLookPicker
 import com.example.movie.presentation.common.scrollToTopOn
 import com.example.movie.ui.theme.PlayBlue
 import com.example.movie.domain.model.Movie
+import com.example.movie.domain.model.SavedTitle
 import com.example.movie.presentation.haptic.rememberHapticTick
 import com.example.movie.presentation.common.HandleSheet
 import com.example.movie.presentation.home.SectionScrim
@@ -100,8 +106,32 @@ import com.example.movie.presentation.home.components.PosterGridInset
 import com.example.movie.presentation.home.components.PosterGap
 import com.example.movie.presentation.home.components.posterGridColumns
 import com.example.movie.ui.theme.CinemaMuted
+import kotlin.math.roundToInt
 
 internal enum class FolderOrder { Date, Name }
+
+internal enum class FolderTitlesOrder { Added, Year, Title, Rating, Unwatched }
+
+internal fun List<SavedTitle>.ordered(
+    mode: FolderTitlesOrder,
+    watched: Set<String> = emptySet(),
+): List<SavedTitle> = when (mode) {
+    FolderTitlesOrder.Added -> this
+    FolderTitlesOrder.Unwatched -> sortedBy { it.id in watched }
+    FolderTitlesOrder.Year -> sortedWith(
+        compareByDescending<SavedTitle> { it.year != null }
+            .thenByDescending { it.year ?: 0 }
+            .thenBy { it.title.lowercase() },
+    )
+    FolderTitlesOrder.Title -> sortedWith(
+        compareBy(Collator.getInstance(Locale.forLanguageTag("ru"))) { it.title },
+    )
+    FolderTitlesOrder.Rating -> sortedWith(
+        compareByDescending<SavedTitle> { it.ratingKp != null || it.ratingImdb != null }
+            .thenByDescending { maxOf(it.ratingKp ?: 0f, it.ratingImdb ?: 0f) }
+            .thenBy { it.title.lowercase() },
+    )
+}
 
 internal data class IndexedFolder(val index: Int, val folder: LibraryFolder)
 
@@ -147,10 +177,10 @@ internal fun Long.folderDate(): String =
     Instant.ofEpochMilli(this).atZone(ZoneId.systemDefault()).format(FolderDateFormat).replace(".", "")
 
 @Composable
-internal fun FolderSortButton(onClick: () -> Unit) {
+internal fun FolderSortButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
     val tick = rememberHapticTick()
     Box(
-        modifier = Modifier
+        modifier = modifier
             .size(32.dp)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
@@ -194,6 +224,71 @@ internal fun FolderSortSheet(
         FolderOrder.entries.forEach { mode ->
             val label = stringResource(
                 if (mode == FolderOrder.Name) R.string.library_folder_sort_name else R.string.library_folder_sort_date,
+            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = {
+                            tick?.invoke()
+                            onPick(mode)
+                        },
+                    )
+                    .padding(horizontal = 22.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = label,
+                    modifier = Modifier.weight(1f),
+                    color = Color.White,
+                    fontSize = 16.sp,
+                    lineHeight = 21.sp,
+                )
+                if (mode == current) {
+                    Icon(
+                        imageVector = Icons.Filled.Check,
+                        contentDescription = null,
+                        tint = PlayBlue,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+    }
+}
+
+@Composable
+internal fun FolderTitlesSortSheet(
+    current: FolderTitlesOrder,
+    onPick: (FolderTitlesOrder) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val tick = rememberHapticTick()
+    HandleSheet(onDismiss = onDismiss) {
+        Text(
+            text = stringResource(R.string.library_folder_sort),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 22.dp),
+            color = Color.White,
+            fontWeight = FontWeight.Bold,
+            fontSize = 18.sp,
+            lineHeight = 23.sp,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.height(8.dp))
+        FolderTitlesOrder.entries.forEach { mode ->
+            val label = stringResource(
+                when (mode) {
+                    FolderTitlesOrder.Added -> R.string.library_folder_sort_added
+                    FolderTitlesOrder.Unwatched -> R.string.library_folder_sort_unwatched
+                    FolderTitlesOrder.Year -> R.string.favorites_sort_year
+                    FolderTitlesOrder.Title -> R.string.favorites_sort_title
+                    FolderTitlesOrder.Rating -> R.string.catalog_sort_rating
+                },
             )
             Row(
                 modifier = Modifier
@@ -413,7 +508,7 @@ internal fun FolderCard(
                     .fillMaxSize()
                     .padding(
                         start = 14.dp,
-                        end = 14.dp,
+                        end = if (covers.isNotEmpty()) 108.dp else 14.dp,
                         top = 12.dp,
                         bottom = if (covers.isNotEmpty()) 90.dp else 12.dp,
                     ),
@@ -442,8 +537,8 @@ internal fun FolderCard(
                 FolderCovers(
                     urls = covers,
                     modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .padding(start = 14.dp, bottom = 10.dp),
+                        .align(Alignment.BottomEnd)
+                        .padding(end = 14.dp, bottom = 10.dp),
                 )
             }
             if (onEdit != null || onDelete != null) {
@@ -657,6 +752,14 @@ internal fun FolderInside(
     onMovieClick: (String) -> Unit,
     onMoviePeek: (Movie) -> Unit,
 ) {
+    var sortOpen by remember { mutableStateOf(false) }
+    var orderName by rememberSaveable(folder.id) { mutableStateOf(FolderTitlesOrder.Added.name) }
+    val order = runCatching { FolderTitlesOrder.valueOf(orderName) }.getOrDefault(FolderTitlesOrder.Added)
+    val watched by LocalAppContainer.current.watched.ids.collectAsStateWithLifecycle()
+    val titles = folder.titles.ordered(order, watched)
+    val watchedCount = folder.titles.count { it.id in watched }
+    val ink = if (folder.color != 0) Color(folder.color.folderInk()) else Color.White
+    val pace = if (folder.color != 0) ink else PlayBlue
     Box(Modifier.fillMaxSize()) {
         if (folder.titles.isEmpty()) {
             Column(
@@ -703,18 +806,25 @@ internal fun FolderInside(
                 horizontalArrangement = Arrangement.spacedBy(PosterGap),
                 verticalArrangement = Arrangement.spacedBy(PosterGap),
             ) {
-                if (folder.description.isNotBlank()) {
-                    item(key = "about", span = { GridItemSpan(maxLineSpan) }) {
-                        Text(
-                            text = folder.description,
-                            color = CinemaMuted,
-                            fontSize = 14.sp,
-                            lineHeight = 19.sp,
-                            modifier = Modifier.padding(bottom = 6.dp),
+                item(key = "pace", span = { GridItemSpan(maxLineSpan) }) {
+                    Column(Modifier.padding(bottom = 8.dp)) {
+                        FolderPace(
+                            done = watchedCount,
+                            total = folder.titles.size,
+                            ink = pace,
                         )
+                        if (folder.description.isNotBlank()) {
+                            Text(
+                                text = folder.description,
+                                color = CinemaMuted,
+                                fontSize = 14.sp,
+                                lineHeight = 19.sp,
+                                modifier = Modifier.padding(top = 12.dp),
+                            )
+                        }
                     }
                 }
-                items(folder.titles, key = { it.id }) { item ->
+                items(titles, key = { it.id }) { item ->
                     FavoritePoster(
                         item = item,
                         onMovieClick = onMovieClick,
@@ -731,7 +841,88 @@ internal fun FolderInside(
             title = folder.name,
             onBack = onBack,
             mark = FolderMark,
+            titleAtStart = true,
+            titleColor = ink,
+            markTint = ink,
             modifier = Modifier.align(Alignment.TopCenter),
+        )
+        if (folder.titles.isNotEmpty()) {
+            FolderSortButton(
+                onClick = { sortOpen = true },
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))
+                    .padding(top = BrandTopInset, end = PosterGridInset),
+            )
+        }
+        if (sortOpen) {
+            FolderTitlesSortSheet(
+                current = order,
+                onPick = {
+                    orderName = it.name
+                    sortOpen = false
+                },
+                onDismiss = { sortOpen = false },
+            )
+        }
+    }
+}
+
+@Composable
+private fun FolderPace(done: Int, total: Int, ink: Color) {
+    val target = if (total == 0) 0f else done.toFloat() / total.toFloat()
+    val fraction by animateFloatAsState(target, tween(420), label = "folderPace")
+    val percent = (target * 100f).roundToInt().coerceIn(0, 100)
+    val shape = RoundedCornerShape(percent = 50)
+    Column(Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = stringResource(R.string.library_folder_pace),
+                modifier = Modifier.weight(1f),
+                color = CinemaMuted,
+                fontSize = 12.sp,
+                lineHeight = 15.sp,
+            )
+            Text(
+                text = stringResource(R.string.library_folder_pace_count, percent),
+                color = Color.White.copy(alpha = 0.42f),
+                fontSize = 12.sp,
+                lineHeight = 15.sp,
+            )
+        }
+        Box(
+            Modifier
+                .padding(top = 8.dp)
+                .fillMaxWidth()
+                .height(6.dp)
+                .clip(shape)
+                .background(Color.White.copy(alpha = 0.10f)),
+        ) {
+            if (fraction > 0.001f) {
+                Box(
+                    Modifier
+                        .fillMaxWidth(fraction.coerceIn(0.04f, 1f))
+                        .height(6.dp)
+                        .clip(shape)
+                        .background(
+                            Brush.horizontalGradient(
+                                listOf(ink.copy(alpha = 0.55f), ink),
+                            ),
+                        ),
+                )
+            }
+        }
+        Text(
+            text = stringResource(R.string.library_folder_pace_of, done, total),
+            modifier = Modifier
+                .align(Alignment.End)
+                .padding(top = 6.dp),
+            color = Color.White.copy(alpha = 0.42f),
+            fontSize = 12.sp,
+            lineHeight = 15.sp,
         )
     }
 }

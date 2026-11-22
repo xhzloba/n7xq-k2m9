@@ -189,6 +189,9 @@
     <string name="library_folder_color">Цвет</string>
     <string name="library_folder_covers">Обложки</string>
     <string name="library_folder_empty">В папке пока пусто.</string>
+    <string name="library_folder_pace">Просмотрено</string>
+    <string name="library_folder_pace_count">%1$d%%</string>
+    <string name="library_folder_pace_of">%1$d из %2$d</string>
     <string name="library_folder_edit">Изменить папку</string>
     <string name="library_folder_delete">Удалить папку</string>
     <string name="library_folder_delete_title">Удалить папку?</string>
@@ -197,6 +200,8 @@
     <string name="library_folder_sort">Сортировка</string>
     <string name="library_folder_sort_name">По имени</string>
     <string name="library_folder_sort_date">По дате</string>
+    <string name="library_folder_sort_added">По добавлению</string>
+    <string name="library_folder_sort_unwatched">Сначала непросмотренные</string>
     <string name="library_folder_create">Создать</string>
     <string name="library_folder_save">Сохранить</string>
     <string name="library_folder_cancel">Отмена</string>
