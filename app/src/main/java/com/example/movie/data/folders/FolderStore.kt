@@ -17,9 +17,12 @@ data class LibraryFolder(
     val titles: List<SavedTitle> = emptyList(),
     val id: String = "",
     val createdAt: Long = 0L,
+    val updatedAt: Long = 0L,
     val color: Int = 0,
     val covers: Boolean = true,
-)
+) {
+    val touchedAt: Long get() = updatedAt.takeIf { it > 0L } ?: createdAt
+}
 
 class FolderStore(context: Context) {
     private val app = context.applicationContext
@@ -55,7 +58,10 @@ class FolderStore(context: Context) {
             listOf(title) + folder.titles.filterNot { it.id == title.id }
         }
         val next = current.toMutableList()
-        next[index] = folder.copy(titles = titles)
+        next[index] = folder.copy(
+            titles = titles,
+            updatedAt = if (has) folder.updatedAt else System.currentTimeMillis(),
+        )
         replace(next)
         return !has
     }
@@ -75,6 +81,7 @@ class FolderStore(context: Context) {
         val named = name.trim()
         if (named.isEmpty()) return
         val titles = listOfNotNull(title).filter { it.id.isNotBlank() }
+        val now = System.currentTimeMillis()
         replace(
             listOf(
                 LibraryFolder(
@@ -82,7 +89,8 @@ class FolderStore(context: Context) {
                     description = description.trim(),
                     titles = titles,
                     id = UUID.randomUUID().toString(),
-                    createdAt = System.currentTimeMillis(),
+                    createdAt = now,
+                    updatedAt = now,
                     color = color,
                     covers = covers,
                 ),
