@@ -75,15 +75,35 @@ class HomeViewModel(
     }
 
     private val wantedGenres = mutableSetOf<String>()
-    private val genreInflight = mutableSetOf<String>()
+    private var genreJob: Job? = null
 
-    /** Грузим только включённые жанровые полки. */
-    fun syncGenreRails(visible: Set<String>) {
+    /** Грузим включённые жанры в порядке полок, пачками по [GenreLanes]. */
+    fun syncGenreRails(ordered: List<String>) {
+        val visible = ordered.distinct()
         wantedGenres.clear()
         wantedGenres.addAll(visible)
-        visible.forEach { id ->
-            viewModelScope.launch { loadGenreIfNeeded(id, keep = false) }
+        pumpGenres(visible, keep = false)
+    }
+
+    private fun pumpGenres(ids: List<String>, keep: Boolean): Job {
+        genreJob?.cancel()
+        val job = viewModelScope.launch {
+            if (ids.isEmpty()) return@launch
+            coroutineScope {
+                repeat(GenreLanes) { lane ->
+                    launch {
+                        var index = lane
+                        while (index < ids.size) {
+                            val id = ids[index]
+                            if (id in wantedGenres) loadGenreIfNeeded(id, keep)
+                            index += GenreLanes
+                        }
+                    }
+                }
+            }
         }
+        genreJob = job
+        return job
     }
 
     fun refresh() {
@@ -326,25 +346,15 @@ class HomeViewModel(
     }
 
     private suspend fun reloadGenres(keep: Boolean) {
-        coroutineScope {
-            wantedGenres.toList().forEach { id ->
-                launch { loadGenreIfNeeded(id, keep) }
-            }
-        }
+        pumpGenres(wantedGenres.toList(), keep).join()
     }
 
     private suspend fun loadGenreIfNeeded(id: String, keep: Boolean) {
+        val shelf = GenreRails.All.firstOrNull { it.id == id } ?: return
         val current = _state.value
         val movies = current.genres[id].orEmpty()
         if (!keep && id in current.genresReady && movies.isNotEmpty()) return
-        synchronized(genreInflight) {
-            if (!genreInflight.add(id)) return
-        }
-        try {
-            loadGenre(GenreRails.All.first { it.id == id }, keep)
-        } finally {
-            synchronized(genreInflight) { genreInflight.remove(id) }
-        }
+        loadGenre(shelf, keep)
     }
 
     private suspend fun loadGenre(shelf: GenreRail, keep: Boolean) {
@@ -352,7 +362,7 @@ class HomeViewModel(
         if (!keep && _state.value.genres[id].isNullOrEmpty()) {
             _state.update { it.copy(genresReady = it.genresReady - id) }
         }
-        getShelfMovies(CatalogQuery(sort = "new", genre = shelf.genre), limit = 15)
+        getShelfMovies(CatalogQuery(sort = "new", genre = shelf.genre), limit = 15, background = true)
             .onSuccess { movies ->
                 _state.update {
                     it.copy(
@@ -476,5 +486,8 @@ class HomeViewModel(
 
 /** Пауза после последней буквы перед запросом (debounce). */
 private const val SearchDebounceMs = 450L
+
+/** Столько жанровых полок качаем параллельно. Больше — vokino отвечает 429 и полка пропадает. */
+private const val GenreLanes = 4
 
 private fun Throwable.asDataError(): DataError = this as? DataError ?: DataError.Unknown()

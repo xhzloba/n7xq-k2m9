@@ -43,10 +43,9 @@ fun HomeRoute(
     }
     val state by viewModel.state.collectAsStateWithLifecycle()
     val settings by LocalUserSettings.current.settings.collectAsStateWithLifecycle()
-    val visibleGenres = GenreRails.All
-        .map { it.id }
-        .filter { settings.homeRailVisible(it) }
-        .toSet()
+    val visibleGenres = settings.homeRailOrder.filter { id ->
+        settings.homeRailVisible(id) && GenreRails.All.any { it.id == id }
+    }
     LaunchedEffect(visibleGenres) {
         viewModel.syncGenreRails(visibleGenres)
     }

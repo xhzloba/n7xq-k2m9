@@ -81,9 +81,10 @@ internal fun FolderPickSheet(
     var creating by remember { mutableStateOf(folders.isEmpty()) }
     var name by remember { mutableStateOf("") }
     var about by remember { mutableStateOf("") }
-    var coversOn by remember { mutableStateOf(true) }
+    var coversOn by remember { mutableStateOf(false) }
     var color by remember { mutableIntStateOf(0) }
     val ready = name.isNotBlank()
+    val noFolders = folders.isEmpty()
     HandleSheet(onDismiss = onDismiss) {
         Column(
             Modifier
@@ -94,9 +95,18 @@ internal fun FolderPickSheet(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = 20.dp, end = 12.dp),
+                    .padding(start = 20.dp, end = if (noFolders) 20.dp else 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                if (noFolders) {
+                    Icon(
+                        imageVector = FolderGlyph,
+                        contentDescription = null,
+                        tint = if (color != 0) Color(color) else Color.White,
+                        modifier = Modifier.size(20.dp),
+                    )
+                    Spacer(Modifier.width(8.dp))
+                }
                 Text(
                     text = stringResource(R.string.menu_list),
                     color = Color.White,
@@ -107,33 +117,35 @@ internal fun FolderPickSheet(
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f),
                 )
-                Row(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(percent = 50))
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null,
-                            onClick = {
-                                tick?.invoke()
-                                creating = !creating
-                            },
+                if (!noFolders) {
+                    Row(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(percent = 50))
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                onClick = {
+                                    tick?.invoke()
+                                    creating = !creating
+                                },
+                            )
+                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Add,
+                            contentDescription = null,
+                            tint = Color.White.copy(alpha = 0.9f),
+                            modifier = Modifier.size(16.dp),
                         )
-                        .padding(horizontal = 8.dp, vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Add,
-                        contentDescription = null,
-                        tint = Color.White.copy(alpha = 0.9f),
-                        modifier = Modifier.size(16.dp),
-                    )
-                    Spacer(Modifier.width(4.dp))
-                    Text(
-                        text = stringResource(R.string.library_folder_new),
-                        color = Color.White.copy(alpha = 0.9f),
-                        fontSize = 14.sp,
-                        lineHeight = 18.sp,
-                    )
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            text = stringResource(R.string.library_folder_new),
+                            color = Color.White.copy(alpha = 0.9f),
+                            fontSize = 14.sp,
+                            lineHeight = 18.sp,
+                        )
+                    }
                 }
             }
             val placed = folders.mapIndexedNotNull { index, folder ->
@@ -160,7 +172,7 @@ internal fun FolderPickSheet(
                     .heightIn(max = 340.dp)
                     .verticalScroll(rememberScrollState()),
             ) {
-                if (creating) {
+                if (noFolders || creating) {
                     FolderLine(
                         value = name,
                         onValueChange = { name = it.replace('\n', ' ') },
@@ -206,7 +218,7 @@ internal fun FolderPickSheet(
                                     )
                                     name = ""
                                     about = ""
-                                    coversOn = true
+                                    coversOn = false
                                     color = 0
                                     creating = false
                                 },

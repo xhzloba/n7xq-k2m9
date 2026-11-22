@@ -11,10 +11,20 @@ import com.example.movie.domain.model.WatchCheck
 interface MovieRepository {
     suspend fun getShelves(): Result<List<Shelf>>
 
-    suspend fun getMovies(query: CatalogQuery, page: Int = 1, limit: Int? = null): Result<List<Movie>>
+    suspend fun getMovies(
+        query: CatalogQuery,
+        page: Int = 1,
+        limit: Int? = null,
+        background: Boolean = false,
+    ): Result<List<Movie>>
 
     /** Та же выдача, плюс `page.next`: есть следующая страница или лента кончилась. */
-    suspend fun getMoviePage(query: CatalogQuery, page: Int = 1, limit: Int? = null): Result<MoviePage>
+    suspend fun getMoviePage(
+        query: CatalogQuery,
+        page: Int = 1,
+        limit: Int? = null,
+        background: Boolean = false,
+    ): Result<MoviePage>
 
     suspend fun getRecommendations(): Result<List<Movie>>
 

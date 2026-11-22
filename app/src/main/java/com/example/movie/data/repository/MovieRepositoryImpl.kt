@@ -7,6 +7,7 @@ import com.example.movie.data.mapper.toMovieDetail
 import com.example.movie.data.mapper.toShelves
 import com.example.movie.data.remote.FranchiseApi
 import com.example.movie.data.remote.VokinoApi
+import com.example.movie.data.remote.VokinoSlots
 import com.example.movie.data.remote.dto.CatalogResponseDto
 import com.example.movie.data.remote.dto.ChannelDto
 import com.example.movie.data.remote.dto.FranchiseHitDto
@@ -22,6 +23,7 @@ import com.example.movie.domain.repository.MovieRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.SerializationException
@@ -39,6 +41,7 @@ internal class MovieRepositoryImpl(
     http: OkHttpClient,
     private val lookupTimeoutMs: () -> Long = { 4_000L },
 ) : MovieRepository {
+    private val slots = VokinoSlots()
     private val embed = http.newBuilder()
         .callTimeout(4, TimeUnit.SECONDS)
         .readTimeout(4, TimeUnit.SECONDS)
@@ -47,10 +50,19 @@ internal class MovieRepositoryImpl(
         api.main(token).toShelves()
     }
 
-    override suspend fun getMovies(query: CatalogQuery, page: Int, limit: Int?): Result<List<Movie>> =
-        getMoviePage(query, page, limit).map { it.movies }
+    override suspend fun getMovies(
+        query: CatalogQuery,
+        page: Int,
+        limit: Int?,
+        background: Boolean,
+    ): Result<List<Movie>> = getMoviePage(query, page, limit, background).map { it.movies }
 
-    override suspend fun getMoviePage(query: CatalogQuery, page: Int, limit: Int?): Result<MoviePage> = runApi {
+    override suspend fun getMoviePage(
+        query: CatalogQuery,
+        page: Int,
+        limit: Int?,
+        background: Boolean,
+    ): Result<MoviePage> = runApi(background = background) {
         val response = api.list(
             sort = query.sort.takeIf { it.isNotBlank() },
             type = query.type,
@@ -82,7 +94,7 @@ internal class MovieRepositoryImpl(
 
     override suspend fun search(name: String, page: Int): Result<MoviePage> = runApi {
         val response = api.search(name = name, token = token, page = page)
-        if (response.error != null) throw IllegalStateException("catalog ${response.error}")
+        response.failIfLimited()
         val movies = response.channels
             .map { it.toDomain() }
             .filter { it.id.isNotBlank() && it.title.isNotBlank() }
@@ -189,25 +201,45 @@ internal class MovieRepositoryImpl(
     }
 
     private fun CatalogResponseDto.requireChannels(): List<ChannelDto> {
-        if (error != null) throw IllegalStateException("catalog $error")
+        failIfLimited()
         return channels
     }
 
-    private inline fun <T> runApi(block: () -> T): Result<T> =
-        try {
-            Result.success(block())
-        } catch (cancelled: CancellationException) {
-            throw cancelled
-        } catch (_: IOException) {
-            Result.failure(DataError.Network())
-        } catch (http: HttpException) {
-            Result.failure(DataError.Http(http.code()))
-        } catch (_: SerializationException) {
-            Result.failure(DataError.Parsing())
-        } catch (_: Exception) {
-            Result.failure(DataError.Unknown())
+    private fun CatalogResponseDto.failIfLimited() {
+        if (error == 429) throw RateLimited()
+        if (error != null) throw IllegalStateException("catalog $error")
+    }
+
+    private suspend fun <T> runApi(background: Boolean = false, block: suspend () -> T): Result<T> {
+        var attempt = 0
+        while (true) {
+            try {
+                return Result.success(slots.use(if (background) 1 else 0, block))
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: RateLimited) {
+                if (attempt++ >= 5) return Result.failure(DataError.Network())
+                delay(220L * (attempt + 1))
+            } catch (_: IOException) {
+                if (attempt++ >= 2) return Result.failure(DataError.Network())
+                delay(300L * attempt)
+            } catch (http: HttpException) {
+                val code = http.code()
+                if ((code == 429 || code in 500..599) && attempt++ < 3) {
+                    delay(300L * attempt)
+                    continue
+                }
+                return Result.failure(DataError.Http(code))
+            } catch (_: SerializationException) {
+                return Result.failure(DataError.Parsing())
+            } catch (_: Exception) {
+                return Result.failure(DataError.Unknown())
+            }
         }
+    }
 }
+
+private class RateLimited : Exception()
 
 private fun List<FranchiseHitDto>.pick(title: String, year: Int?): FranchiseHitDto? {
     val wanted = title.folded()

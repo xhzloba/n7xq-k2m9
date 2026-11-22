@@ -8,8 +8,12 @@ import com.example.movie.domain.repository.MovieRepository
 class GetShelfMoviesUseCase(
     private val repository: MovieRepository,
 ) {
-    suspend operator fun invoke(query: CatalogQuery, page: Int = 1, limit: Int? = null): Result<List<Movie>> =
-        repository.getMovies(query, page, limit)
+    suspend operator fun invoke(
+        query: CatalogQuery,
+        page: Int = 1,
+        limit: Int? = null,
+        background: Boolean = false,
+    ): Result<List<Movie>> = repository.getMovies(query, page, limit, background)
 
     suspend fun paged(query: CatalogQuery, page: Int = 1, limit: Int? = null): Result<MoviePage> =
         repository.getMoviePage(query, page, limit)
