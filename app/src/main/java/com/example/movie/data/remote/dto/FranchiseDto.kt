@@ -6,6 +6,7 @@ import kotlinx.serialization.json.JsonElement
 
 @Serializable
 internal data class TimelineDto(
+    val error: Int? = null,
     @SerialName("kp_id") val kpId: JsonElement? = null,
 )
 

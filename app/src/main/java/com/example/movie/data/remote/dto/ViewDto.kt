@@ -6,6 +6,7 @@ import kotlinx.serialization.json.JsonElement
 @Serializable
 internal data class ViewResponseDto(
     val details: MovieDetailsDto = MovieDetailsDto(),
+    val error: Int? = null,
     val casts: JsonElement? = null,
     val similars: JsonElement? = null,
     val sequelsAndPrequels: JsonElement? = null,

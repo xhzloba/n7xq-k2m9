@@ -103,7 +103,9 @@ internal class MovieRepositoryImpl(
     }
 
     override suspend fun getMovie(id: String): Result<MovieDetail> = runApi {
-        api.view(id, token).toMovieDetail()
+        val response = api.view(id, token)
+        response.error.throwIfLimited()
+        response.toMovieDetail()
     }
 
     override suspend fun franchise(id: String, title: String?, year: Int?): Franchise? =
@@ -144,13 +146,7 @@ internal class MovieRepositoryImpl(
     }
 
     private suspend fun cardByKp(id: String): Franchise? {
-        val kp = try {
-            api.timeline(ident = id, token = token).kpId()
-        } catch (cancelled: CancellationException) {
-            throw cancelled
-        } catch (_: Exception) {
-            null
-        } ?: return null
+        val kp = timelineKp(id) ?: return null
         return try {
             franchiseApi.details(franchiseToken, kp).toFranchise()
         } catch (cancelled: CancellationException) {
@@ -200,14 +196,39 @@ internal class MovieRepositoryImpl(
         }
     }
 
+    private suspend fun timelineKp(id: String): Int? {
+        var attempt = 0
+        while (true) {
+            try {
+                val body = slots.use { api.timeline(ident = id, token = token) }
+                body.error.throwIfLimited()
+                return body.kpId()
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: RateLimited) {
+                if (attempt++ >= TimelineRetries) return null
+                delay(220L * (attempt + 1))
+            } catch (http: HttpException) {
+                if (http.code() != 429 || attempt++ >= TimelineRetries) return null
+                delay(220L * (attempt + 1))
+            } catch (_: Exception) {
+                return null
+            }
+        }
+    }
+
     private fun CatalogResponseDto.requireChannels(): List<ChannelDto> {
         failIfLimited()
         return channels
     }
 
     private fun CatalogResponseDto.failIfLimited() {
-        if (error == 429) throw RateLimited()
+        error.throwIfLimited()
         if (error != null) throw IllegalStateException("catalog $error")
+    }
+
+    private fun Int?.throwIfLimited() {
+        if (this == 429) throw RateLimited()
     }
 
     private suspend fun <T> runApi(background: Boolean = false, block: suspend () -> T): Result<T> {
@@ -240,6 +261,9 @@ internal class MovieRepositoryImpl(
 }
 
 private class RateLimited : Exception()
+
+/** Два повтора, не пять: «Смотреть» сидит в таймауте 4 с и после них ищет карточку по названию. */
+private const val TimelineRetries = 2
 
 private fun List<FranchiseHitDto>.pick(title: String, year: Int?): FranchiseHitDto? {
     val wanted = title.folded()
