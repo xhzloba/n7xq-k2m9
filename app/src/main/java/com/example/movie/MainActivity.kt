@@ -46,6 +46,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.zIndex
+import com.example.movie.presentation.common.PosterCoverLayer
+import com.example.movie.presentation.common.PosterMotionCover
 import com.example.movie.presentation.common.appChrome
 import com.example.movie.presentation.home.components.LauncherIcons
 import com.example.movie.presentation.home.CornerIris
@@ -254,6 +256,7 @@ class MainActivity : ComponentActivity() {
                                         onClick = {},
                                     ),
                             ) {
+                                PosterMotionCover(PosterCoverLayer)
                                 DetailRoute(
                                     movieId = id,
                                     onOpenMovie = { next -> if (stack.lastOrNull() != next) stack.add(next) },

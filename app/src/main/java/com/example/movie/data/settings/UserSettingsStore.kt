@@ -20,12 +20,14 @@ import com.example.movie.domain.model.UserSettingsRepository
 import com.example.movie.domain.model.BarScrollAuto
 import com.example.movie.domain.model.BarScrollOff
 import com.example.movie.domain.model.DefaultImageParallel
+import com.example.movie.domain.model.PosterMotionAuto
 import com.example.movie.domain.model.PosterQualityFull
 import com.example.movie.domain.model.normalizedBarScroll
 import com.example.movie.domain.model.PosterQualityLight
 import com.example.movie.domain.model.normalizedImageParallel
 import com.example.movie.domain.model.normalizedNetworkTimeout
 import com.example.movie.domain.model.normalizedPlayerCodec
+import com.example.movie.domain.model.normalizedPosterMotion
 import com.example.movie.domain.model.normalizedPosterQuality
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -104,6 +106,10 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
         it.copy(imageParallel = count.normalizedImageParallel())
     }
 
+    override fun setPosterMotion(mode: String) = write {
+        it.copy(posterMotion = mode.normalizedPosterMotion())
+    }
+
     override fun setPlayerLogo(enabled: Boolean) = write { it.copy(playerLogo = enabled) }
 
     override fun setPlayerSpeed(speed: Float) = write { it.copy(playerSpeed = speed) }
@@ -155,6 +161,7 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
             posterQuality = settings.posterQuality.normalizedPosterQuality(),
             barScroll = settings.barScroll.normalizedBarScroll(),
             imageParallel = settings.imageParallel.normalizedImageParallel(),
+            posterMotion = settings.posterMotion.normalizedPosterMotion(),
             networkTimeoutSec = settings.networkTimeoutSec.normalizedNetworkTimeout(),
             watchedPercent = settings.watchedPercent.coerceIn(50, 100),
             homeRailOrder = settings.homeRailOrder.normalizedHomeRailOrder(),
@@ -257,6 +264,7 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
             .putBoolean(KEY_LARGE_POSTERS, next.largePosters)
             .putString(KEY_POSTER_QUALITY, next.posterQuality)
             .putInt(KEY_IMAGE_PARALLEL, next.imageParallel)
+            .putString(KEY_POSTER_MOTION, next.posterMotion)
             .putBoolean(KEY_PLAYER_LOGO, next.playerLogo)
             .putFloat(KEY_PLAYER_SPEED, next.playerSpeed)
             .putString(KEY_PLAYER_PICTURE, next.playerPicture)
@@ -385,6 +393,7 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
             else -> PosterQualityFull
         },
         imageParallel = prefs.getInt(KEY_IMAGE_PARALLEL, DefaultImageParallel).normalizedImageParallel(),
+        posterMotion = prefs.getString(KEY_POSTER_MOTION, PosterMotionAuto).orEmpty().normalizedPosterMotion(),
         playerLogo = prefs.getBoolean(KEY_PLAYER_LOGO, true),
         playerSpeed = prefs.getFloat(KEY_PLAYER_SPEED, 1f),
         playerPicture = prefs.getString(KEY_PLAYER_PICTURE, "fit") ?: "fit",
@@ -614,6 +623,7 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
         const val KEY_COMPACT_POSTERS = "compact_posters"
         const val KEY_POSTER_QUALITY = "poster_quality"
         const val KEY_IMAGE_PARALLEL = "image_parallel"
+        const val KEY_POSTER_MOTION = "poster_motion"
         const val KEY_PLAYER_LOGO = "player_logo"
         const val KEY_PLAYER_SPEED = "player_speed"
         const val KEY_PLAYER_PICTURE = "player_picture"

@@ -61,6 +61,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.movie.R
 import com.example.movie.presentation.common.HideBarOnScroll
 import com.example.movie.presentation.common.PosterImage
+import com.example.movie.presentation.common.PosterPlayTap
 import com.example.movie.presentation.settings.LocalUserSettings
 import com.example.movie.di.LocalAppContainer
 import com.example.movie.domain.model.DataError
@@ -134,6 +135,8 @@ fun SectionRoute(
         onMovieClick = onMovieClick,
         onMoviePeek = onMoviePeek,
         onHideBar = onHideBar,
+        motion = !section.stored,
+        motionPlace = "list:${section.name}",
         onClear = if (section == HomeSection.History) {
             {
                 viewModel.clearHistory()
@@ -160,6 +163,8 @@ internal fun SectionPage(
     onSort: (() -> Unit)? = null,
     sortLabel: String? = null,
     onHideBar: (Boolean) -> Unit = {},
+    motion: Boolean = false,
+    motionPlace: String = "",
     modifier: Modifier = Modifier,
 ) {
     var confirmClear by remember { mutableStateOf(false) }
@@ -214,6 +219,8 @@ internal fun SectionPage(
                 onMovieClick = onMovieClick,
                 onMoviePeek = onMoviePeek,
                 marks = state.marks,
+                motion = motion,
+                motionPlace = motionPlace,
             )
         }
         SectionScrim(progress = scrim, modifier = Modifier.align(Alignment.TopCenter))
@@ -555,6 +562,8 @@ internal fun PosterGrid(
     onMovieClick: (String) -> Unit,
     onMoviePeek: (Movie) -> Unit,
     marks: Map<String, PosterMark> = emptyMap(),
+    motion: Boolean = false,
+    motionPlace: String = "",
 ) {
     HapticOnAppend(movies.map { it.id })
     LaunchedEffect(state, movies.size, end, error, placeholder, loadingMore) {
@@ -578,7 +587,7 @@ internal fun PosterGrid(
             if (placeholder) {
                 SkeletonPoster()
             } else {
-                PosterCell(movies[index], onMovieClick, onMoviePeek, marks[movies[index].id])
+                PosterCell(movies[index], onMovieClick, onMoviePeek, marks[movies[index].id], motion, motionPlace)
             }
         }
         if (!placeholder && (loadingMore || error != null)) {
@@ -633,12 +642,15 @@ private fun PosterCell(
     onMovieClick: (String) -> Unit,
     onMoviePeek: (Movie) -> Unit,
     mark: PosterMark? = null,
+    motion: Boolean = false,
+    motionPlace: String = "",
 ) {
     val tick = rememberHaptic(HapticSlot.Poster)
     var holdProgress by remember(movie.id) { mutableFloatStateOf(0f) }
     var pressed by remember(movie.id) { mutableStateOf(false) }
     val pressScale = rememberPressScale(pressed)
     val wave = remember(movie.id) { PosterWave() }
+    val playTap = remember(movie.id) { PosterPlayTap() }
     val watched = rememberWatchedIds()
     val favorites = rememberFavoriteIds()
     Column {
@@ -660,6 +672,9 @@ private fun PosterCell(
             PosterImage(
                 url = movie.posterUrl,
                 movieId = movie.id,
+                motion = motion,
+                motionPlace = motionPlace,
+                playTap = playTap,
                 contentDescription = stringResource(R.string.poster_content_description, movie.title),
                 modifier = Modifier
                     .matchParentSize()
@@ -672,6 +687,11 @@ private fun PosterCell(
                             tick?.invoke()
                             DetailSeed.put(movie)
                             onMovieClick(movie.id)
+                        },
+                        onCorner = {
+                            val play = playTap.play ?: return@holdToPeek false
+                            play()
+                            true
                         },
                         wave = wave,
                     )

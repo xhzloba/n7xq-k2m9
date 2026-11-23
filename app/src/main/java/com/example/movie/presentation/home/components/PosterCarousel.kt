@@ -103,6 +103,7 @@ import com.example.movie.R
 import com.example.movie.domain.model.Movie
 import com.example.movie.presentation.detail.DetailSeed
 import com.example.movie.presentation.common.PosterImage
+import com.example.movie.presentation.common.PosterPlayTap
 import com.example.movie.presentation.common.moviePoster
 import com.example.movie.presentation.home.holdCue
 import com.example.movie.presentation.home.holdToPeek
@@ -411,6 +412,7 @@ internal fun PosterCarousel(
                 var pressed by remember { mutableStateOf(false) }
                 val pressScale = rememberPressScale(pressed)
                 val wave = remember(movie.id) { PosterWave() }
+                val playTap = remember(page) { PosterPlayTap() }
                 val shine = remember(page) { Animatable(0f) }
                 val travel = shine.value
                 val shineTint = Color.White
@@ -449,6 +451,11 @@ internal fun PosterCarousel(
                                 DetailSeed.put(movie)
                                 onMovieClick(movie.id)
                             },
+                            onCorner = {
+                                val play = playTap.play ?: return@holdToPeek false
+                                play()
+                                true
+                            },
                             wave = wave,
                         )
                         .holdCue(holdProgress)
@@ -478,6 +485,8 @@ internal fun PosterCarousel(
                 ) {
                     PosterPage(
                         movie = movie,
+                        active = active,
+                        playTap = playTap,
                         modifier = Modifier.fillMaxSize(),
                         onReady = { posterReady = true },
                     )
@@ -1084,12 +1093,20 @@ private fun PosterReflection(
 @Composable
 private fun PosterPage(
     movie: Movie,
+    active: Boolean,
+    playTap: PosterPlayTap,
     modifier: Modifier = Modifier,
     onReady: () -> Unit = {},
 ) {
     val poster = moviePoster(movie.id, movie.posterUrl, movie.backdropUrl)
     PosterImage(
         url = poster,
+        movieId = movie.id,
+        motion = true,
+        motionPlace = "hero",
+        hero = true,
+        heroActive = active,
+        playTap = playTap,
         contentDescription = stringResource(R.string.poster_content_description, movie.title),
         modifier = modifier.background(Color(0xFF2A2A2E)),
         iconSize = 36.dp,

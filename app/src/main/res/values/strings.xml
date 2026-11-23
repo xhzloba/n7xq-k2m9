@@ -392,7 +392,7 @@
     <string name="settings_menu_theme">Обычный фон, графит или чёрная.</string>
     <string name="settings_header_fill">Шапка заливкой</string>
     <string name="settings_header_fill_hint">При прокрутке под логотипом и значками тот же цвет, что у нижнего меню. То же в полном списке. Если на главной включены цвета обложки, заливка берёт их.</string>
-    <string name="settings_menu_posters">Размер, ретушь, названия и отметки.</string>
+    <string name="settings_menu_posters">Размер, ретушь, названия, видео и отметки.</string>
     <string name="settings_menu_navigation">Подписи, шапка и меню при скролле, подсказки.</string>
     <string name="settings_menu_color">UltraBlur на главной и цвета карточки.</string>
     <string name="settings_menu_detail">Логотипы, кадры и свечение.</string>
@@ -524,6 +524,11 @@
     <string name="settings_release_date_hint">Под названием день и месяц, если каталог их даёт: «23 сен. 2026». Выключено — только год.</string>
     <string name="settings_large_posters">Крупные постеры</string>
     <string name="settings_large_posters_hint">Больше обложки в полках и в полном списке фильмов. Выключено — размер как сейчас.</string>
+    <string name="settings_poster_motion">Видеопостеры</string>
+    <string name="settings_poster_motion_auto">Авто</string>
+    <string name="settings_poster_motion_manual">Вручную</string>
+    <string name="settings_poster_motion_hint">Авто — ролик сам, один раз за заход в приложение. Вручную — Play слева сверху только на постере с видео, ролик по нажатию.</string>
+    <string name="poster_motion_play">Смотреть видеопостер</string>
     <string name="settings_poster_quality">Качество обложек</string>
     <string name="settings_poster_quality_full">Хорошее</string>
     <string name="settings_poster_quality_light">Лёгкие</string>

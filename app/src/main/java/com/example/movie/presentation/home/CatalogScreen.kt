@@ -173,6 +173,8 @@ fun CatalogScreen(
                             onMoviePeek = onMoviePeek,
                             title = stringResource(head.sort.title),
                             onOpen = { onOpenShelf(tab.type, head.sort.sort) },
+                            motion = true,
+                            motionPlace = "rail:${tab.type}:${head.sort.name}",
                             modifier = Modifier.fillMaxWidth(),
                         )
                     }
@@ -200,6 +202,8 @@ fun CatalogScreen(
                         onMoviePeek = onMoviePeek,
                         title = stringResource(rail.sort.title),
                         onOpen = { onOpenShelf(tab.type, rail.sort.sort) },
+                        motion = true,
+                        motionPlace = "rail:${tab.type}:${rail.sort.name}",
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
@@ -367,6 +371,8 @@ internal fun CatalogListRoute(
             onRetry = viewModel::retry,
             onMovieClick = onMovieClick,
             onMoviePeek = onMoviePeek,
+            motion = true,
+            motionPlace = "list:$type:$querySort:${genre.orEmpty()}",
             onSort = if (sorting) {
                 { sortOpen = true }
             } else {

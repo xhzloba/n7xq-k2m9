@@ -781,6 +781,8 @@ private fun HomeOrderedRail(
             onOpen = { onOpenSection(HomeSection.Recommendations) },
             onSettled = onSettled,
             seeAllGlass = seeAllGlass,
+            motion = true,
+            motionPlace = "rail:${entry.id}",
             modifier = Modifier.fillMaxWidth(),
         )
         HomeRails.History -> RecommendationRail(
@@ -848,6 +850,8 @@ private fun HomeOrderedRail(
             onOpen = { onOpenSection(HomeSection.Watching) },
             onSettled = onSettled,
             seeAllGlass = seeAllGlass,
+            motion = true,
+            motionPlace = "rail:${entry.id}",
             modifier = Modifier.fillMaxWidth(),
         )
         HomeRails.Best -> RecommendationRail(
@@ -858,6 +862,8 @@ private fun HomeOrderedRail(
             onOpen = { onOpenSection(HomeSection.Best) },
             onSettled = onSettled,
             seeAllGlass = seeAllGlass,
+            motion = true,
+            motionPlace = "rail:${entry.id}",
             modifier = Modifier.fillMaxWidth(),
         )
         else -> {
@@ -870,6 +876,8 @@ private fun HomeOrderedRail(
                 onOpen = { onOpenSection(HomeSection.valueOf(section)) },
                 onSettled = onSettled,
             seeAllGlass = seeAllGlass,
+                motion = true,
+                motionPlace = "rail:${entry.id}",
                 modifier = Modifier.fillMaxWidth(),
             )
         }

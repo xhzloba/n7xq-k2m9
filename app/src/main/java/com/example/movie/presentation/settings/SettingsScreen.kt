@@ -82,6 +82,8 @@ import com.example.movie.domain.model.normalizedBarScroll
 import com.example.movie.domain.model.HapticSlot
 import com.example.movie.domain.model.ImageParallelChoices
 import com.example.movie.domain.model.MaxNetworkTimeoutSec
+import com.example.movie.domain.model.PosterMotionAuto
+import com.example.movie.domain.model.PosterMotionManual
 import com.example.movie.domain.model.PosterQualityFull
 import com.example.movie.domain.model.PosterQualityLight
 import com.example.movie.domain.model.PosterQualityLow
@@ -92,6 +94,7 @@ import com.example.movie.domain.model.UserSettings
 import com.example.movie.domain.model.normalizedImageParallel
 import com.example.movie.domain.model.normalizedNetworkTimeout
 import com.example.movie.domain.model.normalizedPlayerCodec
+import com.example.movie.domain.model.normalizedPosterMotion
 import com.example.movie.domain.model.normalizedPosterQuality
 import com.example.movie.presentation.haptic.play
 import com.example.movie.presentation.haptic.rememberHapticTick
@@ -386,6 +389,8 @@ private fun SettingsLeaf(
             ThemeGroup(selected = settings.appTheme, onSelect = onAppTheme)
         }
         SettingsPage.Posters -> Column(leafScroll(modifier, scrollTop)) {
+                PosterMotionControl(selected = settings.posterMotion)
+                Spacer(Modifier.height(22.dp))
                 PosterQualityControl(selected = settings.posterQuality)
                 Spacer(Modifier.height(22.dp))
                 ImageParallelControl(count = settings.imageParallel)
@@ -1367,6 +1372,22 @@ private fun stepImageParallel(current: Int, delta: Int): Int {
     val normalized = current.normalizedImageParallel()
     val index = ImageParallelChoices.indexOf(normalized).let { if (it < 0) 0 else it }
     return ImageParallelChoices[(index + delta).mod(ImageParallelChoices.size)]
+}
+
+@Composable
+private fun PosterMotionControl(selected: String) {
+    val repository = LocalUserSettings.current
+    val manual = selected.normalizedPosterMotion() == PosterMotionManual
+    ChoiceStepper(
+        title = stringResource(R.string.settings_poster_motion),
+        value = stringResource(
+            if (manual) R.string.settings_poster_motion_manual else R.string.settings_poster_motion_auto,
+        ),
+        hint = stringResource(R.string.settings_poster_motion_hint),
+        onStep = {
+            repository.setPosterMotion(if (manual) PosterMotionAuto else PosterMotionManual)
+        },
+    )
 }
 
 @Composable

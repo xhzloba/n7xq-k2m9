@@ -80,6 +80,7 @@ import com.example.movie.R
 import com.example.movie.domain.model.Movie
 import com.example.movie.presentation.detail.DetailSeed
 import com.example.movie.presentation.common.PosterImage
+import com.example.movie.presentation.common.PosterPlayTap
 import com.example.movie.presentation.common.appChrome
 import com.example.movie.presentation.home.holdCue
 import com.example.movie.presentation.settings.LocalUserSettings
@@ -272,6 +273,8 @@ internal fun RecommendationRail(
     overlay: @Composable (Movie) -> Unit = {},
     titleShimmer: Boolean = false,
     onClose: (() -> Unit)? = null,
+    motion: Boolean = false,
+    motionPlace: String = "",
 ) {
     HapticOnAppend(movies.map { it.id })
     Column(modifier = modifier.fillMaxWidth().graphicsLayer()) {
@@ -299,6 +302,8 @@ internal fun RecommendationRail(
                 captionOf = captionOf,
                 seeAllGlass = seeAllGlass,
                 overlay = overlay,
+                motion = motion,
+                motionPlace = motionPlace,
             )
         }
     }
@@ -352,6 +357,8 @@ private fun RecommendationPager(
     captionOf: (Movie) -> String? = { null },
     seeAllGlass: Boolean = false,
     overlay: @Composable (Movie) -> Unit = {},
+    motion: Boolean = false,
+    motionPlace: String = "",
     modifier: Modifier = Modifier,
 ) {
     val listState = rememberLazyListState()
@@ -488,6 +495,7 @@ private fun RecommendationPager(
             itemsIndexed(movies, key = { _, movie -> movie.id }) { _, movie ->
                 var holdProgress by remember(movie.id) { mutableFloatStateOf(0f) }
                 var pressed by remember(movie.id) { mutableStateOf(false) }
+                val playTap = remember(movie.id) { PosterPlayTap() }
                 val pressScale = rememberPressScale(pressed)
                 val wave = remember(movie.id) { PosterWave() }
                 Column(Modifier.width(posterWidth)) {
@@ -509,6 +517,9 @@ private fun RecommendationPager(
                         PosterImage(
                             url = movie.posterUrl,
                             movieId = movie.id,
+                            motion = motion,
+                            motionPlace = motionPlace,
+                            playTap = playTap,
                             contentDescription = stringResource(R.string.poster_content_description, movie.title),
                             modifier = Modifier
                                 .matchParentSize()
@@ -521,6 +532,11 @@ private fun RecommendationPager(
                                         poster?.invoke()
                                         DetailSeed.put(movie)
                                         onMovieClick(movie.id)
+                                    },
+                                    onCorner = {
+                                        val play = playTap.play ?: return@holdToPeek false
+                                        play()
+                                        true
                                     },
                                     wave = wave,
                                 )

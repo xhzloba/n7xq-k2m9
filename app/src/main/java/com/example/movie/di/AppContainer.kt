@@ -7,6 +7,7 @@ import com.example.movie.data.alerts.ReleaseWatch
 import com.example.movie.data.alerts.ReleaseWatchStore
 import com.example.movie.data.backdrops.BackdropSetStore
 import com.example.movie.data.palette.WashToneStore
+import com.example.movie.data.poster.PosterMotionStore
 import com.example.movie.data.download.OfflineStore
 import com.example.movie.data.favorites.FavoriteStore
 import com.example.movie.data.folders.FolderStore
@@ -63,6 +64,8 @@ class AppContainer(context: Context) {
         .readTimeout(20, TimeUnit.SECONDS)
         .callTimeout(25, TimeUnit.SECONDS)
         .build()
+
+    val posterMotion = PosterMotionStore(context, client)
 
     private val api: VokinoApi = Retrofit.Builder()
         .baseUrl(BuildConfig.VOKINO_BASE_URL)

@@ -2,9 +2,11 @@ package com.example.movie.presentation.shell
 
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
+import com.example.movie.presentation.common.LocalPosterLayer
 import com.example.movie.presentation.common.appBackground
 import com.example.movie.presentation.home.CatalogGenresPage
 import com.example.movie.presentation.home.CatalogListRoute
@@ -22,6 +24,7 @@ internal fun ShellRoutes(
 ) {
     val shown = shell.sectionShown
     if (shown != null) {
+        CompositionLocalProvider(LocalPosterLayer provides 1) {
         SectionRoute(
             section = shown,
             onBack = { shell.sectionName = null },
@@ -34,6 +37,7 @@ internal fun ShellRoutes(
                 .fillMaxSize()
                 .appBackground(),
         )
+        }
     }
     if (shell.genresShown) {
         CatalogGenresPage(
@@ -60,6 +64,7 @@ internal fun ShellRoutes(
         val rest = opened.substringAfter(':')
         val genreName = rest.removePrefix("g:").takeIf { rest.startsWith("g:") }
         if (genreName != null) {
+            CompositionLocalProvider(LocalPosterLayer provides 1) {
             CatalogListRoute(
                 scrollTop = shell.catalogTop,
                 type = type,
@@ -76,9 +81,11 @@ internal fun ShellRoutes(
                     .fillMaxSize()
                     .appBackground(),
             )
+            }
         } else {
             val titleRes = CatalogSort.entries.firstOrNull { it.sort == rest }?.title
             if (titleRes != null) {
+                CompositionLocalProvider(LocalPosterLayer provides 1) {
                 CatalogListRoute(
                     scrollTop = shell.catalogTop,
                     type = type,
@@ -94,6 +101,7 @@ internal fun ShellRoutes(
                         .fillMaxSize()
                         .appBackground(),
                 )
+                }
             }
         }
     }

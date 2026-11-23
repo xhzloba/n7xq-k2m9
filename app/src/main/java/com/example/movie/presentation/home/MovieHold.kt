@@ -26,6 +26,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import com.example.movie.presentation.haptic.HoldHaptic
@@ -163,15 +164,18 @@ internal fun Modifier.holdToPeek(
     onProgress: (Float) -> Unit,
     onPressed: (Boolean) -> Unit = {},
     onClick: () -> Unit = {},
+    onCorner: (() -> Boolean)? = null,
     wave: PosterWave? = null,
 ): Modifier {
     val peek by rememberUpdatedState(onPeek)
     val press by rememberUpdatedState(onPressed)
     val click by rememberUpdatedState(onClick)
+    val corner by rememberUpdatedState(onCorner)
     val waveState by rememberUpdatedState(wave)
     val peeks = remember { arrayOf<() -> Unit>({ }) }
     val presser = remember { arrayOf<(Boolean) -> Unit>({ }) }
     val clicks = remember { arrayOf<() -> Unit>({ }) }
+    val corners = remember { arrayOf<(() -> Boolean)?>(null) }
     val waves = remember { arrayOfNulls<PosterWave>(1) }
     val motor = remember { arrayOfNulls<HoldHaptic>(1) }
     val window = remember { floatArrayOf(Float.NaN, Float.NaN) }
@@ -179,6 +183,7 @@ internal fun Modifier.holdToPeek(
     peeks[0] = peek
     presser[0] = press
     clicks[0] = click
+    corners[0] = corner
     waves[0] = waveState
     motor[0] = haptic
     return onGloballyPositioned { coordinates ->
@@ -209,6 +214,7 @@ internal fun Modifier.holdToPeek(
                 var draggedAway = false
                 var releaseDelay = 0L
                 var openDetail = false
+                var playCorner = false
                 try {
                     val tapped = withTimeoutOrNull(HoldMillis) {
                         while (true) {
@@ -230,7 +236,9 @@ internal fun Modifier.holdToPeek(
                     } else if (tapped == true) {
                         val elapsed = (System.nanoTime() - started) / 1_000_000
                         if (elapsed < PressMillis) releaseDelay = PressMillis - elapsed
-                        openDetail = true
+                        val zone = 56.dp.toPx()
+                        val hitCorner = origin.x <= zone && origin.y <= zone && corners[0]?.invoke() == true
+                        if (hitCorner) playCorner = true else openDetail = true
                     } else {
                         buzz.cancel()
                         motor[0]?.stop()
@@ -248,11 +256,12 @@ internal fun Modifier.holdToPeek(
                     val mine = pressToken
                     val hold = releaseDelay
                     val open = openDetail
+                    val played = playCorner
                     launch {
                         if (hold > 0) delay(hold)
                         if (pressEpoch != mine) return@launch
                         presser[0].invoke(false)
-                        if (!open) return@launch
+                        if (played || !open) return@launch
                         coroutineScope {
                             launch { delay(PressOutMillis.toLong()) }
                             launch { waves[0]?.awaitSettled() }

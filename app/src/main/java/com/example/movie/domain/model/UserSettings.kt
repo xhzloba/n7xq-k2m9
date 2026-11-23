@@ -60,6 +60,8 @@ data class UserSettings(
     val posterQuality: String = PosterQualityFull,
     /** Сколько обложек качать сразу с одного адреса. */
     val imageParallel: Int = DefaultImageParallel,
+    /** auto — ролик сам один раз за заход. manual — Play на постере с видео. */
+    val posterMotion: String = PosterMotionAuto,
     val playerLogo: Boolean = true,
     val playerSpeed: Float = 1f,
     val playerPicture: String = "fit",
@@ -292,6 +294,8 @@ interface UserSettingsRepository {
 
     fun setImageParallel(count: Int)
 
+    fun setPosterMotion(mode: String)
+
     fun setPlayerLogo(enabled: Boolean)
 
     fun setPlayerSpeed(speed: Float)
@@ -377,6 +381,12 @@ const val DefaultImageParallel = 16
 val ImageParallelChoices: List<Int> = listOf(8, 16, 24, 32, 48)
 
 fun Int.normalizedImageParallel(): Int = if (this in ImageParallelChoices) this else DefaultImageParallel
+
+const val PosterMotionAuto = "auto"
+const val PosterMotionManual = "manual"
+
+fun String.normalizedPosterMotion(): String =
+    if (this == PosterMotionManual) PosterMotionManual else PosterMotionAuto
 
 const val BarScrollOff = "off"
 const val BarScrollScroll = "scroll"

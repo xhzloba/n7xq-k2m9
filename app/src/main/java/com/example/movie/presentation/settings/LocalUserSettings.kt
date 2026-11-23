@@ -59,6 +59,8 @@ private object DefaultUserSettings : UserSettingsRepository {
 
     override fun setImageParallel(count: Int) = Unit
 
+    override fun setPosterMotion(mode: String) = Unit
+
     override fun setPlayerLogo(enabled: Boolean) = Unit
 
     override fun setPlayerSpeed(speed: Float) = Unit
