@@ -6,6 +6,7 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import com.example.movie.presentation.tv.dpadSkip
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
@@ -88,6 +89,7 @@ internal fun HandleSheet(
                     .fillMaxSize()
                     .graphicsLayer { alpha = (1f - travel.value).coerceIn(0f, 1f) }
                     .background(Scrim)
+                    .dpadSkip()
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
@@ -105,6 +107,7 @@ internal fun HandleSheet(
                     .fillMaxWidth()
                     .clip(SheetShape)
                     .appBackground()
+                    .dpadSkip()
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,

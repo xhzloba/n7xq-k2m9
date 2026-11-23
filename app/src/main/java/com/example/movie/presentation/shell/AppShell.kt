@@ -130,7 +130,11 @@ import com.example.movie.presentation.common.LocalShelfNotices
 import com.example.movie.presentation.home.MoviePeek
 import com.example.movie.presentation.settings.LocalUserSettings
 import com.example.movie.presentation.settings.SettingsRoute
+import com.example.movie.presentation.tv.LocalTelevision
 import com.example.movie.presentation.update.LocalAppUpdate
+import com.example.movie.presentation.tv.dpadSkip
+import com.example.movie.presentation.tv.remoteEntry
+import com.example.movie.presentation.tv.tvWall
 import com.example.movie.presentation.update.UpdateBadge
 import com.example.movie.presentation.common.appBackground
 import com.example.movie.presentation.common.appChrome
@@ -441,6 +445,12 @@ fun AppShell(
             }
         }
     }
+    val shellCovered = sectionShown != null ||
+        genresShown ||
+        listShown != null ||
+        (searchShown && tab == AppTab.Catalog) ||
+        alertsShown ||
+        resumePlayback != null
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -458,13 +468,16 @@ fun AppShell(
                     } else {
                         Modifier
                     },
+                )
+                .then(
+                    if (shellCovered) Modifier.tvWall(true) else Modifier.remoteEntry(),
                 ),
         ) {
             Box(Modifier.fillMaxSize()) {
                 for (which in listOf(AppTab.Home, AppTab.Favorites, AppTab.Settings)) {
                     val front = which == base
                     val under = which == baseBehind
-                    if (!front && !under && !restParked) continue
+                    if (!front && !under && (!restParked || LocalTelevision.current)) continue
                     key(which) {
                         val fraction: () -> Float = when {
                             front -> {
@@ -490,7 +503,7 @@ fun AppShell(
                     }
                 }
             }
-            if (catalogMounted) {
+            if (catalogMounted && (catalogShown || !LocalTelevision.current)) {
                 Box(
                     if (catalogShown) {
                         Modifier
@@ -531,6 +544,7 @@ fun AppShell(
                 onMoviePeek = { peek = it },
                 onHideBar = { barHidden = it },
                 modifier = Modifier
+                    .remoteEntry()
                     .slideBy({ sectionShift.value }, stageWidth)
                     .fillMaxSize()
                     .appBackground(),
@@ -550,6 +564,7 @@ fun AppShell(
                     }
                 },
                 modifier = Modifier
+                    .remoteEntry()
                     .fillMaxSize()
                     .graphicsLayer { alpha = genresVeil.value },
             )
@@ -571,6 +586,7 @@ fun AppShell(
                     onMoviePeek = { peek = it },
                     onHideBar = { barHidden = it },
                     modifier = Modifier
+                        .remoteEntry()
                         .slideBy({ listShift.value }, stageWidth)
                         .fillMaxSize()
                         .appBackground(),
@@ -588,6 +604,7 @@ fun AppShell(
                         onMoviePeek = { peek = it },
                         onHideBar = { barHidden = it },
                         modifier = Modifier
+                            .remoteEntry()
                             .slideBy({ listShift.value }, stageWidth)
                             .fillMaxSize()
                             .appBackground(),
@@ -628,7 +645,7 @@ fun AppShell(
             }
         }
         val showHomeHint = hintLive && homeQuiet
-        if (barAlpha > 0.02f) {
+        if (barAlpha > 0.02f && resumePlayback == null) {
             val fromHome = sectionShown != null
             val settings = hintSettings
             val hintScope = rememberCoroutineScope()
@@ -711,6 +728,7 @@ fun AppShell(
                 onMoviePeek = { peek = it },
                 onBack = { alertsOpen = false },
                 modifier = Modifier
+                    .remoteEntry()
                     .fillMaxSize()
                     .graphicsLayer { alpha = alertsVeil.value }
                     .appBackground(),
@@ -1161,7 +1179,7 @@ private fun UserSettings.shelvesHidden(): Boolean =
         homeRailOrder.none { it.isFolderRail() && homeRailVisible(it) }
 
 @Composable
-private fun Modifier.eatClick(): Modifier = this.clickable(
+private fun Modifier.eatClick(): Modifier = this.dpadSkip().clickable(
     interactionSource = remember { MutableInteractionSource() },
     indication = null,
     onClick = {},

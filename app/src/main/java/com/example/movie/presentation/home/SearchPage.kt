@@ -9,6 +9,8 @@ import androidx.compose.foundation.OverscrollConfiguration
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import com.example.movie.presentation.tv.dpadSkip
+import com.example.movie.presentation.tv.remoteEntry
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -144,8 +146,10 @@ internal fun SearchPage(
     BackHandler(onBack = onClose)
     Column(
         modifier = modifier
+            .remoteEntry()
             .fillMaxSize()
             .appBackground()
+            .dpadSkip()
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,

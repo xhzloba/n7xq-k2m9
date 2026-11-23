@@ -48,6 +48,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.movie.domain.model.GenreRails
 import com.example.movie.presentation.settings.LocalUserSettings
+import com.example.movie.presentation.tv.tvWall
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -298,6 +299,7 @@ fun HomeScreen(
         PageRefresh(
             modifier = Modifier
                 .fillMaxSize()
+                .tvWall(searchCover)
                 .then(
                     if (searchCover) {
                         Modifier.graphicsLayer { alpha = 1f - veil.value }

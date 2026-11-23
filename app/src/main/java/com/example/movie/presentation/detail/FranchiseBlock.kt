@@ -19,6 +19,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import com.example.movie.presentation.tv.remoteEntry
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -401,6 +402,7 @@ internal fun WatchPlayer(
     var playback by remember(url) { mutableStateOf<WatchPlayback?>(null) }
     var embed by remember(url) { mutableStateOf(false) }
     val start = remember(url) { startPositionMs }
+    Box(Modifier.fillMaxSize().remoteEntry()) {
     LaunchedEffect(url) {
         val resolved = withContext(Dispatchers.IO) {
             runCatching { fetchLiftWatch(url) }.getOrNull()
@@ -424,6 +426,7 @@ internal fun WatchPlayer(
         ) {
             CircularProgressIndicator(color = Color.White)
         }
+    }
     }
 }
 

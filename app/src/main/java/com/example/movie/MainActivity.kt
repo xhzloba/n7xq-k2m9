@@ -60,6 +60,11 @@ import com.example.movie.presentation.home.MoviePeek
 import com.example.movie.presentation.settings.LocalUserSettings
 import com.example.movie.presentation.shell.AppShell
 import com.example.movie.presentation.splash.SplashScreen
+import com.example.movie.presentation.tv.TelevisionProvider
+import com.example.movie.presentation.tv.dpadSkip
+import com.example.movie.presentation.tv.remoteEntry
+import com.example.movie.presentation.tv.tvRemoteRoot
+import com.example.movie.presentation.tv.tvWall
 import com.example.movie.presentation.update.AppUpdateHost
 import com.example.movie.presentation.update.LocalAppUpdate
 import com.example.movie.presentation.update.rememberUpdateController
@@ -94,6 +99,7 @@ class MainActivity : ComponentActivity() {
                 val updates = rememberUpdateController()
                 CompositionLocalProvider(LocalAppUpdate provides updates) {
                 MovieTheme {
+                    TelevisionProvider {
                     NavigationGesture()
                     val noticeScope = rememberCoroutineScope()
                     val noticeContext = LocalContext.current
@@ -106,6 +112,7 @@ class MainActivity : ComponentActivity() {
                     Box(
                         Modifier
                             .fillMaxSize()
+                            .tvRemoteRoot()
                             .onSizeChanged { stageWidth = it.width },
                     ) {
                         if (!splash || revealed) key(session) {
@@ -206,7 +213,11 @@ class MainActivity : ComponentActivity() {
                             Modifier
                                 .fillMaxSize()
                                 .zIndex(if (shellCovers) 50f else 0f)
-                                .slideBy({ if (shellCovers) coverShift.value else 0f }, stageWidth),
+                                .slideBy({ if (shellCovers) coverShift.value else 0f }, stageWidth)
+                                .then(
+                                    if (presented.isNotEmpty()) Modifier.tvWall(true)
+                                    else Modifier.remoteEntry(),
+                                ),
                         ) {
                             AppShell(
                                 tabName = tabName,
@@ -235,6 +246,8 @@ class MainActivity : ComponentActivity() {
                                     .zIndex(if (rides) presented.size + 5f else index + 1f)
                                     .slideBy({ fraction }, stageWidth)
                                     .background(ComposeColor(0xFF121212))
+                                    .remoteEntry()
+                                    .dpadSkip()
                                     .clickable(
                                         interactionSource = remember(id) { MutableInteractionSource() },
                                         indication = null,
@@ -280,6 +293,7 @@ class MainActivity : ComponentActivity() {
                                 Box(
                                     Modifier
                                         .fillMaxSize()
+                                        .dpadSkip()
                                         .clickable(
                                             interactionSource = remember { MutableInteractionSource() },
                                             indication = null,
@@ -296,6 +310,7 @@ class MainActivity : ComponentActivity() {
                                 onFinished = { splash = false },
                             )
                         }
+                    }
                     }
                 }
                 }

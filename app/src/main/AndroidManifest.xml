@@ -16,6 +16,13 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
 
+    <uses-feature
+        android:name="android.hardware.touchscreen"
+        android:required="false" />
+    <uses-feature
+        android:name="android.software.leanback"
+        android:required="false" />
+
     <queries>
         <intent>
             <action android:name="android.intent.action.VIEW" />
@@ -58,6 +65,7 @@
             android:enabled="true"
             android:exported="true"
             android:icon="@mipmap/ic_brand_brushed"
+            android:banner="@drawable/tv_banner"
             android:label="@string/app_name"
             android:roundIcon="@mipmap/ic_brand_brushed"
             android:targetActivity=".MainActivity">
@@ -65,12 +73,17 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+            </intent-filter>
         </activity-alias>
         <activity-alias
             android:name=".LauncherNeon"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_brand_neon"
+            android:banner="@drawable/tv_banner"
             android:label="@string/app_name"
             android:roundIcon="@mipmap/ic_brand_neon"
             android:targetActivity=".MainActivity">
@@ -78,12 +91,17 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+            </intent-filter>
         </activity-alias>
         <activity-alias
             android:name=".LauncherMetal"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_brand_metal"
+            android:banner="@drawable/tv_banner"
             android:label="@string/app_name"
             android:roundIcon="@mipmap/ic_brand_metal"
             android:targetActivity=".MainActivity">
@@ -91,12 +109,17 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+            </intent-filter>
         </activity-alias>
         <activity-alias
             android:name=".LauncherMatte"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_brand_matte"
+            android:banner="@drawable/tv_banner"
             android:label="@string/app_name"
             android:roundIcon="@mipmap/ic_brand_matte"
             android:targetActivity=".MainActivity">
@@ -104,12 +127,17 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+            </intent-filter>
         </activity-alias>
         <activity-alias
             android:name=".LauncherNavy"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_brand_navy"
+            android:banner="@drawable/tv_banner"
             android:label="@string/app_name"
             android:roundIcon="@mipmap/ic_brand_navy"
             android:targetActivity=".MainActivity">
@@ -117,18 +145,27 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+            </intent-filter>
         </activity-alias>
         <activity-alias
             android:name=".LauncherWhite"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_brand_white"
+            android:banner="@drawable/tv_banner"
             android:label="@string/app_name"
             android:roundIcon="@mipmap/ic_brand_white"
             android:targetActivity=".MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
         </activity-alias>
 

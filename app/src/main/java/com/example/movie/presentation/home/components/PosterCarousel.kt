@@ -113,6 +113,7 @@ import com.example.movie.presentation.palette.PosterWash
 import com.example.movie.presentation.palette.forCapsule
 import com.example.movie.presentation.palette.forWordmark
 import com.example.movie.presentation.palette.plexWash
+import com.example.movie.presentation.tv.LocalTelevision
 import com.example.movie.ui.theme.PlayBlue
 import com.example.movie.ui.theme.PosterShape
 import kotlinx.coroutines.Dispatchers
@@ -128,8 +129,70 @@ import kotlin.math.sin
 
 private const val CoverWidthFraction = 0.5f
 private const val CoverAspect = 1.46f
+/** Телефон (~200dp) ниже потолка. На планшете 50% ширины раздувает постер выше экрана. */
+private val HeroCoverMaxWidth = 240.dp
+
+private fun heroCoverWidth(available: Dp): Dp =
+    (available * CoverWidthFraction).coerceAtMost(HeroCoverMaxWidth)
 private const val NeighborScale = 0.84f
 private const val NeighborShift = 0.5f
+private const val FiveNeighborScale = 0.86f
+private const val FarScale = 0.72f
+private val FiveOverlap = 16.dp
+private val FiveMargin = 28.dp
+private val FiveGap = 8.dp
+private val FiveUpWidth = 700.dp
+
+private data class HeroDeck(
+    val cover: Dp,
+    val neighborScale: Float,
+    val farScale: Float,
+    val pull: Float,
+    val five: Boolean,
+)
+
+/** Телефон и телевизор: 3 карточки. Планшет: 5, внешние не налезают на ближних и не вылезают за край. */
+private fun heroDeck(available: Dp, television: Boolean): HeroDeck {
+    if (television) {
+        return HeroDeck(
+            cover = available * CoverWidthFraction,
+            neighborScale = NeighborScale,
+            farScale = NeighborScale,
+            pull = NeighborShift,
+            five = false,
+        )
+    }
+    val cover = heroCoverWidth(available)
+    if (available < FiveUpWidth) {
+        return HeroDeck(cover, NeighborScale, NeighborScale, NeighborShift, five = false)
+    }
+    fun separatedPull(width: Dp): Float =
+        (1f - (FiveNeighborScale + FarScale) / 2f - FiveGap.value / width.value)
+            .coerceIn(0.08f, 0.4f)
+    fun overlapPull(width: Dp): Float =
+        (0.5f - FiveNeighborScale / 2f + FiveOverlap.value / width.value)
+            .coerceIn(0.08f, separatedPull(width))
+    fun fits(width: Dp, pull: Float): Boolean {
+        val room = available.value / 2f - FiveMargin.value
+        val coeff = 2f - 2f * pull + FarScale / 2f
+        return width.value * coeff <= room
+    }
+    var width = cover
+    var pull = overlapPull(width)
+    if (!fits(width, pull)) {
+        val tight = separatedPull(width)
+        if (fits(width, tight)) {
+            pull = tight
+        } else {
+            val coeff = 2f - 2f * tight + FarScale / 2f
+            val room = available.value / 2f - FiveMargin.value
+            width = (room / coeff).dp.coerceAtMost(cover)
+            pull = overlapPull(width)
+            if (!fits(width, pull)) pull = separatedPull(width)
+        }
+    }
+    return HeroDeck(width, FiveNeighborScale, FarScale, pull, five = true)
+}
 private const val DotWindow = 5
 private val ReflectionHeight = 104.dp
 private val CaptionLift = 58.dp
@@ -236,7 +299,8 @@ internal fun PosterCarousel(
             modifier = Modifier.fillMaxWidth(),
             contentAlignment = Alignment.Center,
         ) {
-            val fittedWidth = maxWidth * CoverWidthFraction
+            val deck = heroDeck(maxWidth, LocalTelevision.current)
+            val fittedWidth = deck.cover
             val cardHeight = fittedWidth * CoverAspect
             val sidePadding = ((maxWidth - fittedWidth) / 2).coerceAtLeast(0.dp)
             val glow = sliderGlowColor(heroWash)
@@ -329,7 +393,7 @@ internal fun PosterCarousel(
                 contentPadding = PaddingValues(horizontal = sidePadding),
                 pageSize = PageSize.Fixed(fittedWidth),
                 pageSpacing = 0.dp,
-                beyondViewportPageCount = 2,
+                beyondViewportPageCount = if (deck.five) 3 else 2,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(cardHeight),
@@ -363,12 +427,16 @@ internal fun PosterCarousel(
                         .fillMaxSize()
                         .zIndex(2f - distance)
                         .graphicsLayer {
-                            val clamped = distance.coerceIn(0f, 1f)
-                            val scale = lerp(1f, NeighborScale, clamped) * pressScale
+                            val scale = if (distance <= 1f) {
+                                lerp(1f, deck.neighborScale, distance)
+                            } else {
+                                lerp(deck.neighborScale, deck.farScale, (distance - 1f).coerceIn(0f, 1f))
+                            } * pressScale
                             scaleX = scale
                             scaleY = scale
-                            translationX = -pageOffset * size.width * NeighborShift
-                            alpha = if (distance <= 1.05f) 1f else lerp(1f, 0f, (distance - 1.05f).coerceIn(0f, 1f))
+                            translationX = -pageOffset * size.width * deck.pull
+                            val fade = if (deck.five) 2.05f else 1.05f
+                            alpha = if (distance <= fade) 1f else lerp(1f, 0f, (distance - fade).coerceIn(0f, 1f))
                         }
                         .clip(PosterShape)
                         .posterWave(wave)
@@ -413,7 +481,11 @@ internal fun PosterCarousel(
                         modifier = Modifier.fillMaxSize(),
                         onReady = { posterReady = true },
                     )
-                    val shade = lerp(0f, 0.46f, distance.coerceIn(0f, 1f))
+                    val shade = if (distance <= 1f) {
+                        lerp(0f, 0.46f, distance)
+                    } else {
+                        lerp(0.46f, 0.62f, (distance - 1f).coerceIn(0f, 1f))
+                    }
                     if (shade > 0.01f) {
                         Box(
                             modifier = Modifier
@@ -437,6 +509,8 @@ internal fun PosterCarousel(
                         cardHeight = cardHeight,
                         appear = appear,
                         pageShift = pageShift,
+                        neighborScale = deck.neighborScale,
+                        pull = deck.pull,
                     )
                 },
                 caption = { MovieCaption(movie = active) },
@@ -830,8 +904,10 @@ internal fun CoverStackSkeleton(modifier: Modifier = Modifier) {
         verticalArrangement = Arrangement.Top,
     ) {
         BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-            val cardWidth = maxWidth * CoverWidthFraction
+            val deck = heroDeck(maxWidth, LocalTelevision.current)
+            val cardWidth = deck.cover
             val cardHeight = cardWidth * CoverAspect
+            val spread = 1f - deck.pull
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -842,9 +918,13 @@ internal fun CoverStackSkeleton(modifier: Modifier = Modifier) {
                         .height(cardHeight),
                     contentAlignment = Alignment.Center,
                 ) {
-                    SkeletonCard(cardWidth, cardHeight, shift = -NeighborShift, scale = NeighborScale, pulse = pulse, z = 0f)
-                    SkeletonCard(cardWidth, cardHeight, shift = NeighborShift, scale = NeighborScale, pulse = pulse, z = 0f)
-                    SkeletonCard(cardWidth, cardHeight, shift = 0f, scale = 1f, pulse = pulse, z = 1f, solid = true)
+                    if (deck.five) {
+                        SkeletonCard(cardWidth, cardHeight, shift = -2f * spread, scale = deck.farScale, pulse = pulse, z = 0f)
+                        SkeletonCard(cardWidth, cardHeight, shift = 2f * spread, scale = deck.farScale, pulse = pulse, z = 0f)
+                    }
+                    SkeletonCard(cardWidth, cardHeight, shift = -spread, scale = deck.neighborScale, pulse = pulse, z = 1f)
+                    SkeletonCard(cardWidth, cardHeight, shift = spread, scale = deck.neighborScale, pulse = pulse, z = 1f)
+                    SkeletonCard(cardWidth, cardHeight, shift = 0f, scale = 1f, pulse = pulse, z = 2f, solid = true)
                 }
                 HeroFooter(
                     cardWidth = cardWidth,
@@ -933,6 +1013,8 @@ private fun PosterReflection(
     cardHeight: androidx.compose.ui.unit.Dp,
     appear: Float,
     pageShift: Float,
+    neighborScale: Float,
+    pull: Float,
 ) {
     val context = LocalContext.current
     var image by remember(movie?.id) { mutableStateOf<ImageBitmap?>(null) }
@@ -957,10 +1039,10 @@ private fun PosterReflection(
             .fillMaxSize()
             .graphicsLayer {
                 transformOrigin = TransformOrigin(0.5f, 0f)
-                val scale = lerp(1f, NeighborScale, clamped)
+                val scale = lerp(1f, neighborScale, clamped)
                 scaleX = scale
                 scaleY = scale
-                translationX = pageShift * size.width * NeighborShift
+                translationX = pageShift * size.width * pull
                 alpha = appear
                 compositingStrategy = CompositingStrategy.Offscreen
             },

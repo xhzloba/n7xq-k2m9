@@ -13,6 +13,7 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import com.example.movie.presentation.tv.dpadSkip
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -337,6 +338,7 @@ internal fun CoverPopup(
             modifier = Modifier
                 .fillMaxWidth()
                 .appBackground()
+                .dpadSkip()
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,

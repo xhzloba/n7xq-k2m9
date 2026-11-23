@@ -19,12 +19,14 @@ import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.movie.domain.model.posterDateLabel
 import com.example.movie.presentation.settings.LocalUserSettings
+import com.example.movie.presentation.tv.LocalTelevision
 import com.example.movie.ui.theme.CinemaMuted
 
 internal val PosterCaptionBlock = 38.dp
@@ -49,9 +51,31 @@ internal fun posterSize(base: Dp): Dp = if (largePostersOn()) base * 1.22f else 
 @Composable
 internal fun posterAspect(): Float = if (largePostersOn()) 1.46f else 1.50f
 
-/** Полный список / избранное / поиск — прежний крупный режим (2 колонки). */
+/**
+ * Полный список. Телефон и телевизор: 3 обычных или 2 крупных.
+ * Планшет: колонка добавляется, только если влезает ячейка телефонного размера.
+ */
 @Composable
-internal fun posterGridColumns(): Int = if (largePostersOn()) 2 else 3
+internal fun posterGridColumns(): Int {
+    val large = largePostersOn()
+    val phoneColumns = if (large) 2 else 3
+    if (LocalTelevision.current) return phoneColumns
+    val width = LocalConfiguration.current.screenWidthDp.toFloat()
+    val gap = PosterGap.value
+    val inset = PosterGridInset.value * 2f
+    val phoneCell = (PhoneGridWidth - inset - gap * (phoneColumns - 1)) / phoneColumns
+    var columns = phoneColumns
+    while (columns < 12) {
+        val next = columns + 1
+        val needed = inset + next * phoneCell + gap * (next - 1)
+        if (needed > width) break
+        columns = next
+    }
+    return columns
+}
+
+/** Ширина телефона, на которой свёрстаны 3/2 колонки. Уже этого колонок не убавляем. */
+private const val PhoneGridWidth = 411f
 
 @Composable
 internal fun PosterCaption(

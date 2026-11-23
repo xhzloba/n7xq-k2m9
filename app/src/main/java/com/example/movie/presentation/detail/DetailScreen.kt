@@ -76,6 +76,8 @@ import com.example.movie.presentation.cast.CastSheet
 import com.example.movie.presentation.cast.ChromeCast
 import com.example.movie.presentation.home.components.BrandTopInset
 import com.example.movie.presentation.settings.LocalUserSettings
+import com.example.movie.presentation.tv.remoteEntry
+import com.example.movie.presentation.tv.tvWall
 import com.example.movie.presentation.settings.WashToneButton
 import com.example.movie.presentation.settings.WashToneSheet
 import com.example.movie.ui.theme.CinemaBlack
@@ -1163,6 +1165,7 @@ private fun DetailContent(
         holdTrailer = false
         wantTrailer = false
     }
+    val remoteCover = watching != null || offlinePlay || pageShown != null
     BoxWithConstraints(
         modifier = modifier
             .fillMaxSize()
@@ -1194,10 +1197,17 @@ private fun DetailContent(
                 }
             },
     ) {
-        val lift = maxHeight * 0.07f
-        val heroHeight = maxHeight * 0.72f
-        val contentTop = maxHeight * 0.44f - lift
-        val textWidth = maxWidth - DetailInset * 2
+        val screenHeight = maxHeight
+        val screenWidth = maxWidth
+        Box(
+            Modifier
+                .fillMaxSize()
+                .tvWall(remoteCover),
+        ) {
+        val lift = screenHeight * 0.07f
+        val heroHeight = screenHeight * 0.72f
+        val contentTop = screenHeight * 0.44f - lift
+        val textWidth = screenWidth - DetailInset * 2
         val barTravelPx = with(density) { DetailBarTravel.toPx() }
         // Плашка — когда центр лого/тайтла на уровне Chromecast (не top бокса).
         val castDock = WindowInsets.statusBars.getTop(density).toFloat() +
@@ -1251,7 +1261,7 @@ private fun DetailContent(
                 plex = settings.extractPlex,
                 intensity = washIntensity,
                 corner = washCorner,
-                bottomFraction = with(density) { contentTop.toPx() / maxHeight.toPx() },
+                bottomFraction = with(density) { contentTop.toPx() / screenHeight.toPx() },
                 modifier = Modifier.fillMaxSize(),
             )
         }
@@ -1780,6 +1790,7 @@ private fun DetailContent(
                 modifier = Modifier.align(Alignment.TopCenter),
             )
         }
+        }
         if (toneOpen && settings.plexEdit && pageShown == null) {
             WashToneSheet(
                 movieId = toneKey,
@@ -1793,6 +1804,7 @@ private fun DetailContent(
         val openedPage = pageShown
         if (openedPage != null) {
             val pageModifier = Modifier
+                .remoteEntry()
                 .fillMaxSize()
                 .graphicsLayer { alpha = pageAlpha }
             if (openedPage == "facts") {

@@ -2,6 +2,7 @@ package com.example.movie.presentation.home
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import com.example.movie.presentation.tv.dpadSkip
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -190,6 +191,7 @@ internal fun SectionPage(
         modifier
             .fillMaxSize()
             .appBackground()
+            .dpadSkip()
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
@@ -580,7 +582,7 @@ internal fun PosterGrid(
             }
         }
         if (!placeholder && (loadingMore || error != null)) {
-            item(span = { GridItemSpan(3) }) {
+            item(span = { GridItemSpan(maxLineSpan) }) {
                 MoreRow(loading = loadingMore, error = error, onRetry = onRetry)
             }
         }

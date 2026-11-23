@@ -66,6 +66,11 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.path
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
@@ -101,6 +106,8 @@ import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import com.example.movie.R
+import com.example.movie.presentation.tv.LocalTelevision
+import com.example.movie.presentation.tv.dpadSkip
 import com.example.movie.data.download.MediaCache
 import com.example.movie.data.player.CodecCeiling
 import com.example.movie.data.player.WatchCodec
@@ -455,7 +462,49 @@ internal fun RektPlayer(
     val barsCrop = remember { BarsCrop() }
     val activeCrop = if (picture == PictureMode.Bars) current.frameCrop(videoHeight) else null
     barsCrop.crop = activeCrop
-    Box(Modifier.fillMaxSize().background(Color.Black)) {
+    val television = LocalTelevision.current
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(Color.Black)
+            .then(
+                if (!television) {
+                    Modifier
+                } else {
+                    Modifier.onPreviewKeyEvent { event ->
+                        if (event.type != KeyEventType.KeyDown || locked || page != null) return@onPreviewKeyEvent false
+                        val repeat = event.nativeKeyEvent.repeatCount > 0
+                        when (event.key) {
+                            Key.MediaPlayPause, Key.MediaPlay, Key.MediaPause, Key.Spacebar -> {
+                                if (player.isPlaying) player.pause() else player.play()
+                                showChrome()
+                                true
+                            }
+                            Key.DirectionCenter, Key.Enter, Key.NumPadEnter -> {
+                                if (chrome || repeat) return@onPreviewKeyEvent false
+                                if (player.isPlaying) player.pause() else player.play()
+                                showChrome()
+                                true
+                            }
+                            Key.DirectionLeft, Key.DirectionRight -> {
+                                if (chrome) return@onPreviewKeyEvent false
+                                val delta = if (event.key == Key.DirectionLeft) -10_000L else 10_000L
+                                val length = player.duration.takeIf { it > 0L } ?: Long.MAX_VALUE
+                                player.seekTo((player.currentPosition + delta).coerceIn(0L, length))
+                                showChrome()
+                                true
+                            }
+                            Key.DirectionUp, Key.DirectionDown -> {
+                                if (chrome) return@onPreviewKeyEvent false
+                                showChrome()
+                                true
+                            }
+                            else -> false
+                        }
+                    }
+                },
+            ),
+    ) {
         AndroidView(
             modifier = Modifier
                 .fillMaxSize()
@@ -467,6 +516,8 @@ internal fun RektPlayer(
                 PlayerView(viewContext).apply {
                     this.player = player
                     useController = false
+                    isFocusable = false
+                    isFocusableInTouchMode = false
                     keepScreenOn = true
                     clipChildren = true
                     layoutParams = FrameLayout.LayoutParams(
@@ -503,6 +554,7 @@ internal fun RektPlayer(
             Box(
                 Modifier
                     .fillMaxSize()
+                    .dpadSkip()
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
@@ -520,6 +572,7 @@ internal fun RektPlayer(
                 Modifier
                     .fillMaxSize()
                     .background(Color.Black.copy(alpha = 0.28f))
+                    .dpadSkip()
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,

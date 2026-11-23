@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.movie.R
+import com.example.movie.presentation.tv.dpadSkip
 import com.example.movie.presentation.common.appBackground
 import com.example.movie.presentation.settings.LocalUserSettings
 import kotlin.math.roundToInt
@@ -81,6 +82,7 @@ internal fun SplashScreen(onReveal: () -> Unit, onFinished: () -> Unit) {
             .fillMaxSize()
             .graphicsLayer(alpha = veil.value)
             .appBackground()
+            .dpadSkip()
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
