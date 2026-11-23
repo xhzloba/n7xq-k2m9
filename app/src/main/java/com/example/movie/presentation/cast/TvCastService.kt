@@ -1,5 +1,6 @@
 package com.example.movie.presentation.cast
 
+import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -7,16 +8,17 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.graphics.BitmapFactory
 import android.media.MediaMetadata
 import android.media.session.MediaSession
 import android.media.session.PlaybackState
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.net.wifi.WifiManager
 import android.os.IBinder
 import android.os.PowerManager
-import androidx.core.app.NotificationCompat
 import com.example.movie.R
 import com.example.movie.MainActivity
-import com.example.movie.notification.appIcon
 import com.example.movie.data.cast.CastProxy
 import com.example.movie.data.cast.DlnaDevice
 import com.example.movie.data.cast.TvCastHub
@@ -37,14 +39,15 @@ import com.example.movie.domain.model.normalizedPlayerCodec
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import java.util.concurrent.Executors
 import java.util.concurrent.RejectedExecutionException
+import java.util.concurrent.atomic.AtomicBoolean
 
 class TvCastService : Service() {
     private val commands = Executors.newSingleThreadExecutor()
     private var proxy: CastProxy? = null
-    private var host: String? = null
+    @Volatile private var host: String? = null
     private var mediaUrl: String? = null
-    private var mediaTitle: String = ""
-    private var movieId: String = ""
+    @Volatile private var mediaTitle: String = ""
+    @Volatile private var movieId: String = ""
     private var preparedPage: String? = null
     private var hls: Boolean = false
     private var castRev: Int = 0
@@ -52,6 +55,9 @@ class TvCastService : Service() {
     private var wifiLock: WifiManager.WifiLock? = null
     private var wakeLock: PowerManager.WakeLock? = null
     private var session: MediaSession? = null
+    private val sessionLock = Any()
+    private val stopped = AtomicBoolean(false)
+    private var userStop = false
 
     @Volatile
     private var alive = true
@@ -59,15 +65,24 @@ class TvCastService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        alive = true
         ensureChannel()
+        if (intent == null && proxy == null) {
+            startForeground(NOTE_ID, note(mediaTitle), FOREGROUND_TYPES)
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopSelf()
+            return START_NOT_STICKY
+        }
+        if (intent?.action != ACTION_STOP) {
+            stopped.set(false)
+            userStop = false
+            alive = true
+        }
         intent?.getStringExtra(EXTRA_MOVIE)?.takeIf { it.isNotBlank() }?.let { movieId = it }
-        startForeground(
-            NOTE_ID,
-            note(mediaTitle),
-            ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK,
-        )
-        if (intent == null) return START_NOT_STICKY
+        val titled = intent?.getStringExtra(EXTRA_TITLE).orEmpty()
+        if (titled.isNotBlank()) mediaTitle = titled
+        holdLocks(mediaTitle)
+        startForeground(NOTE_ID, note(mediaTitle), FOREGROUND_TYPES)
+        if (intent == null) return START_STICKY
         val action = intent.action
         val page = intent.getStringExtra(EXTRA_PAGE).orEmpty()
         val title = intent.getStringExtra(EXTRA_TITLE).orEmpty()
@@ -78,7 +93,7 @@ class TvCastService : Service() {
         val audio = intent.getIntExtra(EXTRA_AUDIO, 0)
         try {
             commands.execute {
-                if (!alive) return@execute
+                if (!alive && action != ACTION_STOP) return@execute
                 try {
                     when (action) {
                         ACTION_PREPARE -> prepare(page, title)
@@ -105,7 +120,12 @@ class TvCastService : Service() {
             }
         } catch (_: RejectedExecutionException) {
         }
-        return START_NOT_STICKY
+        return if (action == ACTION_STOP) START_NOT_STICKY else START_STICKY
+    }
+
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        if (!alive || stopped.get()) return
+        runCatching { startForeground(NOTE_ID, note(mediaTitle), FOREGROUND_TYPES) }
     }
 
     override fun onDestroy() {
@@ -306,6 +326,9 @@ class TvCastService : Service() {
     }
 
     private fun shutdown() {
+        if (!stopped.compareAndSet(false, true)) return
+        userStop = true
+        alive = false
         release()
         TvCastHub.armed = null
         TvCastHub.update { TvCastUi() }
@@ -320,38 +343,116 @@ class TvCastService : Service() {
         preparedPage = null
         movieId = ""
         castRev = 0
-        if (control != null) runCatching { stopRenderer(control) }
+        if (userStop && control != null) runCatching { stopRenderer(control) }
         proxy?.stop()
         proxy = null
         host = null
-        val wifi = wifiLock
-        wifiLock = null
-        if (wifi?.isHeld == true) runCatching { wifi.release() }
-        val wake = wakeLock
-        wakeLock = null
-        if (wake?.isHeld == true) runCatching { wake.release() }
-        session?.release()
-        session = null
+        synchronized(sessionLock) {
+            unpinWifi()
+            val wifi = wifiLock
+            wifiLock = null
+            if (wifi?.isHeld == true) runCatching { wifi.release() }
+            val wake = wakeLock
+            wakeLock = null
+            if (wake?.isHeld == true) runCatching { wake.release() }
+            session?.release()
+            session = null
+        }
     }
 
     @Suppress("DEPRECATION")
     private fun holdLocks(title: String) {
-        if (wakeLock == null) {
+        synchronized(sessionLock) {
             val power = getSystemService(PowerManager::class.java)
-            wakeLock = power.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "movie:cast").apply { acquire() }
-        }
-        if (wifiLock == null) {
+            val wake = wakeLock ?: power.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "movie:cast").also {
+                it.setReferenceCounted(false)
+                wakeLock = it
+            }
+            if (!wake.isHeld) wake.acquire()
             val wifi = applicationContext.getSystemService(WifiManager::class.java)
-            wifiLock = wifi?.createWifiLock(WifiManager.WIFI_MODE_FULL_LOW_LATENCY, "movie:cast")?.apply { acquire() }
+            val radio = wifiLock ?: wifi?.createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, "movie:cast")?.also {
+                it.setReferenceCounted(false)
+                wifiLock = it
+            }
+            if (radio != null && !radio.isHeld) radio.acquire()
+            pinWifi()
+            val shown = title.ifBlank { mediaTitle }
+            val current = session ?: MediaSession(this, "tv-cast").also { created ->
+                created.setCallback(object : MediaSession.Callback() {
+                    override fun onStop() {
+                        post { shutdown() }
+                    }
+
+                    override fun onPause() {
+                        publishPlaying(created, mediaTitle)
+                    }
+
+                    override fun onPlay() {
+                        publishPlaying(created, mediaTitle)
+                    }
+                })
+                session = created
+            }
+            current.setSessionActivity(openMovieIntent())
+            publishPlaying(current, shown)
+            current.isActive = true
         }
-        val current = session ?: MediaSession(this, "tv-cast").also { session = it }
+    }
+
+    private fun publishPlaying(current: MediaSession, title: String) {
+        val shown = title.ifBlank { getString(R.string.cast_notification_title) }
         current.setMetadata(
-            MediaMetadata.Builder().putString(MediaMetadata.METADATA_KEY_TITLE, title).build(),
+            MediaMetadata.Builder().putString(MediaMetadata.METADATA_KEY_TITLE, shown).build(),
         )
         current.setPlaybackState(
-            PlaybackState.Builder().setState(PlaybackState.STATE_PLAYING, 0L, 1f).build(),
+            PlaybackState.Builder()
+                .setActions(PlaybackState.ACTION_STOP or PlaybackState.ACTION_PLAY or PlaybackState.ACTION_PAUSE)
+                .setState(PlaybackState.STATE_PLAYING, PlaybackState.PLAYBACK_POSITION_UNKNOWN, 1f)
+                .build(),
         )
-        current.isActive = true
+    }
+
+    @Suppress("DEPRECATION")
+    private fun pinWifi() {
+        val manager = getSystemService(ConnectivityManager::class.java) ?: return
+        val wanted = host
+        val local = manager.allNetworks.mapNotNull { candidate ->
+            val caps = manager.getNetworkCapabilities(candidate) ?: return@mapNotNull null
+            val lan = caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
+                caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)
+            if (!lan) return@mapNotNull null
+            candidate to manager.getLinkProperties(candidate)
+        }
+        val matched = wanted?.let { address ->
+            local.firstOrNull { (_, link) ->
+                link?.linkAddresses?.any { it.address.hostAddress == address } == true
+            }?.first
+        }
+        val network = matched ?: local.firstOrNull()?.first ?: return
+        manager.bindProcessToNetwork(network)
+    }
+
+    private fun unpinWifi() {
+        runCatching { getSystemService(ConnectivityManager::class.java)?.bindProcessToNetwork(null) }
+    }
+
+    private fun post(block: () -> Unit) {
+        try {
+            commands.execute(block)
+        } catch (_: RejectedExecutionException) {
+        }
+    }
+
+    private fun openMovieIntent(): PendingIntent {
+        val open = Intent(this, MainActivity::class.java)
+            .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+        movieId.takeIf { it.isNotBlank() }?.let { open.putExtra(MainActivity.EXTRA_MOVIE, it) }
+        return PendingIntent.getActivity(
+            this,
+            2,
+            open,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
     }
 
     private fun manager() = getSystemService(NotificationManager::class.java)
@@ -370,7 +471,7 @@ class TvCastService : Service() {
         manager.createNotificationChannel(channel)
     }
 
-    private fun note(work: String): android.app.Notification {
+    private fun note(work: String): Notification {
         val stop = PendingIntent.getService(
             this,
             1,
@@ -378,27 +479,26 @@ class TvCastService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
         val headline = work.ifBlank { getString(R.string.cast_notification_title) }
-        val openMovie = movieId.takeIf { it.isNotBlank() }?.let { id ->
-            PendingIntent.getActivity(
-                this,
-                2,
-                Intent(this, MainActivity::class.java)
-                    .putExtra(MainActivity.EXTRA_MOVIE, id)
-                    .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP),
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-            )
-        }
-        return NotificationCompat.Builder(this, CHANNEL)
-            .appIcon(this)
+        val token = synchronized(sessionLock) { session?.sessionToken }
+        val builder = Notification.Builder(this, CHANNEL)
+            .setSmallIcon(R.drawable.ic_stat_notify)
+            .setLargeIcon(BitmapFactory.decodeResource(resources, R.mipmap.ic_lumen_metal))
             .setContentTitle(headline)
             .setContentText(getString(R.string.cast_notification_text))
-            .setContentIntent(openMovie)
+            .setContentIntent(openMovieIntent())
             .setOngoing(true)
             .setOnlyAlertOnce(true)
-            .setCategory(NotificationCompat.CATEGORY_SERVICE)
-            .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
-            .addAction(0, getString(R.string.cast_stop), stop)
-            .build()
+            .setCategory(Notification.CATEGORY_TRANSPORT)
+            .setForegroundServiceBehavior(Notification.FOREGROUND_SERVICE_IMMEDIATE)
+            .addAction(Notification.Action.Builder(null, getString(R.string.cast_stop), stop).build())
+        if (token != null) {
+            builder.setStyle(
+                Notification.MediaStyle()
+                    .setMediaSession(token)
+                    .setShowActionsInCompactView(0),
+            )
+        }
+        return builder.build()
     }
 
     companion object {
@@ -421,6 +521,9 @@ class TvCastService : Service() {
         const val EXTRA_AUDIO = "audio"
         private const val CHANNEL = "tv_cast"
         private const val NOTE_ID = 73
+        private const val FOREGROUND_TYPES =
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK or
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE
 
         fun prepare(context: Context, pageUrl: String, title: String, movieId: String) {
             send(context, ACTION_PREPARE) {

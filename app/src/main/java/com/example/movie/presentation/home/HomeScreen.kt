@@ -817,11 +817,7 @@ private fun HomeOrderedRail(
             onMovieClick = onMovieClick,
             onMoviePeek = onMoviePeek,
             title = title,
-            onOpen = if (state.favorites.size >= HistoryRailSize) {
-                { onOpenSection(HomeSection.Favorites) }
-            } else {
-                null
-            },
+            onOpen = { onOpenSection(HomeSection.Favorites) },
             onSettled = onSettled,
             seeAllGlass = seeAllGlass,
             stickToStart = true,
@@ -832,11 +828,7 @@ private fun HomeOrderedRail(
             onMovieClick = onMovieClick,
             onMoviePeek = onMoviePeek,
             title = title,
-            onOpen = if (state.watched.size >= HistoryRailSize) {
-                { onOpenSection(HomeSection.Watched) }
-            } else {
-                null
-            },
+            onOpen = { onOpenSection(HomeSection.Watched) },
             onSettled = onSettled,
             seeAllGlass = seeAllGlass,
             stickToStart = true,

@@ -1,6 +1,7 @@
 package com.example.movie.data.cast
 
 import android.content.Context
+import android.os.Process
 import com.example.movie.data.player.LIFT_USER_AGENT
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -24,7 +25,9 @@ internal class CastProxy(
     private val app = context.applicationContext
     private val client = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
+        .readTimeout(2, TimeUnit.MINUTES)
+        .writeTimeout(2, TimeUnit.MINUTES)
+        .callTimeout(0, TimeUnit.MILLISECONDS)
         .followRedirects(true)
         .followSslRedirects(true)
         .build()
@@ -33,7 +36,10 @@ internal class CastProxy(
     private val dashBases = ConcurrentHashMap<String, String>()
     private val assets = ConcurrentHashMap<String, ByteArray>()
     private val workers = Executors.newFixedThreadPool(6) { runnable ->
-        Thread(runnable, "cast-worker").apply {
+        Thread({
+            Process.setThreadPriority(Process.THREAD_PRIORITY_FOREGROUND)
+            runnable.run()
+        }, "cast-worker").apply {
             isDaemon = true
             setUncaughtExceptionHandler { _, _ -> }
         }
@@ -60,7 +66,10 @@ internal class CastProxy(
         if (server != null) return
         val socket = bind()
         server = socket
-        val thread = Thread({ accept(socket) }, "cast-accept")
+        val thread = Thread({
+            Process.setThreadPriority(Process.THREAD_PRIORITY_FOREGROUND)
+            accept(socket)
+        }, "cast-accept")
         acceptThread = thread
         thread.start()
     }
@@ -115,7 +124,9 @@ internal class CastProxy(
 
     private fun serve(socket: Socket) {
         socket.tcpNoDelay = true
-        socket.soTimeout = 20_000
+        socket.keepAlive = true
+        socket.sendBufferSize = 512 * 1024
+        socket.soTimeout = 60_000
         val input = socket.getInputStream()
         val output = socket.getOutputStream()
         val head = readHead(input)
@@ -283,7 +294,7 @@ private fun bind(): ServerSocket =
 private fun listen(port: Int): ServerSocket =
     ServerSocket().apply {
         reuseAddress = true
-        bind(InetSocketAddress(port), 24)
+        bind(InetSocketAddress(port), 64)
     }
 
 private fun playlistKind(remote: String, contentType: String): String? {

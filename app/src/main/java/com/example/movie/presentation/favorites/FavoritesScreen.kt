@@ -224,6 +224,7 @@ internal fun FavoritesScreen(
                 LibraryBar(
                     title = stringResource(R.string.library_downloads),
                     onBack = closePage,
+                    titleAtStart = true,
                     modifier = Modifier.align(Alignment.TopCenter),
                 )
             }
@@ -259,6 +260,7 @@ internal fun FavoritesScreen(
                 onFilter = if (listTools && kinds.isNotEmpty()) ({ sheet = LibrarySheet.Filter }) else null,
                 sortOn = sort != null,
                 filterOn = kind != null,
+                titleAtStart = true,
                 modifier = Modifier.align(Alignment.TopCenter),
             )
         } else {
@@ -303,6 +305,7 @@ internal fun FavoritesScreen(
                 onFilter = if (listTools && kinds.isNotEmpty()) ({ sheet = LibrarySheet.Filter }) else null,
                 sortOn = sort != null,
                 filterOn = kind != null,
+                titleAtStart = true,
                 modifier = Modifier.align(Alignment.TopCenter),
             )
             }
