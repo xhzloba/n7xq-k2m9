@@ -18,7 +18,6 @@ import androidx.compose.foundation.LocalOverscrollConfiguration
 import androidx.compose.foundation.OverscrollConfiguration
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.DragInteraction
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -52,7 +51,9 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -94,9 +95,7 @@ import com.example.movie.presentation.haptic.rememberHaptic
 import com.example.movie.presentation.haptic.rememberHapticTick
 import com.example.movie.presentation.shell.ShellIcons
 import com.example.movie.ui.theme.PosterShape
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.launch
 
 private val PosterWidth = 112.dp
 private val RailStart = PosterGridInset
@@ -357,32 +356,26 @@ private fun RecommendationPager(
 ) {
     val listState = rememberLazyListState()
     val head = movies.firstOrNull()?.id
-    LaunchedEffect(head) {
-        if (stickToStart && head != null) listState.scrollToItem(0)
+    // Глушим только программный прыжок в начало, когда фильм встал первым.
+    // Палец и инерция щелкают как раньше: флаг читается в момент смены индекса.
+    val mute = remember { booleanArrayOf(false) }
+    val muteGen = remember { intArrayOf(0) }
+    val seenHead = remember { arrayOf<String?>(null) }
+    SideEffect {
+        if (stickToStart && head != null && seenHead[0] != head) {
+            seenHead[0] = head
+            muteGen[0]++
+            mute[0] = true
+        }
     }
-    var byFinger by remember { mutableStateOf(false) }
-    LaunchedEffect(listState) {
-        var held = false
-        coroutineScope {
-            launch {
-                listState.interactionSource.interactions.collect { event ->
-                    when (event) {
-                        is DragInteraction.Start -> {
-                            held = true
-                            byFinger = true
-                        }
-                        is DragInteraction.Stop, is DragInteraction.Cancel -> {
-                            held = false
-                            if (!listState.isScrollInProgress) byFinger = false
-                        }
-                    }
-                }
-            }
-            launch {
-                snapshotFlow { listState.isScrollInProgress }.collect { scrolling ->
-                    if (!scrolling && !held) byFinger = false
-                }
-            }
+    LaunchedEffect(head) {
+        if (!stickToStart || head == null) return@LaunchedEffect
+        val ticket = muteGen[0]
+        try {
+            listState.scrollToItem(0)
+            withFrameNanos { }
+        } finally {
+            if (muteGen[0] == ticket) mute[0] = false
         }
     }
     val tick = rememberHapticTick()
@@ -438,7 +431,7 @@ private fun RecommendationPager(
         label = "railRetouchR",
     )
     SettleEffect(listState, { listState.isScrollInProgress }, onSettled)
-    HapticOnChange(listState, armed = { byFinger }) { listState.firstVisibleItemIndex }
+    HapticOnChange(listState, armed = { !mute[0] }) { listState.firstVisibleItemIndex }
     val decay = rememberSplineBasedDecay<Float>()
     val snapping = remember(listState) { SnapLayoutInfoProvider(listState, SnapPosition.Start) }
     val flingBehavior = remember(snapping, decay) {

@@ -12,7 +12,6 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -57,7 +56,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -71,9 +69,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -115,8 +111,6 @@ import com.example.movie.data.player.fetchLiftWatch
 import com.example.movie.presentation.shell.ShellIcons
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import android.content.Intent
-import android.net.Uri
 import android.view.View
 import android.webkit.CookieManager
 import android.webkit.WebChromeClient
@@ -231,10 +225,6 @@ internal fun FranchiseBlock(
         if (franchise.seasons.isNotEmpty()) {
             Spacer(Modifier.height(22.dp))
             Seasons(franchise, detail.posterUrl, marks, onPlayEpisode)
-        }
-        if (franchise.kinopoiskId != null || !franchise.imdbId.isNullOrBlank()) {
-            Spacer(Modifier.height(22.dp))
-            ExternalLinks(franchise)
         }
     }
 }
@@ -1117,97 +1107,6 @@ private fun List<EpisodeProgress>.mark(season: Int, episode: Int): EpisodeProgre
 private fun FranchiseSeason.finished(marks: List<EpisodeProgress>): Boolean {
     val aired = episodes.filterNot { it.release.isUnreleased() }
     return aired.isNotEmpty() && aired.all { episode -> marks.mark(number, episode.number)?.completed == true }
-}
-
-@Composable
-private fun ExternalLinks(franchise: Franchise) {
-    val context = LocalContext.current
-    val tick = rememberHapticTick()
-    val kp = franchise.kinopoiskId
-    val imdb = franchise.imdbId
-    Column(Modifier.fillMaxWidth()) {
-    Text(
-        text = stringResource(R.string.franchise_links),
-        color = Color.White,
-        fontSize = 18.sp,
-        fontWeight = FontWeight.Bold,
-        modifier = Modifier.fillMaxWidth(),
-    )
-    Spacer(Modifier.height(12.dp))
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        if (kp != null) {
-            val path = if (franchise.series) "series" else "film"
-            SiteBox(
-                icon = R.drawable.ic_link_kinopoisk,
-                label = stringResource(R.string.franchise_link_kp),
-                onClick = {
-                    tick?.invoke()
-                    context.openLink("https://www.kinopoisk.ru/$path/$kp/")
-                },
-            )
-        }
-        if (!imdb.isNullOrBlank()) {
-            SiteBox(
-                icon = R.drawable.ic_link_imdb,
-                label = stringResource(R.string.franchise_link_imdb),
-                onClick = {
-                    tick?.invoke()
-                    context.openLink("https://www.imdb.com/title/tt$imdb/")
-                },
-            )
-        }
-    }
-    }
-}
-
-@Composable
-private fun SiteBox(
-    icon: Int,
-    label: String,
-    onClick: () -> Unit,
-) {
-    val open = rememberUpdatedState(onClick)
-    Column(
-        modifier = Modifier
-            .width(112.dp)
-            .height(108.dp)
-            .clip(RoundedCornerShape(18.dp))
-            .background(Plaque)
-            .pointerInput(Unit) {
-                detectTapGestures(onTap = { open.value() })
-            },
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        Image(
-            painter = painterResource(icon),
-            contentDescription = label,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier
-                .size(44.dp)
-                .clip(RoundedCornerShape(10.dp)),
-        )
-        Spacer(Modifier.height(10.dp))
-        Text(
-            text = label,
-            color = Color.White.copy(alpha = 0.78f),
-            fontSize = 13.sp,
-            lineHeight = 16.sp,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-    }
-}
-
-private fun android.content.Context.openLink(url: String) {
-    val view = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-    val chooser = Intent.createChooser(view, null).apply {
-        putExtra(Intent.EXTRA_AUTO_LAUNCH_SINGLE_CHOICE, false)
-    }
-    runCatching { startActivity(chooser) }
 }
 
 @Composable

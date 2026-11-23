@@ -30,7 +30,7 @@ internal fun BackdropTrailer(
         modifier = modifier,
         factory = { context ->
             TextureView(context).apply {
-                isOpaque = true
+                isOpaque = false
                 var frameSeen = false
                 val player = MediaPlayer()
                 val soundtrack = if (audio != null) MediaPlayer() else null
@@ -49,10 +49,10 @@ internal fun BackdropTrailer(
                         player.setVolume(1f, 1f)
                         player.isLooping = true
                         player.setOnVideoSizeChangedListener { _, videoWidth, videoHeight ->
-                            cropTop(videoWidth, videoHeight)
+                            showFrame(videoWidth, videoHeight)
                         }
                         player.setOnPreparedListener { ready ->
-                            cropTop(ready.videoWidth, ready.videoHeight)
+                            showFrame(ready.videoWidth, ready.videoHeight)
                             ready.setVolume(1f, 1f)
                             context.getSystemService(AudioManager::class.java)?.requestAudioFocus(focus)
                             ready.start()
@@ -88,7 +88,7 @@ internal fun BackdropTrailer(
                     }
 
                     override fun onSurfaceTextureSizeChanged(surface: android.graphics.SurfaceTexture, width: Int, height: Int) {
-                        cropTop(player.videoWidth, player.videoHeight)
+                        showFrame(player.videoWidth, player.videoHeight)
                     }
 
                     override fun onSurfaceTextureDestroyed(surface: android.graphics.SurfaceTexture): Boolean {
@@ -123,7 +123,7 @@ private class TrailerPlayback(
     val focus: AudioFocusRequest,
 )
 
-private fun TextureView.cropTop(videoWidth: Int, videoHeight: Int) {
+private fun TextureView.showFrame(videoWidth: Int, videoHeight: Int) {
     if (videoWidth <= 0 || videoHeight <= 0) return
     post {
         if (width <= 0 || height <= 0) return@post
@@ -131,12 +131,15 @@ private fun TextureView.cropTop(videoWidth: Int, videoHeight: Int) {
         val viewH = height.toFloat()
         val videoRatio = videoWidth.toFloat() / videoHeight
         val viewRatio = viewW / viewH
-        val zoom = if (videoRatio > viewRatio) {
-            viewH * videoRatio / viewW
+        val sx: Float
+        val sy: Float
+        if (videoRatio > viewRatio) {
+            sx = 1f
+            sy = viewRatio / videoRatio
         } else {
-            viewW / (viewH * videoRatio)
+            sx = videoRatio / viewRatio
+            sy = 1f
         }
-        val pivotY = if (videoRatio > viewRatio) viewH / 2f else 0f
-        setTransform(Matrix().apply { setScale(zoom, zoom, viewW / 2f, pivotY) })
+        setTransform(Matrix().apply { setScale(sx, sy, viewW / 2f, viewH / 2f) })
     }
 }

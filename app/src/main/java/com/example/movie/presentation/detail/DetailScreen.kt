@@ -952,13 +952,6 @@ private fun DetailContent(
             holdTrailer = false
         }
     }
-    val trailerStill = remember(detail.id) { Animatable(1f) }
-    LaunchedEffect(trailerOn, trailerFrame) {
-        trailerStill.animateTo(
-            if (trailerOn && trailerFrame) 0f else 1f,
-            tween(durationMillis = 700),
-        )
-    }
     val trailerPage = trailerUrl
     val trailerLoading = wantTrailer && !trailerFrame
     LaunchedEffect(wantTrailer, trailerPage, trailerPlay) {
@@ -1161,7 +1154,6 @@ private fun DetailContent(
         if (!wantTrailer) return@LaunchedEffect
         val origin = scroll.value
         snapshotFlow { scroll.value }.first { it != origin }
-        trailerStill.snapTo(1f)
         trailerFrame = false
         holdTrailer = false
         wantTrailer = false
@@ -1224,48 +1216,6 @@ private fun DetailContent(
         val logoTop = with(density) { contentTop.toPx() } - scroll.value
         val logoAnchor = logoTop + logoExtentPx / 2f
         val barIn = ((castDock + barTravelPx - logoAnchor) / barTravelPx).coerceIn(0f, 1f)
-        if (previewOn && (backdrops.isNotEmpty() || (wantTrailer && trailerMedia != null))) {
-            Box(
-                modifier = Modifier
-                    .offset(y = -lift)
-                    .fillMaxWidth()
-                    .height(heroHeight)
-                    .clipToBounds(),
-            ) {
-                val media = trailerMedia
-                if (holdTrailer && media != null) {
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.TopCenter)
-                            .fillMaxWidth()
-                            .height(contentTop + lift)
-                            .clipToBounds(),
-                    ) {
-                        key(trailerPlay) {
-                            BackdropTrailer(
-                                url = media.video,
-                                audio = media.audio,
-                                referer = trailerPage,
-                                modifier = Modifier.fillMaxSize(),
-                                onReady = { trailerFrame = true },
-                                onFailed = { wantTrailer = false },
-                            )
-                        }
-                    }
-                }
-            }
-        }
-        if (previewOn && holdTrailer && trailerFrame) {
-            TrailerEdgeFade(
-                wash = toneWash,
-                alpha = washAlpha,
-                plex = settings.extractPlex,
-                intensity = washIntensity,
-                corner = washCorner,
-                bottomFraction = with(density) { contentTop.toPx() / screenHeight.toPx() },
-                modifier = Modifier.fillMaxSize(),
-            )
-        }
         if (previewOn && backdrops.isNotEmpty()) {
             Box(
                 modifier = Modifier
@@ -1278,7 +1228,7 @@ private fun DetailContent(
                 Box(
                     modifier = Modifier
                         .backdropPan(tilt, backdropShift, parallaxFade)
-                        .graphicsLayer { alpha = (1f - pageAlpha) * backdropAlpha * trailerStill.value }
+                        .graphicsLayer { alpha = (1f - pageAlpha) * backdropAlpha }
                         .fillMaxSize(),
                 ) {
                     if (manualBackdrop) {
@@ -1371,18 +1321,48 @@ private fun DetailContent(
                 }
             }
         }
-        if (previewOn && trailerLoading) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(contentTop),
-                contentAlignment = Alignment.Center,
-            ) {
-                CircularProgressIndicator(
-                    color = Color.White,
-                    strokeWidth = 2.5.dp,
-                    modifier = Modifier.size(36.dp),
-                )
+        if (previewOn && (trailerLoading || (holdTrailer && trailerMedia != null))) {
+            val statusTop = with(density) { WindowInsets.statusBars.getTop(this).toDp() }
+            val aboveLogo = 12.dp
+            val belowBar = 8.dp
+            val slotTop = statusTop + belowBar
+            val slotBottom = contentTop - aboveLogo
+            val slot = (slotBottom - slotTop).coerceAtLeast(0.dp)
+            val frameWidth = screenWidth - DetailInset * 2
+            val frameHeight = minOf(frameWidth * 9f / 16f, slot)
+            if (frameHeight > 0.dp) {
+                val frameTop = slotBottom - frameHeight
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = frameTop)
+                        .width(frameWidth)
+                        .height(frameHeight)
+                        .clipToBounds()
+                        .background(Color.Black),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    val media = trailerMedia
+                    if (holdTrailer && media != null) {
+                        key(trailerPlay) {
+                            BackdropTrailer(
+                                url = media.video,
+                                audio = media.audio,
+                                referer = trailerPage,
+                                modifier = Modifier.fillMaxSize(),
+                                onReady = { trailerFrame = true },
+                                onFailed = { wantTrailer = false },
+                            )
+                        }
+                    }
+                    if (trailerLoading) {
+                        CircularProgressIndicator(
+                            color = Color.White,
+                            strokeWidth = 2.5.dp,
+                            modifier = Modifier.size(36.dp),
+                        )
+                    }
+                }
             }
         }
         if (previewOn && manualBackdrop) {
@@ -3327,35 +3307,6 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawBackdropMask() 
         ),
         blendMode = BlendMode.DstIn,
     )
-}
-
-@Composable
-private fun TrailerEdgeFade(
-    wash: PosterWash,
-    alpha: Float,
-    plex: Boolean,
-    bottomFraction: Float,
-    modifier: Modifier = Modifier,
-    intensity: Float = 1f,
-    corner: Float = 0f,
-) {
-    if (alpha <= 0.01f) return
-    Canvas(modifier) {
-        val bottom = size.height * bottomFraction
-        val fadeTop = bottom * 0.74f
-        drawContext.canvas.saveLayer(Rect(0f, fadeTop, size.width, bottom + 2f), Paint())
-        if (plex) drawPlexWash(wash, alpha, intensity, corner) else drawPosterWash(wash, alpha, intensity, corner)
-        drawRect(
-            brush = Brush.verticalGradient(
-                0f to Color.Transparent,
-                fadeTop / size.height to Color.Transparent,
-                (fadeTop + (bottom - fadeTop) * 0.55f) / size.height to Color.Black.copy(alpha = 0.45f),
-                bottom / size.height to Color.Black,
-            ),
-            blendMode = BlendMode.DstIn,
-        )
-        drawContext.canvas.restore()
-    }
 }
 
 /** Кадр чуть увеличивается и остаётся кропом: сдвиг не вытаскивает край в экран. */
