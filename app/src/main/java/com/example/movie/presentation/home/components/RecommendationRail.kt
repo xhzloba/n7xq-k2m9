@@ -18,6 +18,7 @@ import androidx.compose.foundation.LocalOverscrollConfiguration
 import androidx.compose.foundation.OverscrollConfiguration
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.DragInteraction
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -93,7 +94,9 @@ import com.example.movie.presentation.haptic.rememberHaptic
 import com.example.movie.presentation.haptic.rememberHapticTick
 import com.example.movie.presentation.shell.ShellIcons
 import com.example.movie.ui.theme.PosterShape
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.launch
 
 private val PosterWidth = 112.dp
 private val RailStart = PosterGridInset
@@ -357,6 +360,31 @@ private fun RecommendationPager(
     LaunchedEffect(head) {
         if (stickToStart && head != null) listState.scrollToItem(0)
     }
+    var byFinger by remember { mutableStateOf(false) }
+    LaunchedEffect(listState) {
+        var held = false
+        coroutineScope {
+            launch {
+                listState.interactionSource.interactions.collect { event ->
+                    when (event) {
+                        is DragInteraction.Start -> {
+                            held = true
+                            byFinger = true
+                        }
+                        is DragInteraction.Stop, is DragInteraction.Cancel -> {
+                            held = false
+                            if (!listState.isScrollInProgress) byFinger = false
+                        }
+                    }
+                }
+            }
+            launch {
+                snapshotFlow { listState.isScrollInProgress }.collect { scrolling ->
+                    if (!scrolling && !held) byFinger = false
+                }
+            }
+        }
+    }
     val tick = rememberHapticTick()
     val poster = rememberHaptic(HapticSlot.Poster)
     val settings by LocalUserSettings.current.settings.collectAsStateWithLifecycle()
@@ -410,7 +438,7 @@ private fun RecommendationPager(
         label = "railRetouchR",
     )
     SettleEffect(listState, { listState.isScrollInProgress }, onSettled)
-    HapticOnChange(listState) { listState.firstVisibleItemIndex }
+    HapticOnChange(listState, armed = { byFinger }) { listState.firstVisibleItemIndex }
     val decay = rememberSplineBasedDecay<Float>()
     val snapping = remember(listState) { SnapLayoutInfoProvider(listState, SnapPosition.Start) }
     val flingBehavior = remember(snapping, decay) {

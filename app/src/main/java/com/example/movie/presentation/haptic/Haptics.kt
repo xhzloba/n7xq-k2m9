@@ -102,11 +102,16 @@ private fun rememberVibrator(): Vibrator? {
 }
 
 @Composable
-internal fun HapticOnChange(key: Any, read: () -> Any?) {
+internal fun HapticOnChange(
+    key: Any,
+    armed: () -> Boolean = { true },
+    read: () -> Any?,
+) {
     val vibrator = rememberVibrator()
     val settings by LocalUserSettings.current.settings.collectAsStateWithLifecycle()
     val feel = if (settings.haptic) settings.hapticProfile.hapticFeel(HapticSlot.Scroll) else HapticFeel.Off
     val current = rememberUpdatedState(feel)
+    val gate = rememberUpdatedState(armed)
     LaunchedEffect(key, vibrator) {
         val motor = vibrator?.takeIf { it.hasVibrator() } ?: return@LaunchedEffect
         var previous: Any? = null
@@ -118,7 +123,9 @@ internal fun HapticOnChange(key: Any, read: () -> Any?) {
                 primed = true
                 return@collect
             }
-            if (value == previous || chosen == HapticFeel.Off) {
+            // Программный сдвиг (история встала первой, scrollToItem) не щелкает.
+            // previous всё равно двигаем, чтобы потом не отстрелять накопившийся скачок.
+            if (!gate.value() || value == previous || chosen == HapticFeel.Off) {
                 previous = value
                 return@collect
             }

@@ -51,6 +51,12 @@ internal object Changelog {
 
     val releases: List<Release> = listOf(
         Release(
+            version = "2.87.1",
+            fixed = listOf(
+                "Первое открытие фильма больше не даёт второй виброотклик.",
+            ),
+        ),
+        Release(
             version = "2.87.0",
             added = listOf(
                 "В «Моё» список открывается сразу, без чипов «Все», «Фильмы» и «Сериалы». Справа сортировка и фильтр, оба снизу, как карточка фильма.",
