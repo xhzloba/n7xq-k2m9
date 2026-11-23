@@ -207,6 +207,7 @@
     <string name="library_folder_sort_date">По дате</string>
     <string name="library_folder_sort_added">По добавлению</string>
     <string name="library_folder_sort_unwatched">Сначала непросмотренные</string>
+    <string name="library_folder_filter_unwatched">Непросмотренные</string>
     <string name="library_folder_create">Создать</string>
     <string name="library_folder_save">Сохранить</string>
     <string name="library_folder_cancel">Отмена</string>
@@ -375,6 +376,8 @@
     <string name="favorites_sort_genre">По жанру</string>
     <string name="favorites_sort_year">По году</string>
     <string name="favorites_sort_title">По названию</string>
+    <string name="favorites_sort_release">По релизу</string>
+    <string name="favorites_filter">Фильтр</string>
     <string name="favorites_all">Все</string>
     <string name="rail_see_all">Все</string>
     <string name="favorites_movies">Фильмы</string>

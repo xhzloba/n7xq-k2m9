@@ -38,6 +38,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
@@ -97,6 +98,7 @@ import com.example.movie.ui.theme.PlayBlue
 import com.example.movie.domain.model.Movie
 import com.example.movie.domain.model.SavedTitle
 import com.example.movie.presentation.haptic.rememberHapticTick
+import com.example.movie.presentation.settings.LocalUserSettings
 import com.example.movie.presentation.common.HandleSheet
 import com.example.movie.presentation.home.SectionScrim
 import com.example.movie.presentation.home.components.RailSeeAllCard
@@ -110,28 +112,9 @@ import kotlin.math.roundToInt
 
 internal enum class FolderOrder { Date, Name }
 
-internal enum class FolderTitlesOrder { Added, Year, Title, Rating, Unwatched }
+private enum class FolderSheet { Sort, Filter }
 
-internal fun List<SavedTitle>.ordered(
-    mode: FolderTitlesOrder,
-    watched: Set<String> = emptySet(),
-): List<SavedTitle> = when (mode) {
-    FolderTitlesOrder.Added -> this
-    FolderTitlesOrder.Unwatched -> sortedBy { it.id in watched }
-    FolderTitlesOrder.Year -> sortedWith(
-        compareByDescending<SavedTitle> { it.year != null }
-            .thenByDescending { it.year ?: 0 }
-            .thenBy { it.title.lowercase() },
-    )
-    FolderTitlesOrder.Title -> sortedWith(
-        compareBy(Collator.getInstance(Locale.forLanguageTag("ru"))) { it.title },
-    )
-    FolderTitlesOrder.Rating -> sortedWith(
-        compareByDescending<SavedTitle> { it.ratingKp != null || it.ratingImdb != null }
-            .thenByDescending { maxOf(it.ratingKp ?: 0f, it.ratingImdb ?: 0f) }
-            .thenBy { it.title.lowercase() },
-    )
-}
+private const val FolderUnwatched = "unwatched"
 
 internal data class IndexedFolder(val index: Int, val folder: LibraryFolder)
 
@@ -224,71 +207,6 @@ internal fun FolderSortSheet(
         FolderOrder.entries.forEach { mode ->
             val label = stringResource(
                 if (mode == FolderOrder.Name) R.string.library_folder_sort_name else R.string.library_folder_sort_date,
-            )
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = {
-                            tick?.invoke()
-                            onPick(mode)
-                        },
-                    )
-                    .padding(horizontal = 22.dp, vertical = 14.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = label,
-                    modifier = Modifier.weight(1f),
-                    color = Color.White,
-                    fontSize = 16.sp,
-                    lineHeight = 21.sp,
-                )
-                if (mode == current) {
-                    Icon(
-                        imageVector = Icons.Filled.Check,
-                        contentDescription = null,
-                        tint = PlayBlue,
-                        modifier = Modifier.size(18.dp),
-                    )
-                }
-            }
-        }
-        Spacer(Modifier.height(8.dp))
-    }
-}
-
-@Composable
-internal fun FolderTitlesSortSheet(
-    current: FolderTitlesOrder,
-    onPick: (FolderTitlesOrder) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    val tick = rememberHapticTick()
-    HandleSheet(onDismiss = onDismiss) {
-        Text(
-            text = stringResource(R.string.library_folder_sort),
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 22.dp),
-            color = Color.White,
-            fontWeight = FontWeight.Bold,
-            fontSize = 18.sp,
-            lineHeight = 23.sp,
-            textAlign = TextAlign.Center,
-        )
-        Spacer(Modifier.height(8.dp))
-        FolderTitlesOrder.entries.forEach { mode ->
-            val label = stringResource(
-                when (mode) {
-                    FolderTitlesOrder.Added -> R.string.library_folder_sort_added
-                    FolderTitlesOrder.Unwatched -> R.string.library_folder_sort_unwatched
-                    FolderTitlesOrder.Year -> R.string.favorites_sort_year
-                    FolderTitlesOrder.Title -> R.string.favorites_sort_title
-                    FolderTitlesOrder.Rating -> R.string.catalog_sort_rating
-                },
             )
             Row(
                 modifier = Modifier
@@ -755,11 +673,32 @@ internal fun FolderInside(
     onMovieClick: (String) -> Unit,
     onMoviePeek: (Movie) -> Unit,
 ) {
-    var sortOpen by remember { mutableStateOf(false) }
-    var orderName by rememberSaveable(folder.id) { mutableStateOf(FolderTitlesOrder.Added.name) }
-    val order = runCatching { FolderTitlesOrder.valueOf(orderName) }.getOrDefault(FolderTitlesOrder.Added)
+    val settings by LocalUserSettings.current.settings.collectAsStateWithLifecycle()
     val watched by LocalAppContainer.current.watched.ids.collectAsStateWithLifecycle()
-    val titles = folder.titles.ordered(order, watched)
+    var sortName by rememberSaveable(folder.id) { mutableStateOf("") }
+    var filterName by rememberSaveable(folder.id) { mutableStateOf("") }
+    var sheet by remember { mutableStateOf<FolderSheet?>(null) }
+    val gridState = rememberLazyGridState()
+    val kinds = folder.titles.presentKinds()
+    val sort = sortName
+        .takeIf { it.isNotEmpty() }
+        ?.let { runCatching { LibrarySort.valueOf(it) }.getOrNull() }
+        ?.takeIf { it != LibrarySort.Release || settings.showReleaseDate }
+    val kind = filterName
+        .takeIf { it.isNotEmpty() && it != FolderUnwatched }
+        ?.let { runCatching { LibraryKind.valueOf(it) }.getOrNull() }
+        ?.takeIf { it in kinds }
+    val unwatchedOnly = filterName == FolderUnwatched
+    val titles = folder.titles
+        .let { list -> if (unwatchedOnly) list.filter { it.id !in watched } else list }
+        .let { list -> kind?.let { picked -> list.filter { it.libraryKind() == picked } } ?: list }
+        .sortedFor(sort)
+    val sorts = buildList {
+        add(LibrarySort.Year)
+        add(LibrarySort.Title)
+        add(LibrarySort.Rating)
+        if (settings.showReleaseDate) add(LibrarySort.Release)
+    }
     val watchedCount = folder.titles.count { it.id in watched }
     val ink = if (folder.color != 0) Color(folder.color.folderInk()) else Color.White
     val pace = if (folder.color != 0) ink else PlayBlue
@@ -795,7 +734,6 @@ internal fun FolderInside(
                 }
             }
         } else {
-            val gridState = rememberLazyGridState()
             LazyVerticalGrid(
                 state = gridState,
                 columns = GridCells.Fixed(posterGridColumns()),
@@ -840,35 +778,64 @@ internal fun FolderInside(
                 modifier = Modifier.align(Alignment.TopCenter),
             )
         }
+        val tools = folder.titles.isNotEmpty()
         LibraryBar(
             title = folder.name,
             onBack = onBack,
+            onSort = if (tools) ({ sheet = FolderSheet.Sort }) else null,
+            onFilter = if (tools) ({ sheet = FolderSheet.Filter }) else null,
+            sortOn = sort != null,
+            filterOn = kind != null || unwatchedOnly,
             mark = FolderMark,
             titleAtStart = true,
             titleColor = ink,
             markTint = ink,
             modifier = Modifier.align(Alignment.TopCenter),
         )
-        if (folder.titles.isNotEmpty()) {
-            FolderSortButton(
-                onClick = { sortOpen = true },
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))
-                    .padding(top = BrandTopInset, end = PosterGridInset),
+        if (sheet == FolderSheet.Sort) {
+            LibraryOptionSheet(
+                title = stringResource(R.string.favorites_sort),
+                options = listOf("" to stringResource(R.string.catalog_sort_default)) +
+                    sorts.map { it.name to stringResource(it.label) },
+                selected = sort?.name.orEmpty(),
+                onPick = { id ->
+                    val next = id.takeIf { it.isNotEmpty() && it != sort?.name }
+                    if (next != sort?.name) gridState.keepPlace()
+                    sortName = next.orEmpty()
+                    sheet = null
+                },
+                onDismiss = { sheet = null },
             )
         }
-        if (sortOpen) {
-            FolderTitlesSortSheet(
-                current = order,
-                onPick = {
-                    orderName = it.name
-                    sortOpen = false
+        if (sheet == FolderSheet.Filter) {
+            LibraryOptionSheet(
+                title = stringResource(R.string.favorites_filter),
+                options = listOf("" to stringResource(R.string.catalog_sort_default)) +
+                    kinds.map { it.name to stringResource(it.label) } +
+                    (FolderUnwatched to stringResource(R.string.library_folder_filter_unwatched)),
+                selected = when {
+                    unwatchedOnly -> FolderUnwatched
+                    kind != null -> kind.name
+                    else -> ""
                 },
-                onDismiss = { sortOpen = false },
+                onPick = { id ->
+                    val next = when {
+                        id.isEmpty() || id == filterName -> ""
+                        id == FolderUnwatched -> FolderUnwatched
+                        else -> id
+                    }
+                    if (next != filterName) gridState.keepPlace()
+                    filterName = next
+                    sheet = null
+                },
+                onDismiss = { sheet = null },
             )
         }
     }
+}
+
+private fun LazyGridState.keepPlace() {
+    requestScrollToItem(firstVisibleItemIndex, firstVisibleItemScrollOffset)
 }
 
 @Composable

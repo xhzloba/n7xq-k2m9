@@ -5,6 +5,7 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -35,6 +36,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -51,6 +53,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -278,10 +281,41 @@ internal fun LibraryHub(
 }
 
 @Composable
+private fun LibraryBarTool(
+    icon: ImageVector,
+    description: String,
+    tint: Color,
+    onClick: () -> Unit,
+    size: Dp = 22.dp,
+) {
+    Box(
+        modifier = Modifier
+            .requiredSize(40.dp)
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick,
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = description,
+            tint = tint,
+            modifier = Modifier.size(size),
+        )
+    }
+}
+
+@Composable
 internal fun LibraryBar(
     title: String,
     onBack: () -> Unit,
     onOrder: (() -> Unit)? = null,
+    onSort: (() -> Unit)? = null,
+    onFilter: (() -> Unit)? = null,
+    sortOn: Boolean = false,
+    filterOn: Boolean = false,
     modifier: Modifier = Modifier,
     mark: ImageVector? = null,
     titleAtStart: Boolean = false,
@@ -296,12 +330,13 @@ internal fun LibraryBar(
             .padding(top = BrandTopInset)
             .height(36.dp),
     ) {
+        val tools = (if (onFilter != null) 1 else 0) + (if (onSort != null) 1 else 0)
         Row(
             modifier = Modifier
                 .align(if (titleAtStart) Alignment.CenterStart else Alignment.Center)
                 .padding(
                     start = if (titleAtStart) PosterGridInset + 29.dp else 56.dp,
-                    end = if (titleAtStart) 156.dp else 56.dp,
+                    end = if (titleAtStart) 156.dp else 56.dp + 40.dp * tools,
                 ),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -325,28 +360,44 @@ internal fun LibraryBar(
                 modifier = Modifier.weight(1f, fill = false),
             )
         }
-        if (onOrder != null) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .padding(end = HomeContentInset - 9.dp)
-                    .offset(y = 2.dp)
-                    .requiredSize(40.dp)
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = {
-                            tick?.invoke()
-                            onOrder()
-                        },
-                    ),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    imageVector = ShellIcons.settings,
-                    contentDescription = stringResource(R.string.library_order_open),
+        Row(
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .padding(end = if (onOrder != null) HomeContentInset - 9.dp else PosterGridInset - 7.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (onFilter != null) {
+                LibraryBarTool(
+                    icon = ShellIcons.filter,
+                    description = stringResource(R.string.favorites_filter),
+                    tint = if (filterOn) PlayBlue else titleColor,
+                    onClick = {
+                        tick?.invoke()
+                        onFilter()
+                    },
+                )
+            }
+            if (onSort != null) {
+                LibraryBarTool(
+                    icon = ShellIcons.sort,
+                    description = stringResource(R.string.favorites_sort),
+                    tint = if (sortOn) PlayBlue else titleColor,
+                    onClick = {
+                        tick?.invoke()
+                        onSort()
+                    },
+                )
+            }
+            if (onOrder != null) {
+                LibraryBarTool(
+                    icon = ShellIcons.settings,
+                    description = stringResource(R.string.library_order_open),
                     tint = titleColor,
-                    modifier = Modifier.size(28.dp),
+                    onClick = {
+                        tick?.invoke()
+                        onOrder()
+                    },
+                    size = 28.dp,
                 )
             }
         }
@@ -607,6 +658,28 @@ internal fun LibraryScrim(progress: Float, modifier: Modifier = Modifier) {
                 pool(Offset(menuX, y))
                 }
             },
+    )
+}
+
+@Composable
+internal fun MenuArrow(
+    open: Boolean,
+    tint: Color,
+    modifier: Modifier = Modifier,
+    size: Dp = 18.dp,
+) {
+    val rotation by animateFloatAsState(
+        targetValue = if (open) 180f else 0f,
+        animationSpec = tween(220),
+        label = "menuArrow",
+    )
+    Icon(
+        imageVector = Icons.Filled.KeyboardArrowDown,
+        contentDescription = stringResource(R.string.favorites_filter),
+        tint = tint,
+        modifier = modifier
+            .size(size)
+            .graphicsLayer { rotationZ = rotation },
     )
 }
 

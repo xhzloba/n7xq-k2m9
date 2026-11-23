@@ -8,9 +8,8 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
@@ -26,7 +25,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.layout.layout
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -47,8 +45,15 @@ import com.example.movie.presentation.home.SectionScrim
 import com.example.movie.presentation.home.components.PosterGridInset
 import com.example.movie.presentation.home.components.PosterGap
 import com.example.movie.presentation.home.components.posterGridColumns
-import com.example.movie.presentation.home.components.LogoMood
+import com.example.movie.presentation.settings.LocalUserSettings
 import com.example.movie.ui.theme.CinemaMuted
+
+private enum class LibrarySheet { Sort, Filter }
+
+private fun LazyGridState.keepPlace() {
+    // Иначе грид держит первый видимый постер по ключу и уезжает за ним вниз.
+    requestScrollToItem(firstVisibleItemIndex, firstVisibleItemScrollOffset)
+}
 
 @Composable
 internal fun FavoritesScreen(
@@ -120,28 +125,35 @@ internal fun FavoritesScreen(
         container.offline.status(item, downloadTasks, downloadPending)
     }
     val opened = downloads.firstOrNull { it.title.id == openedDownload }
-    var tabName by rememberSaveable { mutableStateOf(FavoriteTab.All.name) }
-    var genreRaw by rememberSaveable { mutableStateOf("") }
+    val settings by LocalUserSettings.current.settings.collectAsStateWithLifecycle()
+    var kindRaw by rememberSaveable { mutableStateOf("") }
     var sortRaw by rememberSaveable { mutableStateOf("") }
-    var filtersOpen by rememberSaveable { mutableStateOf(false) }
-    val logo = remember { LogoMood() }
-    val tab = FavoriteTab.valueOf(tabName)
-    val genre = decodeFilters(genreRaw)[tab.name]
-    val sort = decodeFilters(sortRaw)[tab.name]?.let { runCatching { LibrarySort.valueOf(it) }.getOrNull() }
-    val inTab = tab.type?.let { type -> items.filter { it.type == type } } ?: items
-    val genres = if (tab.hasGenres) inTab.genreLabels() else emptyList()
-    val filtered = genre?.let { name -> inTab.filter { name in it.genreKeys() } } ?: inTab
-    val shown = filtered.sortedFor(sort)
+    var sheet by remember { mutableStateOf<LibrarySheet?>(null) }
+    val sectionKey = library?.name
+    val kinds = items.presentKinds()
+    val kind = sectionKey?.let { decodeFilters(kindRaw)[it] }
+        ?.let { runCatching { LibraryKind.valueOf(it) }.getOrNull() }
+        ?.takeIf { it in kinds }
+    val sort = sectionKey?.let { decodeFilters(sortRaw)[it] }
+        ?.let { runCatching { LibrarySort.valueOf(it) }.getOrNull() }
+        ?.takeIf { it != LibrarySort.Release || settings.showReleaseDate }
+    val shown = items
+        .let { list -> kind?.let { picked -> list.filter { it.libraryKind() == picked } } ?: list }
+        .sortedFor(sort)
+    val sorts = buildList {
+        add(LibrarySort.Year)
+        add(LibrarySort.Title)
+        add(LibrarySort.Rating)
+        if (settings.showReleaseDate) add(LibrarySort.Release)
+    }
     val gridState = rememberLazyGridState()
     gridState.scrollToTopOn(scrollTop)
     val closePage = {
         openedDownload = null
         libraryName = ""
+        sheet = null
     }
-    val onSelect = { next: FavoriteTab ->
-        filtersOpen = false
-        tabName = next.name
-    }
+    val listTools = library != null && library != LibrarySection.Downloads && items.isNotEmpty()
     Box(modifier = Modifier.fillMaxSize()) {
         if (library == null && openedFolder in folders.indices) {
             FolderInside(
@@ -217,15 +229,6 @@ internal fun FavoritesScreen(
             }
         } else if (shown.isEmpty()) {
             Column(Modifier.fillMaxSize().padding(top = libraryTopPadding())) {
-                FavoriteTabs(
-                    selected = tab,
-                    genres = genres,
-                    genre = genre,
-                    filtersOpen = filtersOpen,
-                    onSelect = onSelect,
-                    onOpenFilters = { filtersOpen = true },
-                    onMenuSettled = logo::onSettled,
-                )
                 Box(
                     modifier = Modifier
                         .weight(1f)
@@ -252,6 +255,10 @@ internal fun FavoritesScreen(
             LibraryBar(
                 title = stringResource(library.label),
                 onBack = closePage,
+                onSort = if (listTools) ({ sheet = LibrarySheet.Sort }) else null,
+                onFilter = if (listTools && kinds.isNotEmpty()) ({ sheet = LibrarySheet.Filter }) else null,
+                sortOn = sort != null,
+                filterOn = kind != null,
                 modifier = Modifier.align(Alignment.TopCenter),
             )
         } else {
@@ -269,28 +276,6 @@ internal fun FavoritesScreen(
                 horizontalArrangement = Arrangement.spacedBy(PosterGap),
                 verticalArrangement = Arrangement.spacedBy(PosterGap),
             ) {
-                item(key = "tabs", span = { GridItemSpan(maxLineSpan) }) {
-                    FavoriteTabs(
-                        selected = tab,
-                        genres = genres,
-                        genre = genre,
-                        filtersOpen = filtersOpen,
-                        onSelect = onSelect,
-                        onOpenFilters = { filtersOpen = true },
-                        onMenuSettled = logo::onSettled,
-                        modifier = Modifier
-                            .padding(bottom = 6.dp)
-                            .layout { measurable, constraints ->
-                                val bleed = PosterGridInset.roundToPx()
-                                val placeable = measurable.measure(
-                                    constraints.copy(maxWidth = constraints.maxWidth + bleed * 2),
-                                )
-                                layout(constraints.maxWidth, placeable.height) {
-                                    placeable.place(-bleed, 0)
-                                }
-                            },
-                    )
-                }
                 items(shown, key = { it.id }) { item ->
                     val mark = if (library == LibrarySection.Continue) resume.firstOrNull { it.id == item.id } else null
                     FavoritePoster(
@@ -314,6 +299,10 @@ internal fun FavoritesScreen(
             LibraryBar(
                 title = stringResource(library.label),
                 onBack = closePage,
+                onSort = if (listTools) ({ sheet = LibrarySheet.Sort }) else null,
+                onFilter = if (listTools && kinds.isNotEmpty()) ({ sheet = LibrarySheet.Filter }) else null,
+                sortOn = sort != null,
+                filterOn = kind != null,
                 modifier = Modifier.align(Alignment.TopCenter),
             )
             }
@@ -335,21 +324,36 @@ internal fun FavoritesScreen(
                 onBack = { openedDownload = null },
             )
         }
-        LibraryFilterDialog(
-                open = filtersOpen && tab.hasGenres && library != null && library != LibrarySection.Downloads,
-                title = stringResource(tab.label),
-                genres = genres,
-                genre = genre,
-                sort = sort,
-                onGenre = { next ->
-                    genreRaw = encodeFilters(decodeFilters(genreRaw).with(tab.name, next))
+        if (sheet == LibrarySheet.Sort && sectionKey != null) {
+            LibraryOptionSheet(
+                title = stringResource(R.string.favorites_sort),
+                options = listOf("" to stringResource(R.string.catalog_sort_default)) +
+                    sorts.map { it.name to stringResource(it.label) },
+                selected = sort?.name.orEmpty(),
+                onPick = { id ->
+                    val next = id.takeIf { it.isNotEmpty() && it != sort?.name }
+                    if (next != sort?.name) gridState.keepPlace()
+                    sortRaw = encodeFilters(decodeFilters(sortRaw).with(sectionKey, next))
+                    sheet = null
                 },
-                onSort = { next ->
-                    val value = if (sort == next) null else next.name
-                    sortRaw = encodeFilters(decodeFilters(sortRaw).with(tab.name, value))
-                },
-                onDismiss = { filtersOpen = false },
+                onDismiss = { sheet = null },
             )
+        }
+        if (sheet == LibrarySheet.Filter && sectionKey != null) {
+            LibraryOptionSheet(
+                title = stringResource(R.string.favorites_filter),
+                options = listOf("" to stringResource(R.string.catalog_sort_default)) +
+                    kinds.map { it.name to stringResource(it.label) },
+                selected = kind?.name.orEmpty(),
+                onPick = { id ->
+                    val next = id.takeIf { it.isNotEmpty() && it != kind?.name }
+                    if (next != kind?.name) gridState.keepPlace()
+                    kindRaw = encodeFilters(decodeFilters(kindRaw).with(sectionKey, next))
+                    sheet = null
+                },
+                onDismiss = { sheet = null },
+            )
+        }
         playing?.let { play ->
             OfflinePlayer(
                 item = play.item,

@@ -30,6 +30,10 @@ internal object ShellIcons {
         "sort",
         "M3,18h6v-2H3v2zM3,6v2h18V6H3zM3,13h12v-2H3v2z",
     )
+    val filter: ImageVector = filled24(
+        "filter",
+        "M4.25,5.61C6.27,8.2,10,13,10,13v6c0,0.55,0.45,1,1,1h2c0.55,0,1-0.45,1-1v-6c0,0,3.72-4.8,5.74-7.39C20.25,4.95,19.78,4,18.95,4H5.04C4.21,4,3.74,4.95,4.25,5.61z",
+    )
     val mic: ImageVector = icon(filled = false) { mic() }
     val close: ImageVector = icon(filled = false) { cross() }
     /** Material History — часы со стрелкой назад. */
