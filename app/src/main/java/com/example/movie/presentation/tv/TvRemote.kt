@@ -5,10 +5,12 @@ import android.graphics.Rect
 import android.view.Choreographer
 import android.view.View
 import android.view.ViewGroup
-import android.view.accessibility.AccessibilityNodeInfo
-import android.view.accessibility.AccessibilityNodeProvider
 import android.widget.FrameLayout
 import androidx.compose.foundation.focusable
+import androidx.compose.ui.node.RootForTest
+import androidx.compose.ui.semantics.SemanticsNode
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
@@ -148,8 +150,7 @@ private class FocusRingView(context: android.content.Context) : View(context) {
     }
 
     fun sync(host: View) {
-        val provider = host.accessibilityNodeProvider
-        val next = provider?.focusedRect(screen) ?: false
+        val next = host.focusedComposeRect(screen)
         if (!next) {
             if (shown) {
                 shown = false
@@ -157,7 +158,7 @@ private class FocusRingView(context: android.content.Context) : View(context) {
             }
             return
         }
-        getLocationOnScreen(location)
+        getLocationInWindow(location)
         val left = screen.left - location[0]
         val top = screen.top - location[1]
         val right = screen.right - location[0]
@@ -209,33 +210,23 @@ private class FocusRingView(context: android.content.Context) : View(context) {
     private val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
 }
 
-private fun AccessibilityNodeProvider.focusedRect(out: Rect): Boolean {
-    val root = createAccessibilityNodeInfo(AccessibilityNodeProvider.HOST_VIEW_ID) ?: return false
-    root.seal()
-    val focused = root.findFocusedNode()
-    if (focused !== root) root.recycle()
-    if (focused == null) return false
-    focused.seal()
-    focused.getBoundsInScreen(out)
-    focused.recycle()
+private fun View.focusedComposeRect(out: Rect): Boolean {
+    val root = this as? RootForTest ?: return false
+    val node = root.semanticsOwner.rootSemanticsNode.findFocused() ?: return false
+    val bounds = node.boundsInWindow
+    out.set(
+        bounds.left.toInt(),
+        bounds.top.toInt(),
+        bounds.right.toInt(),
+        bounds.bottom.toInt(),
+    )
     return true
 }
 
-private fun AccessibilityNodeInfo.seal() {
-    if (!isSealed) setSealed(true)
-}
-
-private fun AccessibilityNodeInfo.findFocusedNode(): AccessibilityNodeInfo? {
-    seal()
-    if (isFocused) return this
-    for (index in 0 until childCount) {
-        val child = getChild(index) ?: continue
-        val hit = child.findFocusedNode()
-        if (hit != null) {
-            if (hit !== child) child.recycle()
-            return hit
-        }
-        child.recycle()
+private fun SemanticsNode.findFocused(): SemanticsNode? {
+    if (config.getOrNull(SemanticsProperties.Focused) == true) return this
+    children.forEach { child ->
+        child.findFocused()?.let { return it }
     }
     return null
 }
