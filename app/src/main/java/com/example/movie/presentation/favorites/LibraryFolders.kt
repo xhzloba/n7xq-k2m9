@@ -510,7 +510,7 @@ internal fun FolderCard(
                         start = 14.dp,
                         end = if (covers.isNotEmpty()) 108.dp else 14.dp,
                         top = 12.dp,
-                        bottom = if (covers.isNotEmpty()) 90.dp else 12.dp,
+                        bottom = if (covers.isNotEmpty()) 90.dp else FolderBareBottom,
                     ),
             ) {
                 Icon(
@@ -538,7 +538,8 @@ internal fun FolderCard(
                     urls = covers,
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
-                        .padding(end = 14.dp, bottom = 10.dp),
+                        .padding(end = 14.dp)
+                        .offset(y = 6.dp),
                 )
             }
             if (onEdit != null || onDelete != null) {
@@ -598,6 +599,8 @@ internal fun FolderCard(
     }
 }
 
+internal val FolderBareBottom = 36.dp
+
 internal val FolderAboutStyle = TextStyle(
     fontSize = 13.sp,
     lineHeight = 17.sp,
@@ -625,13 +628,13 @@ internal fun measureFolderPlateHeight(
     return with(density) {
         12.dp + 26.dp +
             (about?.let { 8.dp + it.size.height.toDp() } ?: 0.dp) +
-            if (hasCovers) 94.dp else 12.dp
+            if (hasCovers) 94.dp else FolderBareBottom
     }
 }
 
 @Composable
 internal fun FolderCovers(urls: List<String>, modifier: Modifier = Modifier) {
-    val shape = RoundedCornerShape(8.dp)
+    val shape = RoundedCornerShape(7.dp)
     val order = when (urls.size) {
         3 -> listOf(0, 2, 1)
         else -> urls.indices.toList()
@@ -654,7 +657,7 @@ internal fun FolderCovers(urls: List<String>, modifier: Modifier = Modifier) {
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .align(Alignment.BottomStart)
-                    .offset(x = (index * 16).dp, y = if (front) 0.dp else 4.dp)
+                    .offset(x = (index * 16).dp)
                     .graphicsLayer {
                         rotationZ = lean
                         transformOrigin = TransformOrigin(0.5f, 1f)
