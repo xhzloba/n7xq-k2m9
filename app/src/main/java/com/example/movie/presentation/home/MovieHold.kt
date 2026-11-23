@@ -6,7 +6,6 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.runtime.Composable
@@ -24,11 +23,6 @@ import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.input.key.KeyEventType
-import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.onKeyEvent
-import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.input.pointer.pointerInput
@@ -36,7 +30,6 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import com.example.movie.presentation.haptic.HoldHaptic
 import com.example.movie.presentation.haptic.rememberHoldHaptic
-import com.example.movie.presentation.tv.LocalTelevision
 import kotlin.math.PI
 import kotlin.math.hypot
 import kotlin.math.sin
@@ -171,7 +164,6 @@ internal fun Modifier.holdToPeek(
     onPressed: (Boolean) -> Unit = {},
     onClick: () -> Unit = {},
     wave: PosterWave? = null,
-    remote: Boolean = true,
 ): Modifier {
     val peek by rememberUpdatedState(onPeek)
     val press by rememberUpdatedState(onPressed)
@@ -270,42 +262,6 @@ internal fun Modifier.holdToPeek(
                 }
             }
         }
-    }.then(
-        if (remote) {
-            Modifier.tvActivate(
-                onClick = { clicks[0].invoke() },
-                onPeek = { peeks[0].invoke() },
-            )
-        } else {
-            Modifier
-        },
-    )
-}
-
-@Composable
-private fun Modifier.tvActivate(onClick: () -> Unit, onPeek: (() -> Unit)? = null): Modifier {
-    if (!LocalTelevision.current) return this
-    val click by rememberUpdatedState(onClick)
-    val peek by rememberUpdatedState(onPeek)
-    val peeked = remember { booleanArrayOf(false) }
-    return focusable().onKeyEvent { event ->
-        val center = event.key == Key.DirectionCenter ||
-            event.key == Key.Enter ||
-            event.key == Key.NumPadEnter
-        if (!center) return@onKeyEvent false
-        if (event.type == KeyEventType.KeyDown) {
-            if (event.nativeKeyEvent.repeatCount > 0 && !peeked[0]) {
-                peeked[0] = true
-                peek?.invoke()
-            }
-            true
-        } else if (event.type == KeyEventType.KeyUp) {
-            if (!peeked[0]) click()
-            peeked[0] = false
-            true
-        } else {
-            false
-        }
     }
 }
 
@@ -385,7 +341,7 @@ internal fun Modifier.pressToOpen(
                 }
             }
         }
-    }.tvActivate(onClick = { clicks[0].invoke() })
+    }
 }
 
 private fun fingerOnScreen(window: FloatArray, change: PointerInputChange): Offset {

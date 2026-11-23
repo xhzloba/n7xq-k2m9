@@ -7,7 +7,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import com.example.movie.presentation.tv.dpadSkip
-import com.example.movie.presentation.tv.tvRemoteRoot
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
@@ -84,7 +83,7 @@ internal fun HandleSheet(
                 setWindowAnimations(0)
             }
         }
-        Box(Modifier.fillMaxSize().tvRemoteRoot()) {
+        Box(Modifier.fillMaxSize()) {
             Box(
                 Modifier
                     .fillMaxSize()
