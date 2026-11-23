@@ -97,6 +97,7 @@ import com.example.movie.presentation.haptic.play
 import com.example.movie.presentation.haptic.rememberHapticTick
 import com.example.movie.presentation.home.components.BrandLogoBleed
 import com.example.movie.presentation.home.components.BrandTopInset
+import com.example.movie.presentation.home.components.LauncherIconChoice
 import com.example.movie.presentation.home.components.PosterGridInset
 import com.example.movie.presentation.update.LocalAppUpdate
 import com.example.movie.presentation.update.UpdateAlert
@@ -840,6 +841,8 @@ private fun AboutPage(scrollTop: Int, modifier: Modifier = Modifier) {
                 )
             }
         }
+        Spacer(Modifier.height(8.dp))
+        LauncherIconChoice(Modifier.padding(horizontal = PosterGridInset))
         Spacer(Modifier.height(28.dp))
         Changelog.releases.take(5).forEachIndexed { index, release ->
             if (index > 0) Spacer(Modifier.height(22.dp))

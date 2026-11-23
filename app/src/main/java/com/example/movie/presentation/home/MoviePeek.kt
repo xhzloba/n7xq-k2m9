@@ -14,6 +14,7 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import com.example.movie.presentation.tv.dpadSkip
+import com.example.movie.presentation.tv.tvRemoteRoot
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -336,6 +337,7 @@ internal fun CoverPopup(
     ) {
         Column(
             modifier = Modifier
+                .tvRemoteRoot()
                 .fillMaxWidth()
                 .appBackground()
                 .dpadSkip()

@@ -12,7 +12,6 @@ import androidx.compose.foundation.LocalOverscrollConfiguration
 import androidx.compose.foundation.OverscrollConfiguration
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.animateScrollBy
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -54,7 +53,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
@@ -120,7 +118,6 @@ internal fun CategoryTabs(
     hat: Boolean = false,
     mustache: Boolean = false,
     onMenuSettled: () -> Unit = {},
-    onLogo: (() -> Unit)? = null,
     showBrand: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
@@ -171,7 +168,6 @@ internal fun CategoryTabs(
                     onAlerts = onAlerts,
                     hat = hat,
                     mustache = mustache,
-                    onLogo = onLogo,
                 )
                 Spacer(Modifier.height(12.dp))
             }
@@ -290,7 +286,6 @@ internal fun BrandRow(
     hat: Boolean = false,
     mustache: Boolean = false,
     blend: Animatable<Float, AnimationVector1D>? = null,
-    onLogo: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val tick = rememberHapticTick()
@@ -305,7 +300,6 @@ internal fun BrandRow(
             blend = blend,
             hat = hat,
             mustache = mustache,
-            onDoubleTap = onLogo,
         )
         Spacer(Modifier.weight(1f))
         HeaderBell(onAlerts)
@@ -375,7 +369,6 @@ internal fun BrandWordmark(
     hat: Boolean = false,
     mustache: Boolean = false,
     blend: Animatable<Float, AnimationVector1D>? = null,
-    onDoubleTap: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val logo = remember {
@@ -385,16 +378,7 @@ internal fun BrandWordmark(
     Box(
         modifier = Modifier
             .height(LogoHeight)
-            .aspectRatio(LogoAspect, matchHeightConstraintsFirst = true)
-            .then(
-                if (onDoubleTap != null) {
-                    Modifier.pointerInput(onDoubleTap) {
-                        detectTapGestures(onDoubleTap = { onDoubleTap() })
-                    }
-                } else {
-                    Modifier
-                },
-            ),
+            .aspectRatio(LogoAspect, matchHeightConstraintsFirst = true),
     ) {
         Canvas(
             modifier = Modifier

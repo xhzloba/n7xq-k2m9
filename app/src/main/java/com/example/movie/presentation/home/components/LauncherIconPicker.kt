@@ -2,33 +2,40 @@ package com.example.movie.presentation.home.components
 
 import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.os.Handler
+import android.os.Looper
+import android.os.Process
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.movie.R
+import com.example.movie.presentation.haptic.rememberHapticTick
+import com.example.movie.ui.theme.CinemaMuted
 
 internal enum class LauncherMark(
     val id: String,
@@ -72,13 +79,14 @@ internal object LauncherIcons {
         return on?.id ?: LauncherMark.Brushed.id
     }
 
-    fun apply(context: Context, id: String) {
+    fun apply(context: Context, id: String, restart: Boolean = false) {
         val pm = context.packageManager
         val pkg = context.packageName
+        val chosen = LauncherMark.entries.firstOrNull { it.id == id } ?: LauncherMark.Brushed
         LauncherMark.entries.forEach { mark ->
             pm.setComponentEnabledSetting(
                 ComponentName(pkg, pkg + mark.alias),
-                if (mark.id == id) {
+                if (mark.id == chosen.id) {
                     PackageManager.COMPONENT_ENABLED_STATE_ENABLED
                 } else {
                     PackageManager.COMPONENT_ENABLED_STATE_DISABLED
@@ -93,42 +101,43 @@ internal object LauncherIcons {
                 PackageManager.DONT_KILL_APP,
             )
         }
+        if (!restart) return
+        val launch = Intent.makeRestartActivityTask(ComponentName(pkg, pkg + chosen.alias))
+        context.startActivity(launch)
+        Handler(Looper.getMainLooper()).post {
+            Process.killProcess(Process.myPid())
+        }
     }
 }
 
 @Composable
-internal fun LauncherIconPicker(
-    selected: String,
-    onSelect: (String) -> Unit,
-    onDismiss: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
+internal fun LauncherIconChoice(modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    var selected by remember { mutableStateOf(LauncherIcons.current(context)) }
+    val tick = rememberHapticTick()
     val shape = RoundedCornerShape(18.dp)
-    Box(
-        modifier
-            .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.72f))
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = onDismiss,
-            ),
-        contentAlignment = Alignment.Center,
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(18.dp),
-        ) {
-            Text(
-                text = stringResource(R.string.launcher_icon),
-                color = Color.White,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Medium,
-            )
-            Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                LauncherMark.entries.forEach { mark ->
-                    Mark(mark, mark.id == selected, shape, onSelect)
-                }
+    Column(modifier) {
+        Text(
+            text = stringResource(R.string.launcher_icon),
+            color = CinemaMuted,
+            fontSize = 13.sp,
+            lineHeight = 18.sp,
+        )
+        Spacer(Modifier.height(10.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            LauncherMark.entries.forEach { mark ->
+                Mark(
+                    mark = mark,
+                    selected = mark.id == selected,
+                    shape = shape,
+                    onSelect = { id ->
+                        if (id != selected) {
+                            tick?.invoke()
+                            selected = id
+                            LauncherIcons.apply(context, id, restart = true)
+                        }
+                    },
+                )
             }
         }
     }

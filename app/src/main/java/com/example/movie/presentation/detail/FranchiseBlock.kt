@@ -1351,7 +1351,7 @@ internal fun StackPage(
                     .verticalScroll(scroll)
                     .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Vertical))
                     .padding(top = BrandTopInset + 36.dp + 18.dp, bottom = 16.dp)
-                    .padding(horizontal = 20.dp),
+                    .padding(horizontal = DetailInset),
             ) {
                 content()
             }

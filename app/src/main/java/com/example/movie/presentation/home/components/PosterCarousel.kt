@@ -23,6 +23,14 @@ import androidx.compose.foundation.LocalOverscrollConfiguration
 import androidx.compose.foundation.OverscrollConfiguration
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import com.example.movie.presentation.tv.dpadSkip
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -155,7 +163,7 @@ private data class HeroDeck(
 private fun heroDeck(available: Dp, television: Boolean): HeroDeck {
     if (television) {
         return HeroDeck(
-            cover = available * CoverWidthFraction,
+            cover = heroCoverWidth(available),
             neighborScale = NeighborScale,
             farScale = NeighborScale,
             pull = NeighborShift,
@@ -450,6 +458,7 @@ internal fun PosterCarousel(
                                 onMovieClick(movie.id)
                             },
                             wave = wave,
+                            remote = !LocalTelevision.current,
                         )
                         .holdCue(holdProgress)
                         .drawWithContent {
@@ -495,6 +504,27 @@ internal fun PosterCarousel(
                     }
                 }
             }
+            }
+            if (LocalTelevision.current) {
+                HeroRemote(
+                    width = fittedWidth,
+                    height = cardHeight,
+                    onHorizontal = { delta ->
+                        val count = if (loop) Int.MAX_VALUE else movies.size
+                        val next = (pagerState.currentPage + delta).coerceIn(0, count - 1)
+                        scope.launch { pagerState.animateScrollToPage(next) }
+                    },
+                    onClick = {
+                        val movie = movies.getOrNull(activeIndex) ?: return@HeroRemote
+                        poster?.invoke()
+                        DetailSeed.put(movie)
+                        onMovieClick(movie.id)
+                    },
+                    onPeek = {
+                        val movie = movies.getOrNull(activeIndex) ?: return@HeroRemote
+                        onMoviePeek(movie)
+                    },
+                )
             }
             }
             val pageShift = pagerState.currentPageOffsetFraction
@@ -569,6 +599,7 @@ private fun PagerDots(
                     Box(
                         modifier = Modifier
                             .size(12.dp)
+                            .dpadSkip()
                             .clickable(
                                 interactionSource = remember(index) { MutableInteractionSource() },
                                 indication = null,
@@ -589,6 +620,7 @@ private fun PagerDots(
                 modifier = Modifier
                     .offset(x = stride * travel)
                     .size(12.dp)
+                    .dpadSkip()
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
@@ -1004,6 +1036,56 @@ private fun SkeletonCard(
             .clip(PosterShape)
             .background(if (solid) Color(0xFF1A1A1E) else Color.Transparent)
             .background(Color.White.copy(alpha = pulse)),
+    )
+}
+
+@Composable
+private fun HeroRemote(
+    width: Dp,
+    height: Dp,
+    onHorizontal: (Int) -> Unit,
+    onClick: () -> Unit,
+    onPeek: () -> Unit,
+) {
+    val peeked = remember { booleanArrayOf(false) }
+    Box(
+        Modifier
+            .width(width)
+            .height(height)
+            .focusable()
+            .onPreviewKeyEvent { event ->
+                if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                when (event.key) {
+                    Key.DirectionLeft -> {
+                        onHorizontal(-1)
+                        true
+                    }
+                    Key.DirectionRight -> {
+                        onHorizontal(1)
+                        true
+                    }
+                    else -> false
+                }
+            }
+            .onKeyEvent { event ->
+                val center = event.key == Key.DirectionCenter ||
+                    event.key == Key.Enter ||
+                    event.key == Key.NumPadEnter
+                if (!center) return@onKeyEvent false
+                if (event.type == KeyEventType.KeyDown) {
+                    if (event.nativeKeyEvent.repeatCount > 0 && !peeked[0]) {
+                        peeked[0] = true
+                        onPeek()
+                    }
+                    true
+                } else if (event.type == KeyEventType.KeyUp) {
+                    if (!peeked[0]) onClick()
+                    peeked[0] = false
+                    true
+                } else {
+                    false
+                }
+            },
     )
 }
 

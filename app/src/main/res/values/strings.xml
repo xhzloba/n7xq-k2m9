@@ -181,6 +181,11 @@
     <string name="library_downloads_empty">Загружайте фильмы и сериалы, чтобы смотреть их без интернета</string>
     <string name="library_downloads_pick">Выбрать что загрузить</string>
     <string name="library_folders">Папки</string>
+    <string name="library_continue_empty">Недосмотренное появится здесь</string>
+    <string name="library_history_empty">Открытые фильмы появятся здесь</string>
+    <string name="library_order_title">Расположение</string>
+    <string name="library_order_note">Верхняя строка — первая полка. Стрелки меняют местами. Выключить нельзя.</string>
+    <string name="library_order_open">Расположение полок</string>
     <string name="library_folder_new">Новая папка</string>
     <string name="folder_added_in">Добавлено в</string>
     <string name="folder_not_added">Другие папки</string>

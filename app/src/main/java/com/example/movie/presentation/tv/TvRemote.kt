@@ -7,7 +7,11 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.compose.foundation.focusable
+import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.geometry.Rect as ComposeRect
+import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.node.RootForTest
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
@@ -123,6 +127,11 @@ fun Modifier.tvRemoteRoot(): Modifier = composed {
             val target = entry.current ?: return@onPreviewKeyEvent false
             runCatching { target.requestFocus() }.getOrDefault(false)
         }
+        .onKeyEvent { event ->
+            if (event.type != KeyEventType.KeyDown) return@onKeyEvent false
+            val direction = event.key.toFocusDirection() ?: return@onKeyEvent false
+            runCatching { view.moveTelevisionFocus(direction) }.getOrDefault(false)
+        }
 }
 
 private val Key.isDpad: Boolean
@@ -133,6 +142,14 @@ private val Key.isDpad: Boolean
         this == Key.DirectionCenter ||
         this == Key.Enter ||
         this == Key.NumPadEnter
+
+private fun Key.toFocusDirection(): FocusDirection? = when (this) {
+    Key.DirectionLeft -> FocusDirection.Left
+    Key.DirectionRight -> FocusDirection.Right
+    Key.DirectionUp -> FocusDirection.Up
+    Key.DirectionDown -> FocusDirection.Down
+    else -> null
+}
 
 private class FocusRingView(context: android.content.Context) : View(context) {
     private val hole = Rect()
@@ -211,9 +228,7 @@ private class FocusRingView(context: android.content.Context) : View(context) {
 }
 
 private fun View.focusedComposeRect(out: Rect): Boolean {
-    val root = this as? RootForTest ?: return false
-    val node = root.semanticsOwner.rootSemanticsNode.findFocused() ?: return false
-    val bounds = node.boundsInWindow
+    val bounds = focusedLeaf()?.second ?: return false
     out.set(
         bounds.left.toInt(),
         bounds.top.toInt(),
@@ -223,10 +238,179 @@ private fun View.focusedComposeRect(out: Rect): Boolean {
     return true
 }
 
-private fun SemanticsNode.findFocused(): SemanticsNode? {
-    if (config.getOrNull(SemanticsProperties.Focused) == true) return this
-    children.forEach { child ->
-        child.findFocused()?.let { return it }
+private fun View.moveTelevisionFocus(direction: FocusDirection): Boolean {
+    val leaves = focusLeaves()
+    val source = leaves.firstOrNull { (node, _) -> node.isFocusedNode() }?.second ?: return false
+    var bestNode: SemanticsNode? = null
+    var bestBounds = ComposeRect.Zero
+    for ((node, bounds) in leaves) {
+        if (node.isFocusedNode() || !bounds.isFocusCandidate(source, direction)) continue
+        if (bestNode == null || bounds.beats(bestBounds, source, direction)) {
+            bestNode = node
+            bestBounds = bounds
+        }
     }
-    return null
+    val winner = bestNode
+    if (winner == null) {
+        return if (direction == FocusDirection.Left || direction == FocusDirection.Right) {
+            scrollContent(source, direction)
+        } else {
+            false
+        }
+    }
+    val axis = if (direction == FocusDirection.Left || direction == FocusDirection.Right) width else height
+    val intoChrome = direction == FocusDirection.Down && bestBounds.top > height * 0.8f
+    if (intoChrome || bestBounds.majorDistance(source, direction) > axis * 0.45f) {
+        if (scrollContent(source, direction)) return true
+    }
+    if (bestBounds.majorDistance(source, direction) > axis * 0.62f) return false
+    return winner.config.getOrNull(SemanticsActions.RequestFocus)?.action?.invoke() == true
+}
+
+private fun View.scrollContent(source: ComposeRect, direction: FocusDirection): Boolean {
+    val vertical = direction == FocusDirection.Up || direction == FocusDirection.Down
+    val node = scrollContainer(source, vertical) ?: return false
+    val range = node.config.getOrNull(
+        if (vertical) SemanticsProperties.VerticalScrollAxisRange
+        else SemanticsProperties.HorizontalScrollAxisRange,
+    ) ?: return false
+    val forward = if (range.reverseScrolling) {
+        direction == FocusDirection.Up || direction == FocusDirection.Left
+    } else {
+        direction == FocusDirection.Down || direction == FocusDirection.Right
+    }
+    val value = range.value()
+    val max = range.maxValue()
+    val can = if (forward) value < max - 1f else value > 1f
+    if (!can) return false
+    val action = node.config.getOrNull(SemanticsActions.ScrollBy)?.action ?: return false
+    val step = 220f * resources.displayMetrics.density
+    val delta = if (forward) step else -step
+    return if (vertical) action(0f, delta) else action(delta, 0f)
+}
+
+private fun View.scrollContainer(source: ComposeRect, vertical: Boolean): SemanticsNode? {
+    val owner = this as? RootForTest ?: return null
+    var best: SemanticsNode? = null
+    var bestArea = Float.MAX_VALUE
+    fun walk(node: SemanticsNode) {
+        val range = node.config.getOrNull(
+            if (vertical) SemanticsProperties.VerticalScrollAxisRange
+            else SemanticsProperties.HorizontalScrollAxisRange,
+        )
+        val bounds = node.boundsInWindow
+        val area = bounds.width * bounds.height
+        if (range != null && bounds.contains(source.center) && area < bestArea) {
+            best = node
+            bestArea = area
+        }
+        node.children.forEach(::walk)
+    }
+    walk(owner.semanticsOwner.unmergedRootSemanticsNode)
+    return best
+}
+
+private fun View.focusLeaves(): List<Pair<SemanticsNode, ComposeRect>> {
+    val owner = this as? RootForTest ?: return emptyList()
+    val all = ArrayList<SemanticsNode>(96)
+    fun collect(node: SemanticsNode) {
+        all.add(node)
+        node.children.forEach(::collect)
+    }
+    collect(owner.semanticsOwner.unmergedRootSemanticsNode)
+    val targets = ArrayList<Pair<SemanticsNode, ComposeRect>>(24)
+    for (node in all) {
+        if (node.config.getOrNull(SemanticsActions.RequestFocus)?.action == null) continue
+        val bounds = node.boundsInWindow
+        if (bounds.width < 8f || bounds.height < 8f) continue
+        if (bounds.width > width * 0.92f && bounds.height > height * 0.92f) continue
+        targets.add(node to bounds)
+    }
+    val ids = targets.map { it.first.id }.toHashSet()
+    fun SemanticsNode.holdsFocusableChild(): Boolean {
+        for (child in children) {
+            if (child.id in ids || child.holdsFocusableChild()) return true
+        }
+        return false
+    }
+    return targets.filter { (node, _) -> !node.holdsFocusableChild() }
+}
+
+private fun View.focusedLeaf(): Pair<SemanticsNode, ComposeRect>? =
+    focusLeaves().firstOrNull { (node, _) -> node.isFocusedNode() }
+
+private fun SemanticsNode.isFocusedNode(): Boolean =
+    config.getOrNull(SemanticsProperties.Focused) == true
+
+private fun ComposeRect.isFocusCandidate(source: ComposeRect, direction: FocusDirection): Boolean =
+    when (direction) {
+        FocusDirection.Left ->
+            (source.right > right || source.left >= right) && source.left > left
+        FocusDirection.Right ->
+            (source.left < left || source.right <= left) && source.right < right
+        FocusDirection.Up ->
+            (source.bottom > bottom || source.top >= bottom) && source.top > top
+        FocusDirection.Down ->
+            (source.top < top || source.bottom <= top) && source.bottom < bottom
+        else -> false
+    }
+
+private fun ComposeRect.majorDistance(source: ComposeRect, direction: FocusDirection): Float =
+    when (direction) {
+        FocusDirection.Left -> (source.left - right).coerceAtLeast(0f)
+        FocusDirection.Right -> (left - source.right).coerceAtLeast(0f)
+        FocusDirection.Up -> (source.top - bottom).coerceAtLeast(0f)
+        FocusDirection.Down -> (top - source.bottom).coerceAtLeast(0f)
+        else -> 0f
+    }
+
+private fun ComposeRect.beats(
+    other: ComposeRect,
+    source: ComposeRect,
+    direction: FocusDirection,
+): Boolean {
+    fun ComposeRect.inBeam() = when (direction) {
+        FocusDirection.Left, FocusDirection.Right -> bottom > source.top && top < source.bottom
+        FocusDirection.Up, FocusDirection.Down -> right > source.left && left < source.right
+        else -> false
+    }
+    fun ComposeRect.inDirection() = when (direction) {
+        FocusDirection.Left -> source.left >= right
+        FocusDirection.Right -> source.right <= left
+        FocusDirection.Up -> source.top >= bottom
+        FocusDirection.Down -> source.bottom <= top
+        else -> false
+    }
+    fun ComposeRect.farEdge() = when (direction) {
+        FocusDirection.Left -> (source.left - left).coerceAtLeast(1f)
+        FocusDirection.Right -> (right - source.right).coerceAtLeast(1f)
+        FocusDirection.Up -> (source.top - top).coerceAtLeast(1f)
+        FocusDirection.Down -> (bottom - source.bottom).coerceAtLeast(1f)
+        else -> 1f
+    }
+    val beamWins = when {
+        other.inBeam() || !inBeam() -> false
+        !other.inDirection() -> true
+        direction == FocusDirection.Left || direction == FocusDirection.Right -> true
+        else -> majorDistance(source, direction) < other.farEdge()
+    }
+    if (beamWins) return true
+    val otherWins = when {
+        inBeam() || !other.inBeam() -> false
+        !inDirection() -> true
+        direction == FocusDirection.Left || direction == FocusDirection.Right -> true
+        else -> other.majorDistance(source, direction) < farEdge()
+    }
+    if (otherWins) return false
+    return weighted(source, direction) < other.weighted(source, direction)
+}
+
+private fun ComposeRect.weighted(source: ComposeRect, direction: FocusDirection): Long {
+    val major = majorDistance(source, direction).toLong()
+    val minor = when (direction) {
+        FocusDirection.Left, FocusDirection.Right ->
+            (source.top + source.height / 2f) - (top + height / 2f)
+        else -> (source.left + source.width / 2f) - (left + width / 2f)
+    }.toLong()
+    return 13 * major * major + minor * minor
 }

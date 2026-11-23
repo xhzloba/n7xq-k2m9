@@ -75,6 +75,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.movie.presentation.cast.CastSheet
 import com.example.movie.presentation.cast.ChromeCast
 import com.example.movie.presentation.home.components.BrandTopInset
+import com.example.movie.presentation.home.components.PosterGridInset
 import com.example.movie.presentation.settings.LocalUserSettings
 import com.example.movie.presentation.tv.remoteEntry
 import com.example.movie.presentation.tv.tvWall
@@ -635,7 +636,7 @@ private fun RoundAction(icon: ImageVector) {
     }
 }
 
-internal val DetailInset = 20.dp
+internal val DetailInset = PosterGridInset
 
 internal fun Modifier.edgeToEdge(inset: Dp): Modifier = layout { measurable, constraints ->
     val extra = inset.roundToPx()
@@ -2036,8 +2037,8 @@ private fun CastPage(cast: List<CastMember>, onBack: () -> Unit, modifier: Modif
             state = listState,
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(
-                start = 20.dp,
-                end = 20.dp,
+                start = DetailInset,
+                end = DetailInset,
                 top = top + BrandTopInset + 36.dp + 18.dp,
                 bottom = bottom + 16.dp,
             ),

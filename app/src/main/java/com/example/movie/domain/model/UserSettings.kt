@@ -3,6 +3,25 @@ package com.example.movie.domain.model
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.serialization.Serializable
 
+/** Полки «Моё». Все шесть всегда на экране, меняется только порядок. */
+object LibraryShelves {
+    const val Favorites = "favorites"
+    const val Continue = "continue"
+    const val History = "history"
+    const val Watched = "watched"
+    const val Downloads = "downloads"
+    const val Folders = "folders"
+}
+
+val DefaultLibraryOrder: List<String> = listOf(
+    LibraryShelves.Favorites,
+    LibraryShelves.Continue,
+    LibraryShelves.History,
+    LibraryShelves.Watched,
+    LibraryShelves.Downloads,
+    LibraryShelves.Folders,
+)
+
 @Serializable
 data class UserSettings(
     val extractPlex: Boolean = true,
@@ -91,6 +110,8 @@ data class UserSettings(
     val hints: Boolean = true,
     /** Подсказка про долгое нажатие на «Главную» уже пройдена. */
     val homeHintSeen: Boolean = false,
+    /** Порядок полок «Моё». Выключить нельзя. */
+    val libraryOrder: List<String> = DefaultLibraryOrder,
 ) {
     val progressStartMs: Long
         get() = if (countFromStart) 0L else DefaultProgressStartMs
@@ -199,6 +220,29 @@ fun List<String>.moveHomeRail(id: String, up: Boolean): List<String> {
     return order
 }
 
+fun List<String>.normalizedLibraryOrder(): List<String> {
+    val known = DefaultLibraryOrder.toSet()
+    val kept = filter { it in known }.distinct()
+    return kept + DefaultLibraryOrder.filter { it !in kept }
+}
+
+fun List<String>.canMoveLibraryShelf(id: String, up: Boolean): Boolean {
+    val order = normalizedLibraryOrder()
+    val from = order.indexOf(id)
+    if (from < 0) return false
+    val to = if (up) from - 1 else from + 1
+    return to in order.indices
+}
+
+fun List<String>.moveLibraryShelf(id: String, up: Boolean): List<String> {
+    val order = normalizedLibraryOrder().toMutableList()
+    if (!order.canMoveLibraryShelf(id, up)) return order
+    val from = order.indexOf(id)
+    val to = if (up) from - 1 else from + 1
+    order.add(to, order.removeAt(from))
+    return order
+}
+
 interface UserSettingsRepository {
     val settings: StateFlow<UserSettings>
 
@@ -287,6 +331,8 @@ interface UserSettingsRepository {
     fun setHomeRailsVisible(ids: Collection<String>, visible: Boolean)
 
     fun setHomeRailOrder(order: List<String>)
+
+    fun setLibraryOrder(order: List<String>)
 
     fun setHideRailsLookHint(hidden: Boolean)
 

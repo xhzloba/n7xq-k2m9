@@ -6,6 +6,7 @@ import com.example.movie.domain.model.DefaultHomeRailOrder
 import com.example.movie.domain.model.PreviousHomeRailOrder
 import com.example.movie.domain.model.genresAlphabetical
 import com.example.movie.domain.model.normalizedHomeRailOrder
+import com.example.movie.domain.model.normalizedLibraryOrder
 import com.example.movie.domain.model.placedAfter
 import com.example.movie.domain.model.GenreRails
 import com.example.movie.domain.model.DefaultWatchedPercent
@@ -157,6 +158,7 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
             networkTimeoutSec = settings.networkTimeoutSec.normalizedNetworkTimeout(),
             watchedPercent = settings.watchedPercent.coerceIn(50, 100),
             homeRailOrder = settings.homeRailOrder.normalizedHomeRailOrder(),
+            libraryOrder = settings.libraryOrder.normalizedLibraryOrder(),
             appTheme = when (settings.appTheme) {
                 "graphite" -> "graphite"
                 "black" -> "black"
@@ -171,6 +173,10 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
 
     override fun setHomeRailOrder(order: List<String>) = write {
         it.copy(homeRailOrder = order.normalizedHomeRailOrder())
+    }
+
+    override fun setLibraryOrder(order: List<String>) = write {
+        it.copy(libraryOrder = order.normalizedLibraryOrder())
     }
 
     override fun setHomeRailVisible(id: String, visible: Boolean) = write { current ->
@@ -271,6 +277,7 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
             .putBoolean(KEY_BACKDROP_DISSOLVE, next.backdropDissolve)
             .putStringSet(KEY_HIDDEN_HOME_RAILS, HashSet(next.hiddenHomeRails))
             .putString(KEY_HOME_RAIL_ORDER, next.homeRailOrder.joinToString(","))
+            .putString(KEY_LIBRARY_ORDER, next.libraryOrder.joinToString(","))
             .putBoolean(KEY_HIDE_RAILS_LOOK_HINT, next.hideRailsLookHint)
             .putString(KEY_THEME, next.appTheme)
             .putInt(KEY_WATCHED_PERCENT, next.watchedPercent)
@@ -570,6 +577,10 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
         headerFill = prefs.getBoolean(KEY_HEADER_FILL, false),
         hints = if (armHints) true else prefs.getBoolean(KEY_HINTS, true),
         homeHintSeen = if (armHints) false else prefs.getBoolean(KEY_HOME_HINT, false),
+        libraryOrder = prefs.getString(KEY_LIBRARY_ORDER, null)
+            ?.split(',')
+            .orEmpty()
+            .normalizedLibraryOrder(),
         )
     }
 
@@ -623,6 +634,7 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
         const val KEY_BACKDROP_DISSOLVE = "backdrop_dissolve"
         const val KEY_HIDDEN_HOME_RAILS = "hidden_home_rails"
         const val KEY_HOME_RAIL_ORDER = "home_rail_order"
+        const val KEY_LIBRARY_ORDER = "library_order"
         const val KEY_HOME_RAIL_ORDER_TOP = "home_rail_order_top"
         const val KEY_ACTION_RAIL_HIDDEN = "action_rail_hidden_default"
         const val KEY_GENRE_RAILS_HIDDEN = "genre_rails_hidden_default"

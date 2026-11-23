@@ -21,6 +21,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.height
@@ -45,6 +47,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -62,7 +65,11 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.movie.R
+import com.example.movie.domain.model.LibraryShelves
+import com.example.movie.domain.model.normalizedLibraryOrder
 import com.example.movie.presentation.common.BookmarkFilled
+import com.example.movie.presentation.common.PlexPlay
+import com.example.movie.presentation.settings.LocalUserSettings
 import com.example.movie.presentation.common.appBackground
 import com.example.movie.presentation.common.appChrome
 import com.example.movie.data.download.OfflineItem
@@ -90,6 +97,7 @@ import com.example.movie.presentation.home.components.BrandLogoBleed
 import com.example.movie.presentation.home.components.LogoAspect
 import com.example.movie.presentation.home.components.LogoHeight
 import com.example.movie.presentation.home.components.BrandTopInset
+import com.example.movie.presentation.home.components.HomeContentInset
 import com.example.movie.presentation.home.components.PosterGridInset
 import com.example.movie.presentation.home.components.BrandWordmark
 import com.example.movie.presentation.shell.ShellIcons
@@ -122,6 +130,9 @@ internal fun LibraryHub(
     val scroll = rememberScrollState()
     scroll.scrollToTopOn(scrollTop)
     val header = libraryTopPadding()
+    val settings by LocalUserSettings.current.settings.collectAsStateWithLifecycle()
+    val order = settings.libraryOrder.normalizedLibraryOrder()
+    var orderSheet by remember { mutableStateOf(false) }
     Box(Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
@@ -130,104 +141,124 @@ internal fun LibraryHub(
                 .padding(top = header, bottom = 96.dp),
             verticalArrangement = Arrangement.spacedBy(22.dp),
         ) {
-            if (favorites.isEmpty()) {
-                LibraryPlaque(
-                    title = stringResource(R.string.section_favorites),
-                    body = stringResource(R.string.library_watch_empty),
-                    icon = BookmarkFilled,
-                    iconSize = 92.dp,
-                    onClick = onOpenCatalog,
-                )
-            } else {
-                LibraryRail(
-                    title = stringResource(R.string.section_favorites),
-                    movies = favorites.take(LibraryRailCap).map { it.toMovie() },
-                    onMovieClick = onMovieClick,
-                    onMoviePeek = onMoviePeek,
-                    onOpen = { onOpen(LibrarySection.Favorites) },
-                )
-            }
-            if (resume.isNotEmpty()) {
-                val rail = resume.take(LibraryRailCap)
-                LibraryRail(
-                    title = stringResource(R.string.section_continue),
-                    movies = rail.map { it.toMovie() },
-                    onMovieClick = onPlayResume,
-                    onMoviePeek = onMoviePeek,
-                    onOpen = { onOpen(LibrarySection.Continue) },
-                    progressOf = { movie -> rail.firstOrNull { it.id == movie.id }?.fraction },
-                    captionOf = { movie -> rail.firstOrNull { it.id == movie.id }?.progressCaption() },
-                )
-            }
-            if (history.isNotEmpty()) {
-                LibraryRail(
-                    title = stringResource(R.string.section_history),
-                    movies = history.take(LibraryRailCap).map { it.toMovie() },
-                    onMovieClick = onMovieClick,
-                    onMoviePeek = onMoviePeek,
-                    onOpen = { onOpen(LibrarySection.History) },
-                )
-            }
-            if (watched.isEmpty()) {
-                LibraryPlaque(
-                    title = stringResource(R.string.library_watched),
-                    body = stringResource(R.string.library_watched_empty),
-                    icon = Icons.Filled.CheckCircle,
-                    iconSize = 92.dp,
-                    onClick = onOpenCatalog,
-                )
-            } else {
-                LibraryRail(
-                    title = stringResource(R.string.library_watched),
-                    movies = watched.take(LibraryRailCap).map { it.toMovie() },
-                    onMovieClick = onMovieClick,
-                    onMoviePeek = onMoviePeek,
-                    onOpen = { onOpen(LibrarySection.Watched) },
-                )
-            }
-            if (downloads.isEmpty()) {
-                LibraryPlaque(
-                    title = stringResource(R.string.library_downloads),
-                    body = stringResource(R.string.library_downloads_empty),
-                    action = stringResource(R.string.library_downloads_pick),
-                    onClick = onOpenCatalog,
-                )
-            } else {
-                LibraryRail(
-                    title = stringResource(R.string.library_downloads),
-                    movies = downloads.take(LibraryRailCap).map { it.title.toMovie() },
-                    onMovieClick = { id ->
-                        downloads.firstOrNull { it.title.id == id }?.let(onOpenDownload)
-                    },
-                    onMoviePeek = onMoviePeek,
-                    onOpen = { onOpen(LibrarySection.Downloads) },
-                    titleShimmer = downloads.any { item ->
-                        val phase = downloadStatus(item).phase
-                        phase == OfflinePhase.Downloading || phase == OfflinePhase.Preparing
-                    },
-                    overlay = { movie ->
-                        val item = downloads.firstOrNull { it.title.id == movie.id } ?: return@LibraryRail
-                        val status = downloadStatus(item)
-                        if (status.phase.inProgress()) DownloadRailMark(status)
-                    },
-                )
-            }
-            if (folders.isEmpty()) {
-                LibraryPlaque(
-                    title = stringResource(R.string.library_folders),
-                    icon = FolderMark,
-                    iconSize = 92.dp,
-                    onCreate = onAddFolder,
-                )
-            } else {
-                FolderRail(
-                    folders = folders,
-                    onOpen = onOpenFolders,
-                    onOpenFolder = onOpenFolder,
-                    onEditFolder = onEditFolder,
-                    onDeleteFolder = onDeleteFolder,
-                    onAdd = onAddFolder,
-                )
+            order.forEach { id ->
+                when (id) {
+                    LibraryShelves.Favorites -> if (favorites.isEmpty()) {
+                        LibraryPlaque(
+                            title = stringResource(R.string.section_favorites),
+                            body = stringResource(R.string.library_watch_empty),
+                            icon = BookmarkFilled,
+                            iconSize = 92.dp,
+                            onClick = onOpenCatalog,
+                        )
+                    } else {
+                        LibraryRail(
+                            title = stringResource(R.string.section_favorites),
+                            movies = favorites.take(LibraryRailCap).map { it.toMovie() },
+                            onMovieClick = onMovieClick,
+                            onMoviePeek = onMoviePeek,
+                            onOpen = { onOpen(LibrarySection.Favorites) },
+                        )
+                    }
+                    LibraryShelves.Continue -> if (resume.isEmpty()) {
+                        LibraryPlaque(
+                            title = stringResource(R.string.section_continue),
+                            body = stringResource(R.string.library_continue_empty),
+                            icon = PlexPlay,
+                            iconSize = 92.dp,
+                            onClick = onOpenCatalog,
+                        )
+                    } else {
+                        val rail = resume.take(LibraryRailCap)
+                        LibraryRail(
+                            title = stringResource(R.string.section_continue),
+                            movies = rail.map { it.toMovie() },
+                            onMovieClick = onPlayResume,
+                            onMoviePeek = onMoviePeek,
+                            onOpen = { onOpen(LibrarySection.Continue) },
+                            progressOf = { movie -> rail.firstOrNull { it.id == movie.id }?.fraction },
+                            captionOf = { movie -> rail.firstOrNull { it.id == movie.id }?.progressCaption() },
+                        )
+                    }
+                    LibraryShelves.History -> if (history.isEmpty()) {
+                        LibraryPlaque(
+                            title = stringResource(R.string.section_history),
+                            body = stringResource(R.string.library_history_empty),
+                            icon = ShellIcons.history,
+                            iconSize = 92.dp,
+                            onClick = onOpenCatalog,
+                        )
+                    } else {
+                        LibraryRail(
+                            title = stringResource(R.string.section_history),
+                            movies = history.take(LibraryRailCap).map { it.toMovie() },
+                            onMovieClick = onMovieClick,
+                            onMoviePeek = onMoviePeek,
+                            onOpen = { onOpen(LibrarySection.History) },
+                        )
+                    }
+                    LibraryShelves.Watched -> if (watched.isEmpty()) {
+                        LibraryPlaque(
+                            title = stringResource(R.string.library_watched),
+                            body = stringResource(R.string.library_watched_empty),
+                            icon = Icons.Filled.CheckCircle,
+                            iconSize = 92.dp,
+                            onClick = onOpenCatalog,
+                        )
+                    } else {
+                        LibraryRail(
+                            title = stringResource(R.string.library_watched),
+                            movies = watched.take(LibraryRailCap).map { it.toMovie() },
+                            onMovieClick = onMovieClick,
+                            onMoviePeek = onMoviePeek,
+                            onOpen = { onOpen(LibrarySection.Watched) },
+                        )
+                    }
+                    LibraryShelves.Downloads -> if (downloads.isEmpty()) {
+                        LibraryPlaque(
+                            title = stringResource(R.string.library_downloads),
+                            body = stringResource(R.string.library_downloads_empty),
+                            action = stringResource(R.string.library_downloads_pick),
+                            onClick = onOpenCatalog,
+                        )
+                    } else {
+                        LibraryRail(
+                            title = stringResource(R.string.library_downloads),
+                            movies = downloads.take(LibraryRailCap).map { it.title.toMovie() },
+                            onMovieClick = { movieId ->
+                                downloads.firstOrNull { it.title.id == movieId }?.let(onOpenDownload)
+                            },
+                            onMoviePeek = onMoviePeek,
+                            onOpen = { onOpen(LibrarySection.Downloads) },
+                            titleShimmer = downloads.any { item ->
+                                val phase = downloadStatus(item).phase
+                                phase == OfflinePhase.Downloading || phase == OfflinePhase.Preparing
+                            },
+                            overlay = { movie ->
+                                val item = downloads.firstOrNull { it.title.id == movie.id } ?: return@LibraryRail
+                                val status = downloadStatus(item)
+                                if (status.phase.inProgress()) DownloadRailMark(status)
+                            },
+                        )
+                    }
+                    LibraryShelves.Folders -> if (folders.isEmpty()) {
+                        LibraryPlaque(
+                            title = stringResource(R.string.library_folders),
+                            icon = FolderMark,
+                            iconSize = 92.dp,
+                            onCreate = onAddFolder,
+                        )
+                    } else {
+                        FolderRail(
+                            folders = folders,
+                            onOpen = onOpenFolders,
+                            onOpenFolder = onOpenFolder,
+                            onEditFolder = onEditFolder,
+                            onDeleteFolder = onDeleteFolder,
+                            onAdd = onAddFolder,
+                        )
+                    }
+                }
             }
         }
         SectionScrim(
@@ -237,8 +268,12 @@ internal fun LibraryHub(
         LibraryBar(
             title = stringResource(R.string.nav_favorites),
             onBack = onBack,
+            onOrder = { orderSheet = true },
             modifier = Modifier.align(Alignment.TopCenter),
         )
+        if (orderSheet) {
+            LibraryOrderSheet(onDismiss = { orderSheet = false })
+        }
     }
 }
 
@@ -246,6 +281,7 @@ internal fun LibraryHub(
 internal fun LibraryBar(
     title: String,
     onBack: () -> Unit,
+    onOrder: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     mark: ImageVector? = null,
     titleAtStart: Boolean = false,
@@ -288,6 +324,31 @@ internal fun LibraryBar(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f, fill = false),
             )
+        }
+        if (onOrder != null) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .padding(end = HomeContentInset - 9.dp)
+                    .offset(y = 2.dp)
+                    .requiredSize(40.dp)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = {
+                            tick?.invoke()
+                            onOrder()
+                        },
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = ShellIcons.settings,
+                    contentDescription = stringResource(R.string.library_order_open),
+                    tint = titleColor,
+                    modifier = Modifier.size(28.dp),
+                )
+            }
         }
         Box(
             modifier = Modifier
