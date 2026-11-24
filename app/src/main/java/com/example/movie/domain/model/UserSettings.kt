@@ -118,7 +118,7 @@ data class UserSettings(
     val catalogHintSeen: Boolean = false,
     /** Порядок полок «Моё». Выключить нельзя. */
     val libraryOrder: List<String> = DefaultLibraryOrder,
-    /** Заливка полки по id. 0 не хранится. */
+    /** Заливка полки по id. 0 не хранится. 1 — UltraBlur с первого постера. */
     val shelfFills: Map<String, Int> = emptyMap(),
 ) {
     val progressStartMs: Long

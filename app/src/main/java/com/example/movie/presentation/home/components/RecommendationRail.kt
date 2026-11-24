@@ -58,6 +58,7 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -69,6 +70,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.PlatformTextStyle
@@ -83,12 +85,15 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.movie.R
 import com.example.movie.domain.model.Movie
 import com.example.movie.presentation.detail.DetailSeed
+import com.example.movie.presentation.detail.drawPlexWash
 import com.example.movie.presentation.common.PosterImage
 import com.example.movie.presentation.common.PosterPlayTap
 import com.example.movie.presentation.common.appChrome
 import com.example.movie.presentation.home.ShelfFillSheet
+import com.example.movie.presentation.home.ShelfFillUltra
 import com.example.movie.presentation.home.holdCue
 import com.example.movie.presentation.home.shelfYearWhite
+import com.example.movie.presentation.palette.PosterWash
 import com.example.movie.presentation.settings.LocalUserSettings
 import com.example.movie.presentation.home.holdToPeek
 import com.example.movie.presentation.home.PosterWave
@@ -103,7 +108,16 @@ import com.example.movie.presentation.haptic.rememberHapticTick
 import com.example.movie.presentation.shell.ShellIcons
 import com.example.movie.ui.theme.CinemaMuted
 import com.example.movie.ui.theme.PosterShape
+import java.util.LinkedHashMap
 import kotlinx.coroutines.flow.distinctUntilChanged
+
+/** Цвета первого постера полки. Живёт дольше LazyColumn, чтобы не считать постер заново. */
+private val shelfWashes = object : LinkedHashMap<String, PosterWash>(16, 0.75f, true) {
+    override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, PosterWash>?): Boolean = size > 32
+}
+
+private fun Movie.hasArt(): Boolean =
+    !posterUrl.isNullOrBlank() || !backdropUrl.isNullOrBlank()
 
 private val PosterWidth = 112.dp
 private val RailStart = PosterGridInset
@@ -307,14 +321,39 @@ internal fun RecommendationRail(
     val settingsRepo = LocalUserSettings.current
     val settings by settingsRepo.settings.collectAsStateWithLifecycle()
     val fill = fillKey?.let { settings.shelfFills[it] } ?: 0
-    val yearWhite = fill != 0 && fill.shelfYearWhite()
+    val ultra = fill == ShelfFillUltra
+    val flat = fill != 0 && !ultra
+    val yearWhite = ultra || (flat && fill.shelfYearWhite())
     var picking by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val leadId = if (ultra || picking) movies.firstOrNull { it.hasArt() }?.id else null
+    var ultraWash by remember { mutableStateOf(leadId?.let { shelfWashes[it] }) }
+    LaunchedEffect(leadId) {
+        val id = leadId ?: return@LaunchedEffect
+        val cached = shelfWashes[id]
+        if (cached != null) {
+            ultraWash = cached
+            return@LaunchedEffect
+        }
+        ultraWash = null
+        val movie = movies.firstOrNull { it.id == id } ?: return@LaunchedEffect
+        val wash = movie.extractPosterWash(context) ?: return@LaunchedEffect
+        shelfWashes[id] = wash
+        ultraWash = wash
+    }
+    val wash = ultraWash
     HapticOnAppend(movies.map { it.id })
     Column(
         modifier
             .fillMaxWidth()
             .graphicsLayer()
-            .then(if (fill != 0) Modifier.background(Color(fill)) else Modifier)
+            .then(
+                when {
+                    ultra && wash != null -> Modifier.drawBehind { drawPlexWash(wash, 1f) }
+                    flat -> Modifier.background(Color(fill))
+                    else -> Modifier
+                },
+            )
             .padding(top = if (fill != 0) 12.dp else 0.dp, bottom = if (fill != 0) 12.dp else 0.dp),
     ) {
         if (title != null) {
@@ -358,6 +397,7 @@ internal fun RecommendationRail(
         ShelfFillSheet(
             title = title,
             color = fill,
+            wash = wash,
             onColor = { settingsRepo.setShelfFill(fillKey, it) },
             onDismiss = { picking = false },
         )
