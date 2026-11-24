@@ -158,6 +158,8 @@ internal fun ShellPager(
                     },
                     onOpenShelf = { shell.catalogListKey = it },
                     onHideBar = { shell.barHidden = it },
+                    onWatchingAnchor = { shell.watchingAnchor = it },
+                    onWatchingHold = { shell.catalogHintGone = true },
                     active = tab == AppTab.Catalog,
                 )
             }

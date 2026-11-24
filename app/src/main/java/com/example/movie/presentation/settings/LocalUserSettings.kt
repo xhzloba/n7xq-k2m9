@@ -103,6 +103,8 @@ private object DefaultUserSettings : UserSettingsRepository {
 
     override fun setLibraryOrder(order: List<String>) = Unit
 
+    override fun setShelfFill(id: String, color: Int) = Unit
+
     override fun setHideRailsLookHint(hidden: Boolean) = Unit
 
     override fun setAppTheme(theme: String) = Unit
@@ -122,6 +124,10 @@ private object DefaultUserSettings : UserSettingsRepository {
     override fun setHints(enabled: Boolean) = Unit
 
     override fun setHomeHintSeen(seen: Boolean) = Unit
+
+    override fun setHomeHintShown(shown: Boolean) = Unit
+
+    override fun setCatalogHintSeen(seen: Boolean) = Unit
 
     override fun replace(settings: UserSettings) = Unit
 }

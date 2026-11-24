@@ -19,6 +19,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -60,6 +61,8 @@ internal class ShellController(
     var favoritesTop by mutableIntStateOf(0)
     var settingsTop by mutableIntStateOf(0)
     var peek by mutableStateOf<Movie?>(null)
+    var watchingAnchor by mutableStateOf<Rect?>(null)
+    var catalogHintGone by mutableStateOf(false)
     var resumePlayback by mutableStateOf<ResumeItem?>(null)
     var searchCover by mutableFloatStateOf(0f)
     val sectionShift = Animatable(1f)

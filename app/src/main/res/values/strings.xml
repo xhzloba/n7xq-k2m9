@@ -16,6 +16,8 @@
     <string name="catalog_new">Новинки</string>
     <string name="catalog_updates">Обновления</string>
     <string name="catalog_russian">Популярные российские</string>
+    <string name="shelf_fill_color">Цвет</string>
+    <string name="shelf_fill_none">Без цвета</string>
     <string name="catalog_sort">Сортировка</string>
     <string name="catalog_sort_default">По умолчанию</string>
     <string name="catalog_sort_popular">По популярности</string>
@@ -469,8 +471,9 @@
     <string name="settings_nav_labels">Подписи в меню</string>
     <string name="settings_nav_labels_hint">Названия под иконками нижнего меню. Выключено — только иконки чуть крупнее, на том же месте.</string>
     <string name="settings_hints">Подсказки</string>
-    <string name="settings_hints_hint">На главной один раз покажем, что долгое нажатие на «Главную» открывает её настройки. После показа пункт сам выключается. Включите снова — подсказка появится ещё один раз.</string>
+    <string name="settings_hints_hint">На главной один раз покажем, что долгое нажатие на «Главную» открывает её настройки. В каталоге — что долгое нажатие на название полки выбирает цвет заливки. После обеих подсказок пункт сам выключается. Включите снова — покажутся ещё раз.</string>
     <string name="home_hold_hint">Зажмите на значок — откроются настройки главной</string>
+    <string name="catalog_fill_hint">Зажмите название полки — откроется выбор цвета заливки. Так можно на любом заголовке.</string>
     <string name="settings_hide_bar_scroll">Скрывать меню при скролле</string>
     <string name="settings_bar_scroll_off">Выкл</string>
     <string name="settings_bar_scroll_on">Скрывать при скролле</string>

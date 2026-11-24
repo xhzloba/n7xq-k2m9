@@ -112,8 +112,14 @@ data class UserSettings(
     val hints: Boolean = true,
     /** Подсказка про долгое нажатие на «Главную» уже пройдена. */
     val homeHintSeen: Boolean = false,
+    /** Подсказка на главной уже была показана в этом включении. */
+    val homeHintShown: Boolean = false,
+    /** Подсказка про цвет полки в каталоге уже была показана в этом включении. */
+    val catalogHintSeen: Boolean = false,
     /** Порядок полок «Моё». Выключить нельзя. */
     val libraryOrder: List<String> = DefaultLibraryOrder,
+    /** Заливка полки по id. 0 не хранится. */
+    val shelfFills: Map<String, Int> = emptyMap(),
 ) {
     val progressStartMs: Long
         get() = if (countFromStart) 0L else DefaultProgressStartMs
@@ -338,6 +344,8 @@ interface UserSettingsRepository {
 
     fun setLibraryOrder(order: List<String>)
 
+    fun setShelfFill(id: String, color: Int)
+
     fun setHideRailsLookHint(hidden: Boolean)
 
     fun setAppTheme(theme: String)
@@ -357,6 +365,10 @@ interface UserSettingsRepository {
     fun setHints(enabled: Boolean)
 
     fun setHomeHintSeen(seen: Boolean)
+
+    fun setHomeHintShown(shown: Boolean)
+
+    fun setCatalogHintSeen(seen: Boolean)
 
     fun replace(settings: UserSettings)
 }

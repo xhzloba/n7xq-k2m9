@@ -85,15 +85,52 @@ internal fun BoxScope.ShellChrome(
         !shell.alertsShown &&
         barAlpha > 0.5f &&
         hide < 0.5f
-    LaunchedEffect(hintSettings.hints, homeQuiet) {
-        if (hintSettings.hints && homeQuiet && !hintLive) {
+    LaunchedEffect(hintSettings.hints, hintSettings.homeHintShown, homeQuiet) {
+        if (hintSettings.hints && !hintSettings.homeHintShown && homeQuiet && !hintLive) {
             hintLive = true
-            hintRepository.setHints(false)
+            hintRepository.setHomeHintShown(true)
         } else if (!homeQuiet && hintLive) {
             hintLive = false
         }
     }
     val showHomeHint = hintLive && homeQuiet
+    var catalogHintLive by remember { mutableStateOf(false) }
+    val catalogQuiet = tab == AppTab.Catalog &&
+        shell.catalogListKey == null &&
+        shell.genresType == null &&
+        shell.peek == null &&
+        !shell.searchShown &&
+        !shell.alertsShown &&
+        shell.resumePlayback == null &&
+        barAlpha > 0.5f &&
+        hide < 0.5f
+    LaunchedEffect(
+        hintSettings.hints,
+        hintSettings.catalogHintSeen,
+        catalogQuiet,
+        shell.watchingAnchor,
+        shell.catalogHintGone,
+    ) {
+        if (
+            hintSettings.hints &&
+            !hintSettings.catalogHintSeen &&
+            catalogQuiet &&
+            shell.watchingAnchor != null &&
+            !catalogHintLive
+        ) {
+            shell.catalogHintGone = false
+            catalogHintLive = true
+            hintRepository.setCatalogHintSeen(true)
+        } else if (!catalogQuiet || shell.catalogHintGone) {
+            catalogHintLive = false
+        }
+    }
+    val showCatalogHint = catalogHintLive && catalogQuiet && shell.watchingAnchor != null
+    LaunchedEffect(hintSettings.hints, hintSettings.homeHintShown, hintSettings.catalogHintSeen) {
+        if (hintSettings.hints && hintSettings.homeHintShown && hintSettings.catalogHintSeen) {
+            hintRepository.setHints(false)
+        }
+    }
     if (barAlpha > 0.02f && shell.resumePlayback == null) {
         val fromHome = shell.sectionShown != null
         val settings = hintSettings
@@ -152,6 +189,12 @@ internal fun BoxScope.ShellChrome(
         HomeHoldHint(
             anchor = anchor,
             active = showHomeHint,
+        )
+    }
+    shell.watchingAnchor?.let { anchor ->
+        CatalogShelfHint(
+            anchor = anchor,
+            active = showCatalogHint,
         )
     }
     val flyoutSettings by LocalUserSettings.current.settings.collectAsStateWithLifecycle()

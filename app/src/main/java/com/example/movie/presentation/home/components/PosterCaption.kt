@@ -82,6 +82,7 @@ internal fun PosterCaption(
     title: String,
     year: Int?,
     releaseDate: String? = null,
+    yearColor: Color = CinemaMuted,
     modifier: Modifier = Modifier,
 ) {
     val settings by LocalUserSettings.current.settings.collectAsStateWithLifecycle()
@@ -101,7 +102,7 @@ internal fun PosterCaption(
         Spacer(Modifier.height(4.dp))
         Text(
             text = posterDateLabel(year, releaseDate, full = settings.showReleaseDate),
-            color = CinemaMuted,
+            color = yearColor,
             fontSize = 12.sp,
             lineHeight = 15.sp,
             style = style,

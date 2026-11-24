@@ -24,6 +24,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -36,6 +37,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -93,6 +95,8 @@ fun CatalogScreen(
     onOpenGenre: (type: String, genre: String) -> Unit,
     onOpenShelf: (key: String) -> Unit,
     onHideBar: (Boolean) -> Unit = {},
+    onWatchingAnchor: (Rect?) -> Unit = {},
+    onWatchingHold: () -> Unit = {},
     active: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
@@ -136,6 +140,11 @@ fun CatalogScreen(
                 listState = listState,
                 onHideBar = onHideBar,
             )
+            val head = rails.firstOrNull()
+            val watchHead = head?.sort == CatalogSort.Watching
+            DisposableEffect(tab.type, watchHead) {
+                onDispose { onWatchingAnchor(null) }
+            }
             Box(Modifier.fillMaxSize()) {
             LazyColumn(
                 state = listState,
@@ -163,7 +172,6 @@ fun CatalogScreen(
                     )
                     Spacer(Modifier.height(HomeRailGap))
                 }
-                val head = rails.firstOrNull()
                 val rest = if (rails.size > 1) rails.subList(1, rails.size) else emptyList()
                 if (head != null) {
                     item(key = "${tab.type}:${head.sort.name}") {
@@ -172,6 +180,13 @@ fun CatalogScreen(
                             onMovieClick = onMovieClick,
                             onMoviePeek = onMoviePeek,
                             title = stringResource(head.sort.title),
+                            fillKey = "catalog:${tab.type}:${head.sort.name}",
+                            onTitleAnchor = if (watchHead) {
+                                { rect -> onWatchingAnchor(rect) }
+                            } else {
+                                null
+                            },
+                            onFillOpen = if (watchHead) onWatchingHold else null,
                             onOpen = { onOpenShelf(head.sort.listKey(tab.type)) },
                             motion = true,
                             motionPlace = "rail:${tab.type}:${head.sort.name}",
@@ -201,6 +216,7 @@ fun CatalogScreen(
                         onMovieClick = onMovieClick,
                         onMoviePeek = onMoviePeek,
                         title = stringResource(rail.sort.title),
+                        fillKey = "catalog:${tab.type}:${rail.sort.name}",
                         onOpen = { onOpenShelf(rail.sort.listKey(tab.type)) },
                         motion = true,
                         motionPlace = "rail:${tab.type}:${rail.sort.name}",

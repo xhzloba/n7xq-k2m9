@@ -78,6 +78,7 @@ import com.example.movie.domain.model.Movie
 import com.example.movie.domain.model.Shelf
 import com.example.movie.domain.model.progressCaption
 import com.example.movie.domain.model.folderRailId
+import com.example.movie.domain.model.folderRailKey
 import com.example.movie.domain.model.isFolderRail
 import com.example.movie.domain.model.syncFolderRails
 import com.example.movie.domain.model.toMovie
@@ -762,6 +763,7 @@ private fun HomeOrderedRail(
             onMovieClick = onMovieClick,
             onMoviePeek = onMoviePeek,
             title = folder.name,
+            fillKey = folderRailKey(folder.id),
             onOpen = { onOpenFolder(folder.id) },
             onSettled = onSettled,
             seeAllGlass = seeAllGlass,
@@ -778,6 +780,7 @@ private fun HomeOrderedRail(
             onMovieClick = onMovieClick,
             onMoviePeek = onMoviePeek,
             title = title,
+            fillKey = entry.id,
             onOpen = { onOpenSection(HomeSection.Recommendations) },
             onSettled = onSettled,
             seeAllGlass = seeAllGlass,
@@ -790,6 +793,7 @@ private fun HomeOrderedRail(
             onMovieClick = onMovieClick,
             onMoviePeek = onMoviePeek,
             title = title,
+            fillKey = entry.id,
             onOpen = { onOpenSection(HomeSection.History) },
             onSettled = onSettled,
             seeAllGlass = seeAllGlass,
@@ -802,8 +806,9 @@ private fun HomeOrderedRail(
                 movies = rail.map { it.toMovie() },
                 onMovieClick = onPlayResume,
                 onMoviePeek = onMoviePeek,
-                title = title,
-                onOpen = { onOpenSection(HomeSection.Continue) },
+            title = title,
+            fillKey = entry.id,
+            onOpen = { onOpenSection(HomeSection.Continue) },
                 onSettled = onSettled,
             seeAllGlass = seeAllGlass,
                 stickToStart = true,
@@ -817,6 +822,7 @@ private fun HomeOrderedRail(
             onMovieClick = onMovieClick,
             onMoviePeek = onMoviePeek,
             title = title,
+            fillKey = entry.id,
             onOpen = { onOpenSection(HomeSection.Favorites) },
             onSettled = onSettled,
             seeAllGlass = seeAllGlass,
@@ -828,6 +834,7 @@ private fun HomeOrderedRail(
             onMovieClick = onMovieClick,
             onMoviePeek = onMoviePeek,
             title = title,
+            fillKey = entry.id,
             onOpen = { onOpenSection(HomeSection.Watched) },
             onSettled = onSettled,
             seeAllGlass = seeAllGlass,
@@ -839,6 +846,7 @@ private fun HomeOrderedRail(
             onMovieClick = onMovieClick,
             onMoviePeek = onMoviePeek,
             title = title,
+            fillKey = entry.id,
             onOpen = { onOpenSection(HomeSection.Watching) },
             onSettled = onSettled,
             seeAllGlass = seeAllGlass,
@@ -851,6 +859,7 @@ private fun HomeOrderedRail(
             onMovieClick = onMovieClick,
             onMoviePeek = onMoviePeek,
             title = title,
+            fillKey = entry.id,
             onOpen = { onOpenSection(HomeSection.Best) },
             onSettled = onSettled,
             seeAllGlass = seeAllGlass,
@@ -865,6 +874,7 @@ private fun HomeOrderedRail(
                 onMovieClick = onMovieClick,
                 onMoviePeek = onMoviePeek,
                 title = title,
+                fillKey = entry.id,
                 onOpen = { onOpenSection(HomeSection.valueOf(section)) },
                 onSettled = onSettled,
             seeAllGlass = seeAllGlass,

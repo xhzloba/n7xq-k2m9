@@ -18,6 +18,7 @@ import androidx.compose.foundation.LocalOverscrollConfiguration
 import androidx.compose.foundation.OverscrollConfiguration
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -57,6 +58,9 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.BlendMode
@@ -82,7 +86,9 @@ import com.example.movie.presentation.detail.DetailSeed
 import com.example.movie.presentation.common.PosterImage
 import com.example.movie.presentation.common.PosterPlayTap
 import com.example.movie.presentation.common.appChrome
+import com.example.movie.presentation.home.ShelfFillSheet
 import com.example.movie.presentation.home.holdCue
+import com.example.movie.presentation.home.shelfYearWhite
 import com.example.movie.presentation.settings.LocalUserSettings
 import com.example.movie.presentation.home.holdToPeek
 import com.example.movie.presentation.home.PosterWave
@@ -95,6 +101,7 @@ import com.example.movie.domain.model.HapticSlot
 import com.example.movie.presentation.haptic.rememberHaptic
 import com.example.movie.presentation.haptic.rememberHapticTick
 import com.example.movie.presentation.shell.ShellIcons
+import com.example.movie.ui.theme.CinemaMuted
 import com.example.movie.ui.theme.PosterShape
 import kotlinx.coroutines.flow.distinctUntilChanged
 
@@ -111,6 +118,8 @@ internal fun RailTitle(
     leadingIcon: ImageVector? = null,
     shimmer: Boolean = false,
     onClose: (() -> Unit)? = null,
+    onLongClick: (() -> Unit)? = null,
+    onAnchor: ((Rect) -> Unit)? = null,
 ) {
     val tick = rememberHapticTick()
     val settings by LocalUserSettings.current.settings.collectAsStateWithLifecycle()
@@ -132,16 +141,32 @@ internal fun RailTitle(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Row(
-            modifier = Modifier.then(
-                if (onClick == null) {
+            modifier = Modifier
+                .then(
+                    if (onAnchor == null) {
+                        Modifier
+                    } else {
+                        Modifier.onGloballyPositioned { onAnchor(it.boundsInRoot()) }
+                    },
+                )
+                .then(
+                if (onClick == null && onLongClick == null) {
                     Modifier
                 } else {
-                    Modifier.clickable(
+                    Modifier.combinedClickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
                         onClick = {
-                            tick?.invoke()
-                            onClick()
+                            if (onClick != null) {
+                                tick?.invoke()
+                                onClick()
+                            }
+                        },
+                        onLongClick = onLongClick?.let { longClick ->
+                            {
+                                tick?.invoke()
+                                longClick()
+                            }
                         },
                     )
                 },
@@ -275,9 +300,23 @@ internal fun RecommendationRail(
     onClose: (() -> Unit)? = null,
     motion: Boolean = false,
     motionPlace: String = "",
+    fillKey: String? = null,
+    onTitleAnchor: ((Rect) -> Unit)? = null,
+    onFillOpen: (() -> Unit)? = null,
 ) {
+    val settingsRepo = LocalUserSettings.current
+    val settings by settingsRepo.settings.collectAsStateWithLifecycle()
+    val fill = fillKey?.let { settings.shelfFills[it] } ?: 0
+    val yearWhite = fill != 0 && fill.shelfYearWhite()
+    var picking by remember { mutableStateOf(false) }
     HapticOnAppend(movies.map { it.id })
-    Column(modifier = modifier.fillMaxWidth().graphicsLayer()) {
+    Column(
+        modifier
+            .fillMaxWidth()
+            .graphicsLayer()
+            .then(if (fill != 0) Modifier.background(Color(fill)) else Modifier)
+            .padding(top = if (fill != 0) 12.dp else 0.dp, bottom = if (fill != 0) 12.dp else 0.dp),
+    ) {
         if (title != null) {
             RailTitle(
                 title = title,
@@ -285,6 +324,13 @@ internal fun RecommendationRail(
                 leadingIcon = leadingIcon,
                 shimmer = titleShimmer,
                 onClose = onClose,
+                onLongClick = if (fillKey == null) null else {
+                    {
+                        onFillOpen?.invoke()
+                        picking = true
+                    }
+                },
+                onAnchor = onTitleAnchor,
             )
             Spacer(Modifier.height(10.dp))
         }
@@ -304,8 +350,17 @@ internal fun RecommendationRail(
                 overlay = overlay,
                 motion = motion,
                 motionPlace = motionPlace,
+                yearWhite = yearWhite,
             )
         }
+    }
+    if (picking && title != null && fillKey != null) {
+        ShelfFillSheet(
+            title = title,
+            color = fill,
+            onColor = { settingsRepo.setShelfFill(fillKey, it) },
+            onDismiss = { picking = false },
+        )
     }
 }
 
@@ -359,6 +414,7 @@ private fun RecommendationPager(
     overlay: @Composable (Movie) -> Unit = {},
     motion: Boolean = false,
     motionPlace: String = "",
+    yearWhite: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val listState = rememberLazyListState()
@@ -560,7 +616,12 @@ private fun RecommendationPager(
                         }
                     }
                     Spacer(Modifier.height(WatchedBadgeHang))
-                    PosterCaption(movie.title, movie.year, movie.releaseDate)
+                    PosterCaption(
+                        movie.title,
+                        movie.year,
+                        movie.releaseDate,
+                        yearColor = if (yearWhite) Color.White else CinemaMuted,
+                    )
                 }
             }
             if (onOpen != null) {

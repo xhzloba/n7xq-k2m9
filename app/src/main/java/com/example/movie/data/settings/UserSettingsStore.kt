@@ -150,10 +150,22 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
         current.copy(
             hints = enabled,
             homeHintSeen = if (enabled) false else current.homeHintSeen,
+            homeHintShown = if (enabled) false else current.homeHintShown,
+            catalogHintSeen = if (enabled) false else current.catalogHintSeen,
         )
     }
 
     override fun setHomeHintSeen(seen: Boolean) = write { it.copy(homeHintSeen = seen) }
+
+    override fun setHomeHintShown(shown: Boolean) = write { it.copy(homeHintShown = shown) }
+
+    override fun setCatalogHintSeen(seen: Boolean) = write { it.copy(catalogHintSeen = seen) }
+
+    override fun setShelfFill(id: String, color: Int) = write { current ->
+        val next = current.shelfFills.toMutableMap()
+        if (color == 0) next.remove(id) else next[id] = color
+        current.copy(shelfFills = next)
+    }
 
     override fun replace(settings: UserSettings) = write {
         settings.copy(
@@ -296,6 +308,9 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
             .putBoolean(KEY_HEADER_FILL, next.headerFill)
             .putBoolean(KEY_HINTS, next.hints)
             .putBoolean(KEY_HOME_HINT, next.homeHintSeen)
+            .putBoolean(KEY_HOME_HINT_SHOWN, next.homeHintShown)
+            .putBoolean(KEY_CATALOG_HINT, next.catalogHintSeen)
+            .putString(KEY_SHELF_FILLS, next.shelfFills.encodeShelfFills())
             .commit()
         state.value = next
     }
@@ -586,10 +601,13 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
         headerFill = prefs.getBoolean(KEY_HEADER_FILL, false),
         hints = if (armHints) true else prefs.getBoolean(KEY_HINTS, true),
         homeHintSeen = if (armHints) false else prefs.getBoolean(KEY_HOME_HINT, false),
+        homeHintShown = prefs.getBoolean(KEY_HOME_HINT_SHOWN, false),
+        catalogHintSeen = prefs.getBoolean(KEY_CATALOG_HINT, false),
         libraryOrder = prefs.getString(KEY_LIBRARY_ORDER, null)
             ?.split(',')
             .orEmpty()
             .normalizedLibraryOrder(),
+            shelfFills = prefs.getString(KEY_SHELF_FILLS, null).decodeShelfFills(),
         )
     }
 
@@ -670,6 +688,9 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
         const val KEY_HEADER_FILL = "header_fill"
         const val KEY_HINTS = "hints"
         const val KEY_HOME_HINT = "home_hint_seen"
+        const val KEY_HOME_HINT_SHOWN = "home_hint_shown"
+        const val KEY_CATALOG_HINT = "catalog_hint_seen"
+        const val KEY_SHELF_FILLS = "shelf_fills"
         const val KEY_HINTS_ARMED = "hints_armed"
     }
 }
@@ -681,6 +702,20 @@ private fun List<Int>.pick4(): List<Int> = List(4) { getOrElse(it) { 0 } }
 private fun String?.toPunch(): List<Float> {
     val parts = this?.split(',')?.mapNotNull { it.toFloatOrNull() }.orEmpty()
     return parts.punch4()
+}
+
+private fun Map<String, Int>.encodeShelfFills(): String =
+    entries.joinToString("\u001E") { (key, color) -> "$key\u001F$color" }
+
+private fun String?.decodeShelfFills(): Map<String, Int> {
+    if (isNullOrBlank()) return emptyMap()
+    return split('\u001E').mapNotNull { part ->
+        val cut = part.indexOf('\u001F')
+        if (cut <= 0) return@mapNotNull null
+        val key = part.substring(0, cut)
+        val color = part.substring(cut + 1).toIntOrNull() ?: return@mapNotNull null
+        if (color == 0) null else key to color
+    }.toMap()
 }
 
 private fun String?.toPick(): List<Int> {

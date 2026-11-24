@@ -157,6 +157,7 @@ internal fun LibraryHub(
                     } else {
                         LibraryRail(
                             title = stringResource(R.string.section_favorites),
+                            fillKey = "library:${LibraryShelves.Favorites}",
                             movies = favorites.take(LibraryRailCap).map { it.toMovie() },
                             onMovieClick = onMovieClick,
                             onMoviePeek = onMoviePeek,
@@ -175,6 +176,7 @@ internal fun LibraryHub(
                         val rail = resume.take(LibraryRailCap)
                         LibraryRail(
                             title = stringResource(R.string.section_continue),
+                            fillKey = "library:${LibraryShelves.Continue}",
                             movies = rail.map { it.toMovie() },
                             onMovieClick = onPlayResume,
                             onMoviePeek = onMoviePeek,
@@ -194,6 +196,7 @@ internal fun LibraryHub(
                     } else {
                         LibraryRail(
                             title = stringResource(R.string.section_history),
+                            fillKey = "library:${LibraryShelves.History}",
                             movies = history.take(LibraryRailCap).map { it.toMovie() },
                             onMovieClick = onMovieClick,
                             onMoviePeek = onMoviePeek,
@@ -211,6 +214,7 @@ internal fun LibraryHub(
                     } else {
                         LibraryRail(
                             title = stringResource(R.string.library_watched),
+                            fillKey = "library:${LibraryShelves.Watched}",
                             movies = watched.take(LibraryRailCap).map { it.toMovie() },
                             onMovieClick = onMovieClick,
                             onMoviePeek = onMoviePeek,
@@ -227,6 +231,7 @@ internal fun LibraryHub(
                     } else {
                         LibraryRail(
                             title = stringResource(R.string.library_downloads),
+                            fillKey = "library:${LibraryShelves.Downloads}",
                             movies = downloads.take(LibraryRailCap).map { it.title.toMovie() },
                             onMovieClick = { movieId ->
                                 downloads.firstOrNull { it.title.id == movieId }?.let(onOpenDownload)
@@ -429,6 +434,7 @@ internal fun LibraryBar(
 @Composable
 internal fun LibraryRail(
     title: String,
+    fillKey: String,
     movies: List<Movie>,
     onMovieClick: (String) -> Unit,
     onMoviePeek: (Movie) -> Unit,
@@ -443,6 +449,7 @@ internal fun LibraryRail(
         onMovieClick = onMovieClick,
         onMoviePeek = onMoviePeek,
         title = title,
+        fillKey = fillKey,
         onOpen = onOpen,
         stickToStart = true,
         progressOf = progressOf,
