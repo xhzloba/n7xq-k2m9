@@ -156,7 +156,7 @@ internal fun ShellPager(
                             "$type:g:$genre"
                         }
                     },
-                    onOpenShelf = { type, sort -> shell.catalogListKey = "$type:$sort" },
+                    onOpenShelf = { shell.catalogListKey = it },
                     onHideBar = { shell.barHidden = it },
                     active = tab == AppTab.Catalog,
                 )

@@ -15,6 +15,10 @@ class GetShelfMoviesUseCase(
         background: Boolean = false,
     ): Result<List<Movie>> = repository.getMovies(query, page, limit, background)
 
-    suspend fun paged(query: CatalogQuery, page: Int = 1, limit: Int? = null): Result<MoviePage> =
-        repository.getMoviePage(query, page, limit)
+    suspend fun paged(
+        query: CatalogQuery,
+        page: Int = 1,
+        limit: Int? = null,
+        background: Boolean = false,
+    ): Result<MoviePage> = repository.getMoviePage(query, page, limit, background)
 }

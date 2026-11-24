@@ -22,6 +22,7 @@ internal interface VokinoApi {
         @Query("dolbyvision") dolbyVision: Int? = null,
         @Query("hdr") hdr: Int? = null,
         @Query("genre") genre: String? = null,
+        @Query("country") country: String? = null,
     ): CatalogResponseDto
 
     @GET("v2/recommendations/list")

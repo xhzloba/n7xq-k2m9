@@ -91,7 +91,7 @@ fun CatalogScreen(
     onAlerts: () -> Unit,
     onGenres: (type: String) -> Unit,
     onOpenGenre: (type: String, genre: String) -> Unit,
-    onOpenShelf: (type: String, sort: String) -> Unit,
+    onOpenShelf: (key: String) -> Unit,
     onHideBar: (Boolean) -> Unit = {},
     active: Boolean = false,
     modifier: Modifier = Modifier,
@@ -172,7 +172,7 @@ fun CatalogScreen(
                             onMovieClick = onMovieClick,
                             onMoviePeek = onMoviePeek,
                             title = stringResource(head.sort.title),
-                            onOpen = { onOpenShelf(tab.type, head.sort.sort) },
+                            onOpen = { onOpenShelf(head.sort.listKey(tab.type)) },
                             motion = true,
                             motionPlace = "rail:${tab.type}:${head.sort.name}",
                             modifier = Modifier.fillMaxWidth(),
@@ -201,7 +201,7 @@ fun CatalogScreen(
                         onMovieClick = onMovieClick,
                         onMoviePeek = onMoviePeek,
                         title = stringResource(rail.sort.title),
-                        onOpen = { onOpenShelf(tab.type, rail.sort.sort) },
+                        onOpen = { onOpenShelf(rail.sort.listKey(tab.type)) },
                         motion = true,
                         motionPlace = "rail:${tab.type}:${rail.sort.name}",
                         modifier = Modifier.fillMaxWidth(),
@@ -342,6 +342,7 @@ internal fun CatalogListRoute(
     type: String,
     sort: String,
     title: String,
+    country: String? = null,
     genre: String? = null,
     onBack: () -> Unit,
     onMovieClick: (String) -> Unit,
@@ -354,9 +355,11 @@ internal fun CatalogListRoute(
     var picked by rememberSaveable(type, genre) { mutableStateOf(sort) }
     var sortOpen by rememberSaveable { mutableStateOf(false) }
     val querySort = if (sorting) picked else sort
-    val viewModel: CatalogListViewModel = viewModel(key = "$type:$querySort:${genre.orEmpty()}") {
+    val viewModel: CatalogListViewModel = viewModel(
+        key = "$type:$querySort:${country.orEmpty()}:${genre.orEmpty()}",
+    ) {
         CatalogListViewModel(
-            query = CatalogQuery(sort = querySort, type = type, genre = genre),
+            query = CatalogQuery(sort = querySort, type = type, genre = genre, country = country),
             getShelfMovies = container.getShelfMovies,
         )
     }
@@ -372,7 +375,7 @@ internal fun CatalogListRoute(
             onMovieClick = onMovieClick,
             onMoviePeek = onMoviePeek,
             motion = true,
-            motionPlace = "list:$type:$querySort:${genre.orEmpty()}",
+            motionPlace = "list:$type:$querySort:${country.orEmpty()}:${genre.orEmpty()}",
             onSort = if (sorting) {
                 { sortOpen = true }
             } else {

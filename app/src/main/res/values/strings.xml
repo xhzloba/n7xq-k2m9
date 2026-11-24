@@ -15,6 +15,7 @@
     <string name="catalog_popular">Популярное</string>
     <string name="catalog_new">Новинки</string>
     <string name="catalog_updates">Обновления</string>
+    <string name="catalog_russian">Популярные российские</string>
     <string name="catalog_sort">Сортировка</string>
     <string name="catalog_sort_default">По умолчанию</string>
     <string name="catalog_sort_popular">По популярности</string>

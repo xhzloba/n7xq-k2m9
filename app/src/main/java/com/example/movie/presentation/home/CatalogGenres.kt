@@ -240,7 +240,14 @@ private fun GenreChip(
                 painter = painter,
                 contentDescription = name,
                 modifier = Modifier
-                    .height(if (name == "вестерн" || name == "боевик") 32.dp else 44.dp)
+                    .height(
+                        when (name) {
+                            // Широкая одна строка: иначе чип шире остальных.
+                            "аниме" -> 24.dp
+                            "вестерн", "боевик" -> 32.dp
+                            else -> 44.dp
+                        },
+                    )
                     .aspectRatio(aspect),
             )
         }

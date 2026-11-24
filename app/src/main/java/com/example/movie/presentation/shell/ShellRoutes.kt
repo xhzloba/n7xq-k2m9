@@ -10,7 +10,7 @@ import com.example.movie.presentation.common.LocalPosterLayer
 import com.example.movie.presentation.common.appBackground
 import com.example.movie.presentation.home.CatalogGenresPage
 import com.example.movie.presentation.home.CatalogListRoute
-import com.example.movie.presentation.home.CatalogSort
+import com.example.movie.presentation.home.openedCatalogShelf
 import com.example.movie.presentation.home.GenreAll
 import com.example.movie.presentation.home.HomeSection
 import com.example.movie.presentation.home.SectionRoute
@@ -83,14 +83,15 @@ internal fun ShellRoutes(
             )
             }
         } else {
-            val titleRes = CatalogSort.entries.firstOrNull { it.sort == rest }?.title
-            if (titleRes != null) {
+            val shelf = openedCatalogShelf(opened)
+            if (shelf != null) {
                 CompositionLocalProvider(LocalPosterLayer provides 1) {
                 CatalogListRoute(
                     scrollTop = shell.catalogTop,
-                    type = type,
-                    sort = rest,
-                    title = stringResource(titleRes),
+                    type = shelf.type,
+                    sort = shelf.sort,
+                    country = shelf.country,
+                    title = stringResource(shelf.title),
                     onBack = { shell.catalogListKey = null },
                     onMovieClick = onMovieClick,
                     onMoviePeek = { shell.peek = it },
