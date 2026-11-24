@@ -214,6 +214,15 @@ internal fun RektPlayer(
     }
     var pendingStart by remember(playback) { mutableLongStateOf(startPositionMs) }
     val resolveDownload = remember(downloadIdOf) { downloadIdOf }
+    val progressNow = rememberUpdatedState(onProgress)
+    val bound = remember(playback) {
+        object {
+            var season: Int? = null
+            var episode: Int? = null
+            var url: String? = null
+            var accept: Boolean = false
+        }
+    }
     LaunchedEffect(current.url, current.kind, current.manifestPicked, current.alternateUrl, resolveDownload) {
         // Офлайн: не ходим в сеть за «более богатым» манифестом.
         if (resolveDownload?.invoke(current) == null &&
@@ -233,6 +242,20 @@ internal fun RektPlayer(
         }
         val playing = player.currentMediaItem?.localConfiguration?.uri?.toString()
         if (playing == current.url && player.playbackState != Player.STATE_IDLE) return@LaunchedEffect
+        val opened = playback.episodes.firstOrNull { it.stream.sameSource(current) }
+        bound.accept = false
+        val leaving = bound.episode != null &&
+            (bound.season != opened?.season || bound.episode != opened?.episode)
+        if (leaving) {
+            val length = player.duration
+            val played = player.currentPosition
+            if (length > 0L && played > 0L) {
+                progressNow.value(played, length, bound.season, bound.episode)
+            }
+        }
+        bound.season = opened?.season
+        bound.episode = opened?.episode
+        bound.url = current.url
         val held = playing
             ?.takeIf { previous -> current.manifests.any { it.url == previous } }
             ?.let { player.currentPosition }
@@ -368,6 +391,17 @@ internal fun RektPlayer(
 
             override fun onPlaybackStateChanged(state: Int) {
                 buffering = state == Player.STATE_BUFFERING
+                val media = player.currentMediaItem?.localConfiguration?.uri?.toString()
+                if (state == Player.STATE_READY && media != null && media == bound.url) {
+                    bound.accept = true
+                }
+                if (state == Player.STATE_ENDED && bound.accept && bound.episode != null) {
+                    val length = player.duration
+                    if (length > 0L) {
+                        bound.accept = false
+                        follow.emit(length, length, bound.season, bound.episode)
+                    }
+                }
                 if (state == Player.STATE_ENDED && follow.auto) {
                     val next = follow.episodes.getOrNull(follow.index + 1) ?: return
                     val pick = follow.codec
@@ -400,7 +434,9 @@ internal fun RektPlayer(
         onDispose {
             val played = player.currentPosition
             val length = player.duration
-            if (length > 0L && played > 0L) follow.emit(played, length, follow.season, follow.episode)
+            if (bound.accept && length > 0L && played > 0L) {
+                follow.emit(played, length, bound.season, bound.episode)
+            }
             player.removeListener(listener)
             player.release()
         }
@@ -413,9 +449,14 @@ internal fun RektPlayer(
                 duration = player.duration.takeIf { it > 0 } ?: 0L
                 playing = player.isPlaying
                 val now = android.os.SystemClock.elapsedRealtime()
-                if (duration > 0L && position > 0L && now - reported >= 5_000L) {
+                if (
+                    bound.accept &&
+                    duration > 0L &&
+                    position > 0L &&
+                    now - reported >= 5_000L
+                ) {
                     reported = now
-                    follow.emit(position, duration, follow.season, follow.episode)
+                    follow.emit(position, duration, bound.season, bound.episode)
                 }
             }
             delay(250)
