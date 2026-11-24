@@ -97,6 +97,7 @@ fun CatalogScreen(
     onHideBar: (Boolean) -> Unit = {},
     onWatchingAnchor: (Rect?) -> Unit = {},
     onWatchingHold: () -> Unit = {},
+    watchHint: Boolean = false,
     active: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
@@ -187,7 +188,11 @@ fun CatalogScreen(
                                 null
                             },
                             onFillOpen = if (watchHead) onWatchingHold else null,
-                            onOpen = { onOpenShelf(head.sort.listKey(tab.type)) },
+                            onOpen = if (watchHead && watchHint) {
+                                null
+                            } else {
+                                { onOpenShelf(head.sort.listKey(tab.type)) }
+                            },
                             motion = true,
                             motionPlace = "rail:${tab.type}:${head.sort.name}",
                             modifier = Modifier.fillMaxWidth(),

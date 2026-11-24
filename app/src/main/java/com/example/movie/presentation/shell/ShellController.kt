@@ -63,6 +63,7 @@ internal class ShellController(
     var peek by mutableStateOf<Movie?>(null)
     var watchingAnchor by mutableStateOf<Rect?>(null)
     var catalogHintGone by mutableStateOf(false)
+    var catalogHintUp by mutableStateOf(false)
     var resumePlayback by mutableStateOf<ResumeItem?>(null)
     var searchCover by mutableFloatStateOf(0f)
     val sectionShift = Animatable(1f)

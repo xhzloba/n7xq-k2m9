@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -126,6 +127,7 @@ internal fun BoxScope.ShellChrome(
         }
     }
     val showCatalogHint = catalogHintLive && catalogQuiet && shell.watchingAnchor != null
+    SideEffect { shell.catalogHintUp = showCatalogHint }
     LaunchedEffect(hintSettings.hints, hintSettings.homeHintShown, hintSettings.catalogHintSeen) {
         if (hintSettings.hints && hintSettings.homeHintShown && hintSettings.catalogHintSeen) {
             hintRepository.setHints(false)

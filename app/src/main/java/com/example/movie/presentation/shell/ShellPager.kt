@@ -160,6 +160,7 @@ internal fun ShellPager(
                     onHideBar = { shell.barHidden = it },
                     onWatchingAnchor = { shell.watchingAnchor = it },
                     onWatchingHold = { shell.catalogHintGone = true },
+                    watchHint = shell.catalogHintUp,
                     active = tab == AppTab.Catalog,
                 )
             }
