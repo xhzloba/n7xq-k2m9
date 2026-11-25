@@ -554,11 +554,6 @@
     <string name="settings_watched_badge_hint">На обложке в слайдерах, каталоге и полном списке. Синяя галочка, если просмотрено. Белый кружок с чёрной закладкой, если в «Буду смотреть». Выключено — обеих отметок нет.</string>
     <string name="settings_logos">Логотипы</string>
     <string name="settings_logos_hint">На главном слайдере и в деталке. Выключено — показывается название.</string>
-    <string name="settings_backdrop_quality">Качество кадра</string>
-    <string name="settings_backdrop_quality_hint">По умолчанию «Авто»: сначала w1280, потом догружается оригинал. «Оригинал» — сразу высочайшее качество. «Ниже» грузит кадр меньше и не догружает оригинал.</string>
-    <string name="settings_backdrop_quality_original">Оригинал</string>
-    <string name="settings_backdrop_quality_low">Ниже</string>
-    <string name="settings_backdrop_quality_auto">Авто</string>
     <string name="settings_backdrop_auto">Автокадры</string>
     <string name="settings_backdrop_auto_hint">В деталке backdrop сам листается. Выключено — точки сверху, кадры свайпом.</string>
     <string name="settings_detail_iris">Переход из углов</string>

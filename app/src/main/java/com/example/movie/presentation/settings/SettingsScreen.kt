@@ -84,9 +84,6 @@ import com.example.movie.domain.model.ImageParallelChoices
 import com.example.movie.domain.model.MaxNetworkTimeoutSec
 import com.example.movie.domain.model.PosterMotionAuto
 import com.example.movie.domain.model.PosterMotionManual
-import com.example.movie.domain.model.BackdropQualityAuto
-import com.example.movie.domain.model.BackdropQualityLow
-import com.example.movie.domain.model.BackdropQualityOriginal
 import com.example.movie.domain.model.PosterQualityFull
 import com.example.movie.domain.model.PosterQualityLight
 import com.example.movie.domain.model.PosterQualityLow
@@ -98,7 +95,6 @@ import com.example.movie.domain.model.normalizedImageParallel
 import com.example.movie.domain.model.normalizedNetworkTimeout
 import com.example.movie.domain.model.normalizedPlayerCodec
 import com.example.movie.domain.model.normalizedPosterMotion
-import com.example.movie.domain.model.normalizedBackdropQuality
 import com.example.movie.domain.model.normalizedPosterQuality
 import com.example.movie.presentation.haptic.play
 import com.example.movie.presentation.haptic.rememberHapticTick
@@ -507,8 +503,6 @@ private fun SettingsLeaf(
                 )
             }
         SettingsPage.Detail -> Column(leafScroll(modifier, scrollTop)) {
-                BackdropQualityControl(selected = settings.backdropQuality)
-                Spacer(Modifier.height(22.dp))
                 SettingGroup(
                     items = listOf(
                         SettingItem(
@@ -1393,34 +1387,6 @@ private fun PosterMotionControl(selected: String) {
         onStep = {
             repository.setPosterMotion(if (manual) PosterMotionAuto else PosterMotionManual)
         },
-    )
-}
-
-private val BackdropQualityOrder = listOf(
-    BackdropQualityOriginal,
-    BackdropQualityLow,
-    BackdropQualityAuto,
-)
-
-private fun stepBackdropQuality(current: String, delta: Int): String {
-    val normalized = current.normalizedBackdropQuality()
-    val index = BackdropQualityOrder.indexOf(normalized).let { if (it < 0) 0 else it }
-    return BackdropQualityOrder[(index + delta).mod(BackdropQualityOrder.size)]
-}
-
-@Composable
-private fun BackdropQualityControl(selected: String) {
-    val repository = LocalUserSettings.current
-    val label = when (selected.normalizedBackdropQuality()) {
-        BackdropQualityLow -> R.string.settings_backdrop_quality_low
-        BackdropQualityAuto -> R.string.settings_backdrop_quality_auto
-        else -> R.string.settings_backdrop_quality_original
-    }
-    ChoiceStepper(
-        title = stringResource(R.string.settings_backdrop_quality),
-        value = stringResource(label),
-        hint = stringResource(R.string.settings_backdrop_quality_hint),
-        onStep = { delta -> repository.setBackdropQuality(stepBackdropQuality(selected, delta)) },
     )
 }
 

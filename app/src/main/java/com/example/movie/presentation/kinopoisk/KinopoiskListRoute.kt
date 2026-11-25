@@ -46,7 +46,10 @@ internal fun KinopoiskListRoute(
         if (movies.isEmpty()) return@LaunchedEffect
         prefetchKpCards(movies.take(24)) { id ->
             val detail = container.getMovieDetail(id, background = true).getOrNull()
-            if (detail != null && detail.id != id) container.favorites.note(detail.id, id)
+            if (detail != null && detail.id != id) {
+                container.favorites.note(detail.id, id)
+                container.watched.note(detail.id, id)
+            }
             detail
         }
     }

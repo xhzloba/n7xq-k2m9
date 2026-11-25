@@ -152,11 +152,7 @@ import com.example.movie.domain.model.CastMember
 import com.example.movie.domain.model.DataError
 import com.example.movie.domain.model.FranchiseTrailer
 import com.example.movie.domain.model.Movie
-import com.example.movie.domain.model.BackdropQualityAuto
-import com.example.movie.domain.model.BackdropQualityLow
-import com.example.movie.domain.model.BackdropQualityOriginal
 import com.example.movie.domain.model.MovieDetail
-import com.example.movie.domain.model.normalizedBackdropQuality
 import com.example.movie.presentation.palette.PosterWash
 import com.example.movie.presentation.palette.plexWash
 import com.example.movie.presentation.palette.posterWash
@@ -855,7 +851,10 @@ private fun DetailContent(
     val favorites = LocalAppContainer.current.favorites
     val watched = LocalAppContainer.current.watched
     LaunchedEffect(openedId, detail.id) {
-        if (openedId != detail.id) favorites.note(detail.id, openedId)
+        if (openedId != detail.id) {
+            favorites.note(detail.id, openedId)
+            watched.note(detail.id, openedId)
+        }
     }
     val offline = LocalAppContainer.current.offline
     val resumeStore = LocalAppContainer.current.resume
@@ -994,7 +993,7 @@ private fun DetailContent(
         if (watching != null) wantTrailer = false
     }
     val loadedStills = remember(openedId) { mutableStateMapOf<String, Boolean>() }
-    LaunchedEffect(detail.id, frame, backdrops, settings.autoBackdrop, settings.backdropQuality, wantTrailer) {
+    LaunchedEffect(detail.id, frame, backdrops, settings.autoBackdrop, wantTrailer) {
         if (!settings.autoBackdrop || backdrops.size < 2 || wantTrailer) return@LaunchedEffect
         val current = backdrops.getOrNull(frame) ?: return@LaunchedEffect
         if (loadedStills[current] != true) {
@@ -1003,15 +1002,10 @@ private fun DetailContent(
             }
         }
         val next = backdrops[(frame + 1) % backdrops.size]
-        val preloadUrl = if (settings.backdropQuality.normalizedBackdropQuality() == BackdropQualityOriginal) {
-            next
-        } else {
-            next.backdropW1280() ?: next
-        }
         val preload = launch {
             runCatching {
                 context.imageLoader.execute(
-                    ImageRequest.Builder(context).data(stillModel(preloadUrl)).build(),
+                    ImageRequest.Builder(context).data(stillModel(next)).build(),
                 )
             }
         }
@@ -1050,7 +1044,6 @@ private fun DetailContent(
         posterShown,
         settings.extractPlex,
         settings.plexBackdrop,
-        settings.backdropQuality,
     ) {
         when {
             settings.extractPlex -> {
@@ -1066,21 +1059,16 @@ private fun DetailContent(
                         ?: context.extractBackdrop(url, width, height, plex = true)?.also { washCache[key] = it }
                 }
                 suspend fun fromPoster(): PosterWash? = poster?.let { washOf(it, 320, 480) }
-                fun String.toneStill(): String {
-                    if (settings.backdropQuality.normalizedBackdropQuality() == BackdropQualityOriginal) return this
-                    return backdropW1280() ?: this
-                }
                 suspend fun fromStill(): PosterWash? {
                     val source = still ?: return null
-                    return washOf(source.toneStill(), 384, 216)
+                    return washOf(source, 384, 216)
                 }
                 val extracted = when {
                     !settings.plexBackdrop -> fromPoster() ?: fromStill()
                     still == null -> fromPoster()
                     else -> {
                         val custom = toneStore.tones.value[washToneKey(detail.id, still)]?.plain() == false
-                        val toneFile = still.toneStill()
-                        if (washCache["plex:$toneFile"] == null && loadedStills[still] != true) {
+                        if (washCache["plex:$still"] == null && loadedStills[still] != true) {
                             val onScreen = snapshotFlow { loadedStills[still] == true }
                             val late = backdropWash == hidden &&
                                 withTimeoutOrNull(PosterStandInDelay) { onScreen.first { it } } == null
@@ -3431,13 +3419,6 @@ private fun BackdropStill(
     alignment: Alignment = Alignment.TopCenter,
     mask: Boolean = true,
 ) {
-    val mode = LocalUserSettings.current.settings.collectAsStateWithLifecycle()
-        .value.backdropQuality.normalizedBackdropQuality()
-    val small = remember(url) { url.backdropW1280() }
-    val preview = if (mode == BackdropQualityOriginal) null else small
-    val upgrade = mode == BackdropQualityAuto && preview != null
-    var previewFailed by remember(url, mode) { mutableStateOf(false) }
-    var fullReady by remember(url, mode) { mutableStateOf(preview == null) }
     val paint = Modifier
         .fillMaxSize()
         .heightIn(max = height * 2)
@@ -3452,45 +3433,16 @@ private fun BackdropStill(
                 )
             }
         }
-    val cover = preview == null || previewFailed || fullReady
-    if (preview != null && !previewFailed) {
-        AsyncImage(
-            model = stillModel(preview),
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            alignment = alignment,
-            onSuccess = { onReady() },
-            onError = { previewFailed = true },
-            modifier = paint,
-        )
-    }
-    if (upgrade || preview == null || previewFailed) {
-        AsyncImage(
-            model = stillModel(url),
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            alignment = alignment,
-            onSuccess = {
-                fullReady = true
-                if (preview == null || previewFailed) onReady()
-            },
-            onError = {
-                if (preview == null || previewFailed) onError()
-            },
-            modifier = paint.graphicsLayer { alpha = if (cover) 1f else 0f },
-        )
-    }
+    AsyncImage(
+        model = stillModel(url),
+        contentDescription = null,
+        contentScale = ContentScale.Crop,
+        alignment = alignment,
+        onSuccess = { onReady() },
+        onError = { onError() },
+        modifier = paint,
+    )
 }
-
-/** Быстрый кадр того же файла. Постер не подставляется. */
-private fun String.backdropW1280(): String? {
-    if (startsWith("file:")) return null
-    if (!BackdropTier.containsMatchIn(this)) return null
-    val next = replace(BackdropTier, "/t/p/w1280/")
-    return next.takeIf { it != this }
-}
-
-private val BackdropTier = Regex("/t/p/(?:w\\d+|original)/")
 
 private fun stillModel(url: String): Any {
     if (!url.startsWith("file:")) return url

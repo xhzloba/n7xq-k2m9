@@ -46,8 +46,6 @@ data class UserSettings(
     val plexPick: List<Int> = listOf(0, 0, 0, 0),
     val showLogos: Boolean = true,
     val autoBackdrop: Boolean = true,
-    /** original — сразу оригинал, low — только w1280, auto — w1280 и потом оригинал. */
-    val backdropQuality: String = BackdropQualityAuto,
     val watchGlow: Boolean = false,
     val haptic: Boolean = true,
     /** Наклон телефона. Без него параллакс в карточке не работает. */
@@ -284,8 +282,6 @@ interface UserSettingsRepository {
 
     fun setAutoBackdrop(enabled: Boolean)
 
-    fun setBackdropQuality(quality: String)
-
     fun setWatchGlow(enabled: Boolean)
 
     fun setHaptic(enabled: Boolean)
@@ -382,15 +378,6 @@ const val MinNetworkTimeoutSec = 4
 const val MaxNetworkTimeoutSec = 20
 
 fun Int.normalizedNetworkTimeout(): Int = coerceIn(MinNetworkTimeoutSec, MaxNetworkTimeoutSec)
-
-const val BackdropQualityOriginal = "original"
-const val BackdropQualityLow = "low"
-const val BackdropQualityAuto = "auto"
-
-fun String.normalizedBackdropQuality(): String = when (this) {
-    BackdropQualityLow, BackdropQualityAuto -> this
-    else -> BackdropQualityOriginal
-}
 
 const val PosterQualityFull = "full"
 const val PosterQualityLight = "light"

@@ -135,7 +135,10 @@ internal fun KinopoiskScreen(
         val shelves = loaded ?: return@LaunchedEffect
         prefetchKpCards(shelves.flatMap { it.movies.take(KpRailPreview) }) { id ->
             val detail = container.getMovieDetail(id, background = true).getOrNull()
-            if (detail != null && detail.id != id) container.favorites.note(detail.id, id)
+            if (detail != null && detail.id != id) {
+                container.favorites.note(detail.id, id)
+                container.watched.note(detail.id, id)
+            }
             detail
         }
     }
