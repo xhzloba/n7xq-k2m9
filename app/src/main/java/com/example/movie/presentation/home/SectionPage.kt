@@ -165,6 +165,7 @@ internal fun SectionPage(
     onHideBar: (Boolean) -> Unit = {},
     motion: Boolean = false,
     motionPlace: String = "",
+    overlay: @Composable (Movie) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     var confirmClear by remember { mutableStateOf(false) }
@@ -221,6 +222,7 @@ internal fun SectionPage(
                 marks = state.marks,
                 motion = motion,
                 motionPlace = motionPlace,
+                overlay = overlay,
             )
         }
         SectionScrim(progress = scrim, modifier = Modifier.align(Alignment.TopCenter))
@@ -564,6 +566,7 @@ internal fun PosterGrid(
     marks: Map<String, PosterMark> = emptyMap(),
     motion: Boolean = false,
     motionPlace: String = "",
+    overlay: @Composable (Movie) -> Unit = {},
 ) {
     HapticOnAppend(movies.map { it.id })
     LaunchedEffect(state, movies.size, end, error, placeholder, loadingMore) {
@@ -587,7 +590,15 @@ internal fun PosterGrid(
             if (placeholder) {
                 SkeletonPoster()
             } else {
-                PosterCell(movies[index], onMovieClick, onMoviePeek, marks[movies[index].id], motion, motionPlace)
+                PosterCell(
+                    movies[index],
+                    onMovieClick,
+                    onMoviePeek,
+                    marks[movies[index].id],
+                    motion,
+                    motionPlace,
+                    overlay,
+                )
             }
         }
         if (!placeholder && (loadingMore || error != null)) {
@@ -644,6 +655,7 @@ private fun PosterCell(
     mark: PosterMark? = null,
     motion: Boolean = false,
     motionPlace: String = "",
+    overlay: @Composable (Movie) -> Unit = {},
 ) {
     val tick = rememberHaptic(HapticSlot.Poster)
     var holdProgress by remember(movie.id) { mutableFloatStateOf(0f) }
@@ -710,6 +722,7 @@ private fun PosterCell(
             } else if (movie.id in favorites) {
                 FavoriteBadge(Modifier.align(Alignment.BottomEnd))
             }
+            overlay(movie)
         }
         Spacer(Modifier.height(WatchedBadgeHang))
         PosterCaption(movie.title, movie.year, movie.releaseDate)

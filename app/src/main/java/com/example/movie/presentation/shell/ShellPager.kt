@@ -15,6 +15,7 @@ import com.example.movie.presentation.favorites.FavoritesScreen
 import com.example.movie.presentation.home.CatalogScreen
 import com.example.movie.presentation.home.GenreAll
 import com.example.movie.presentation.home.HomeRoute
+import com.example.movie.presentation.kinopoisk.KinopoiskScreen
 import com.example.movie.presentation.home.HomeViewModel
 import com.example.movie.presentation.home.RailsLookTab
 import com.example.movie.presentation.settings.SettingsRoute
@@ -64,6 +65,13 @@ internal fun ShellPager(
                     scrollTop = shell.homeTop,
                 )
                 AppTab.Catalog -> Unit
+                AppTab.Kinopoisk -> KinopoiskScreen(
+                    scrollTop = shell.kpTop,
+                    onMovieClick = onMovieClick,
+                    onMoviePeek = { shell.peek = it },
+                    onOpenList = { shell.kpListId = "kp:$it" },
+                    onHideBar = { shell.barHidden = it },
+                )
                 AppTab.Favorites -> FavoritesScreen(
                     onMovieClick = onMovieClick,
                     onMoviePeek = { shell.peek = it },
@@ -102,7 +110,7 @@ internal fun ShellPager(
             ),
     ) {
         Box(Modifier.fillMaxSize()) {
-            for (which in listOf(AppTab.Home, AppTab.Favorites, AppTab.Settings)) {
+            for (which in listOf(AppTab.Home, AppTab.Kinopoisk, AppTab.Favorites, AppTab.Settings)) {
                 val front = which == shell.base
                 val under = which == shell.baseBehind
                 if (!front && !under && (!shell.restParked || LocalTelevision.current)) continue

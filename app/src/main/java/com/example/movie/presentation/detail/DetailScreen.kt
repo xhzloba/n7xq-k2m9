@@ -809,22 +809,25 @@ private fun DetailContent(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
-    var watching by remember(detail.id) { mutableStateOf<WatchRequest?>(null) }
-    var episodesOpen by remember(detail.id) { mutableStateOf(false) }
-    var seasonWatch by remember(detail.id) { mutableStateOf(false) }
-    var castSheet by remember(detail.id) { mutableStateOf(false) }
-    var toneOpen by remember(detail.id) { mutableStateOf(false) }
-    var previewOn by remember(detail.id) { mutableStateOf(true) }
-    var downloadSheet by remember(detail.id) { mutableStateOf(false) }
-    var moreOpen by remember(detail.id) { mutableStateOf(false) }
-    var folderOpen by remember(detail.id) { mutableStateOf(false) }
-    var qualitySheet by remember(detail.id) { mutableStateOf(false) }
-    var offlinePlay by remember(detail.id) { mutableStateOf(false) }
-    var offlineSeason by remember(detail.id) { mutableStateOf<Int?>(null) }
-    var offlineEpisode by remember(detail.id) { mutableStateOf<Int?>(null) }
-    var playChoice by remember(detail.id) { mutableStateOf<PlayChoice?>(null) }
-    var watchRequested by remember(detail.id) { mutableStateOf(false) }
-    var franchisePage by remember(detail.id) { mutableStateOf<String?>(null) }
+    // Кинопоиск открывается по kp id, ответ Вокино приходит с mongo id.
+    // Ключ экрана не меняем, иначе лого, заливка и скролл собираются заново.
+    val openedId = remember { detail.id }
+    var watching by remember(openedId) { mutableStateOf<WatchRequest?>(null) }
+    var episodesOpen by remember(openedId) { mutableStateOf(false) }
+    var seasonWatch by remember(openedId) { mutableStateOf(false) }
+    var castSheet by remember(openedId) { mutableStateOf(false) }
+    var toneOpen by remember(openedId) { mutableStateOf(false) }
+    var previewOn by remember(openedId) { mutableStateOf(true) }
+    var downloadSheet by remember(openedId) { mutableStateOf(false) }
+    var moreOpen by remember(openedId) { mutableStateOf(false) }
+    var folderOpen by remember(openedId) { mutableStateOf(false) }
+    var qualitySheet by remember(openedId) { mutableStateOf(false) }
+    var offlinePlay by remember(openedId) { mutableStateOf(false) }
+    var offlineSeason by remember(openedId) { mutableStateOf<Int?>(null) }
+    var offlineEpisode by remember(openedId) { mutableStateOf<Int?>(null) }
+    var playChoice by remember(openedId) { mutableStateOf<PlayChoice?>(null) }
+    var watchRequested by remember(openedId) { mutableStateOf(false) }
+    var franchisePage by remember(openedId) { mutableStateOf<String?>(null) }
     val pageVeil = remember { Animatable(0f) }
     var pageShown by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(franchisePage) {
@@ -915,16 +918,16 @@ private fun DetailContent(
     val watchBuzz = rememberHaptic(HapticSlot.Watch)
     val favoriteBuzz = rememberHaptic(HapticSlot.Favorite)
     val cardBuzz = rememberHaptic(HapticSlot.Card)
-    var logoReady by remember(detail.id, detail.logoUrl) { mutableStateOf(false) }
+    var logoReady by remember(openedId, detail.logoUrl) { mutableStateOf(false) }
     val settings by LocalUserSettings.current.settings.collectAsStateWithLifecycle()
     val cardTones by LocalAppContainer.current.washTones.tones.collectAsStateWithLifecycle()
     val flat = PosterWash(CinemaBlack, CinemaBlack, CinemaBlack, CinemaBlack)
     val hidden = PosterWash(Color.Black, Color.Black, Color.Black, Color.Black)
     val colored = settings.extractPlex
-    var target by remember(detail.id) { mutableStateOf(if (colored) hidden else flat) }
-    var backdropWash by remember(detail.id) { mutableStateOf(hidden) }
-    var washSource by remember(detail.id) { mutableStateOf<String?>(null) }
-    val reveal = remember(detail.id) { Animatable(if (colored) 0f else 1f) }
+    var target by remember(openedId) { mutableStateOf(if (colored) hidden else flat) }
+    var backdropWash by remember(openedId) { mutableStateOf(hidden) }
+    var washSource by remember(openedId) { mutableStateOf<String?>(null) }
+    val reveal = remember(openedId) { Animatable(if (colored) 0f else 1f) }
     val backdropStore = LocalAppContainer.current.backdropSets
     val backdropPicks by backdropStore.sets.collectAsStateWithLifecycle()
     val backdropPick = backdropPicks[detail.id] ?: com.example.movie.data.backdrops.BackdropPick()
@@ -933,15 +936,15 @@ private fun DetailContent(
     val manualBackdrop = !settings.autoBackdrop && backdrops.size > 1
     val pagerState = rememberPagerState { backdrops.size.coerceAtLeast(1) }
     val scope = rememberCoroutineScope()
-    var frame by remember(detail.id, backdrops) { mutableIntStateOf(0) }
-    var frameReady by remember(detail.id, frame, backdrops) { mutableStateOf(false) }
-    var wantTrailer by remember(detail.id) { mutableStateOf(false) }
-    var trailerSheet by remember(detail.id) { mutableStateOf(false) }
-    var trailerUrl by remember(detail.id) { mutableStateOf<String?>(null) }
-    var trailerPlay by remember(detail.id) { mutableIntStateOf(0) }
-    var trailerMedia by remember(detail.id) { mutableStateOf<TrailerSources?>(null) }
-    var trailerFrame by remember(detail.id) { mutableStateOf(false) }
-    var holdTrailer by remember(detail.id) { mutableStateOf(false) }
+    var frame by remember(openedId, backdrops) { mutableIntStateOf(0) }
+    var frameReady by remember(openedId, frame, backdrops) { mutableStateOf(false) }
+    var wantTrailer by remember(openedId) { mutableStateOf(false) }
+    var trailerSheet by remember(openedId) { mutableStateOf(false) }
+    var trailerUrl by remember(openedId) { mutableStateOf<String?>(null) }
+    var trailerPlay by remember(openedId) { mutableIntStateOf(0) }
+    var trailerMedia by remember(openedId) { mutableStateOf<TrailerSources?>(null) }
+    var trailerFrame by remember(openedId) { mutableStateOf(false) }
+    var holdTrailer by remember(openedId) { mutableStateOf(false) }
     val trailerOn = wantTrailer && trailerMedia != null
     LaunchedEffect(trailerOn) {
         if (trailerOn) {
@@ -976,7 +979,7 @@ private fun DetailContent(
     LaunchedEffect(watching) {
         if (watching != null) wantTrailer = false
     }
-    val loadedStills = remember(detail.id) { mutableStateMapOf<String, Boolean>() }
+    val loadedStills = remember(openedId) { mutableStateMapOf<String, Boolean>() }
     LaunchedEffect(detail.id, frame, backdrops, settings.autoBackdrop, wantTrailer) {
         if (!settings.autoBackdrop || backdrops.size < 2 || wantTrailer) return@LaunchedEffect
         val current = backdrops.getOrNull(frame) ?: return@LaunchedEffect
@@ -1012,9 +1015,9 @@ private fun DetailContent(
         else -> null
     }
     val washMatched = washExpect != null && washSource == washExpect
-    val washCache = remember(detail.id) { HashMap<String, PosterWash>() }
+    val washCache = remember(openedId) { HashMap<String, PosterWash>() }
     val stillReady = shownBackdrop == null || loadedStills[shownBackdrop] == true
-    var cardPlayed by remember(detail.id) { mutableStateOf(false) }
+    var cardPlayed by remember(openedId) { mutableStateOf(false) }
     LaunchedEffect(detail.id, contentReady, logoReady, stillReady) {
         if (!cardPlayed && contentReady && logoReady && stillReady) {
             cardPlayed = true
@@ -1102,11 +1105,11 @@ private fun DetailContent(
     } else {
         target
     }
-    var heldWash by remember(detail.id) { mutableStateOf(hidden) }
-    var heldIntensity by remember(detail.id) { mutableFloatStateOf(1f) }
-    var heldCorner by remember(detail.id) { mutableFloatStateOf(0f) }
-    var heldSource by remember(detail.id) { mutableStateOf<String?>(null) }
-    var glide by remember(detail.id) { mutableStateOf(false) }
+    var heldWash by remember(openedId) { mutableStateOf(hidden) }
+    var heldIntensity by remember(openedId) { mutableFloatStateOf(1f) }
+    var heldCorner by remember(openedId) { mutableFloatStateOf(0f) }
+    var heldSource by remember(openedId) { mutableStateOf<String?>(null) }
+    var glide by remember(openedId) { mutableStateOf(false) }
     if (colored && washMatched) {
         val next = backdropWash.graded(cardTone.lights, cardTone.punch, cardTone.pick)
         val switching = heldSource != washExpect
@@ -1127,8 +1130,8 @@ private fun DetailContent(
     val toneWash = if (colored) animateWash(heldWash, glide) else paintWash
     val washIntensity = glideFloat(heldIntensity, glide)
     val washCorner = glideFloat(heldCorner, glide)
-    var backdropColorReady by remember(detail.id, shownBackdrop) { mutableStateOf(false) }
-    var watchGlow by remember(detail.id) { mutableStateOf<Color?>(null) }
+    var backdropColorReady by remember(openedId, shownBackdrop) { mutableStateOf(false) }
+    var watchGlow by remember(openedId) { mutableStateOf<Color?>(null) }
     LaunchedEffect(detail.id, settings.watchGlow) {
         if (!settings.watchGlow || watchGlow != null) return@LaunchedEffect
         snapshotFlow { shownBackdrop to backdropColorReady }
@@ -1140,13 +1143,13 @@ private fun DetailContent(
         watchGlow = color
     }
     val scroll = rememberScrollState()
-    LaunchedEffect(detail.id) { scroll.scrollTo(0) }
+    LaunchedEffect(openedId) { scroll.scrollTo(0) }
     val density = LocalDensity.current
     val shadeTravel = with(density) { 200.dp.toPx() }
     val shade = (scroll.value / shadeTravel).coerceIn(0f, 1f)
     val backdropAlpha = if (colored) 1f - shade else 1f
     val parallaxOn = settings.gyro && backdrops.isNotEmpty()
-    val tilt = rememberDetailTilt(parallaxOn, detail.id)
+    val tilt = rememberDetailTilt(parallaxOn, openedId)
     val parallaxFade = if (parallaxOn) 1f - shade else 0f
     val contentShift = with(density) { 3.dp.toPx() }
     val backdropShift = with(density) { 42.dp.toPx() }
@@ -1205,7 +1208,8 @@ private fun DetailContent(
         // Плашка — когда центр лого/тайтла на уровне Chromecast (не top бокса).
         val castDock = WindowInsets.statusBars.getTop(density).toFloat() +
             with(density) { DetailBarRow.toPx() / 2f }
-        val useLogo = settings.showLogos && !detail.logoUrl.isNullOrBlank()
+        val awaitingLogo = settings.showLogos && !contentReady && detail.logoUrl.isNullOrBlank()
+        val useLogo = settings.showLogos && (awaitingLogo || !detail.logoUrl.isNullOrBlank())
         val logoExtentPx = with(density) {
             if (useLogo) {
                 (DetailLogoHeight - logoInk).toPx().coerceAtLeast(0f)
@@ -1426,7 +1430,11 @@ private fun DetailContent(
             Layout(
                 content = {
                     Box(Modifier.graphicsLayer { alpha = 1f - barIn }) {
-                        LogoOrTitle(detail, onSettled = { logoReady = true })
+                        LogoOrTitle(
+                            detail,
+                            awaitingLogo = awaitingLogo,
+                            onSettled = { logoReady = true },
+                        )
                     }
                     MetaRow(detail)
                 },
@@ -1490,14 +1498,14 @@ private fun DetailContent(
             LaunchedEffect(qualitySheet, qualityArmed) {
                 if (qualitySheet || qualityArmed) notices.dismiss()
             }
-            DisposableEffect(detail.id) {
+            DisposableEffect(openedId) {
                 onDispose { notices.dismiss() }
             }
             val addedWatched = stringResource(R.string.notice_watched_movie)
             val removedWatched = stringResource(R.string.notice_watched_movie_off)
             WatchBar(
                 glow = if (settings.watchGlow && franchiseReady && online) watchGlow else null,
-                glowKey = detail.id,
+                glowKey = openedId,
                 resume = if (notifyRelease) null else continued,
                 quality = detail.franchise?.quality,
                 qualityReady = franchiseReady,
@@ -2403,14 +2411,18 @@ private fun MovieDetail.releaseSub(awaiting: Boolean): SeriesSub {
 }
 
 @Composable
-private fun LogoOrTitle(detail: MovieDetail, onSettled: () -> Unit) {
+private fun LogoOrTitle(
+    detail: MovieDetail,
+    awaitingLogo: Boolean,
+    onSettled: () -> Unit,
+) {
     val settings by LocalUserSettings.current.settings.collectAsStateWithLifecycle()
-    var failed by remember(detail.id, detail.logoUrl) {
+    var failed by remember(detail.logoUrl) {
         mutableStateOf(detail.logoUrl.isNullOrBlank())
     }
     val context = LocalContext.current
-    var art by remember(detail.id, detail.logoUrl) { mutableStateOf<android.graphics.Bitmap?>(null) }
-    LaunchedEffect(detail.id, detail.logoUrl) {
+    var art by remember(detail.logoUrl) { mutableStateOf<android.graphics.Bitmap?>(null) }
+    LaunchedEffect(detail.logoUrl) {
         val url = detail.logoUrl ?: return@LaunchedEffect
         val result = context.imageLoader.execute(
             ImageRequest.Builder(context)
@@ -2425,11 +2437,11 @@ private fun LogoOrTitle(detail: MovieDetail, onSettled: () -> Unit) {
             art = withContext(Dispatchers.Default) { raw.opaqueCrop() }
         }
     }
-    val settled = !settings.showLogos || failed || art != null
+    val settled = !awaitingLogo && (!settings.showLogos || failed || art != null)
     LaunchedEffect(settled) {
         if (settled) onSettled()
     }
-    if (settings.showLogos && !failed) {
+    if (awaitingLogo || (settings.showLogos && !failed)) {
         Box(
             modifier = Modifier
                 .height(DetailLogoHeight)

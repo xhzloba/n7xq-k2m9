@@ -155,6 +155,7 @@ internal fun BoxScope.ShellChrome(
                 when (next) {
                     AppTab.Home -> shell.homeTop++
                     AppTab.Catalog -> shell.catalogTop++
+                    AppTab.Kinopoisk -> shell.kpTop++
                     AppTab.Favorites -> shell.favoritesTop++
                     AppTab.Settings -> shell.settingsTop++
                 }

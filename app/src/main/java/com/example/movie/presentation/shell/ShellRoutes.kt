@@ -10,6 +10,7 @@ import com.example.movie.presentation.common.LocalPosterLayer
 import com.example.movie.presentation.common.appBackground
 import com.example.movie.presentation.home.CatalogGenresPage
 import com.example.movie.presentation.home.CatalogListRoute
+import com.example.movie.presentation.kinopoisk.KinopoiskListRoute
 import com.example.movie.presentation.home.openedCatalogShelf
 import com.example.movie.presentation.home.GenreAll
 import com.example.movie.presentation.home.HomeSection
@@ -59,7 +60,22 @@ internal fun ShellRoutes(
         )
     }
     val opened = shell.listShown
-    if (opened != null) {
+    if (opened != null && opened.startsWith("kp:")) {
+        CompositionLocalProvider(LocalPosterLayer provides 1) {
+            KinopoiskListRoute(
+                id = opened.removePrefix("kp:"),
+                onBack = { shell.kpListId = null },
+                onMovieClick = onMovieClick,
+                onMoviePeek = { shell.peek = it },
+                onHideBar = { shell.barHidden = it },
+                modifier = Modifier
+                    .remoteEntry()
+                    .slideBy({ shell.listShift.value }, shell.stageWidth)
+                    .fillMaxSize()
+                    .appBackground(),
+            )
+        }
+    } else if (opened != null) {
         val type = opened.substringBefore(':')
         val rest = opened.substringAfter(':')
         val genreName = rest.removePrefix("g:").takeIf { rest.startsWith("g:") }

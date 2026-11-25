@@ -36,6 +36,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.ui.res.painterResource
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -242,17 +243,28 @@ internal fun AppBottomBar(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Top,
                 ) {
-                    Icon(
-                        imageVector = tab.icon,
-                        contentDescription = stringResource(tab.label),
-                        tint = if (lit) tab.color else IdleInk,
-                        modifier = Modifier
-                            .size(iconSize)
-                            .graphicsLayer {
-                                scaleX = iconScale
-                                scaleY = iconScale
-                            },
-                    )
+                    val iconMod = Modifier
+                        .size(iconSize)
+                        .graphicsLayer {
+                            scaleX = iconScale
+                            scaleY = iconScale
+                        }
+                    val ink = if (lit) tab.color else IdleInk
+                    if (tab.mark != 0) {
+                        Icon(
+                            painter = painterResource(tab.mark),
+                            contentDescription = stringResource(tab.label),
+                            tint = ink,
+                            modifier = iconMod,
+                        )
+                    } else {
+                        Icon(
+                            imageVector = tab.icon,
+                            contentDescription = stringResource(tab.label),
+                            tint = ink,
+                            modifier = iconMod,
+                        )
+                    }
                     if (showLabels) {
                         Text(
                             text = stringResource(tab.label),

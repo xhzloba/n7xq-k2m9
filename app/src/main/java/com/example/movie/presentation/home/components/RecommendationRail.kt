@@ -134,6 +134,7 @@ internal fun RailTitle(
     onClose: (() -> Unit)? = null,
     onLongClick: (() -> Unit)? = null,
     onAnchor: ((Rect) -> Unit)? = null,
+    trailing: (@Composable () -> Unit)? = null,
 ) {
     val tick = rememberHapticTick()
     val settings by LocalUserSettings.current.settings.collectAsStateWithLifecycle()
@@ -150,12 +151,13 @@ internal fun RailTitle(
     val iconOrigin = titleWidth + pullPx
     Row(
         modifier = modifier
-            .then(if (onClose != null) Modifier.fillMaxWidth() else Modifier)
+            .then(if (onClose != null || trailing != null) Modifier.fillMaxWidth() else Modifier)
             .padding(horizontal = PosterGridInset),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Row(
             modifier = Modifier
+                .then(if (trailing != null) Modifier.weight(1f) else Modifier)
                 .then(
                     if (onAnchor == null) {
                         Modifier
@@ -198,6 +200,7 @@ internal fun RailTitle(
         }
         Text(
             text = title,
+            modifier = if (trailing != null) Modifier.weight(1f, fill = false) else Modifier,
             color = if (shimmer) Color.Unspecified else color,
             fontWeight = if (white) FontWeight.Bold else FontWeight.Normal,
             fontSize = titleSize,
@@ -242,6 +245,10 @@ internal fun RailTitle(
                     ),
             )
         }
+        }
+        if (trailing != null) {
+            Spacer(Modifier.width(12.dp))
+            trailing()
         }
         if (onClose != null) {
             Spacer(Modifier.weight(1f))
@@ -312,6 +319,7 @@ internal fun RecommendationRail(
     overlay: @Composable (Movie) -> Unit = {},
     titleShimmer: Boolean = false,
     onClose: (() -> Unit)? = null,
+    trailing: (@Composable () -> Unit)? = null,
     motion: Boolean = false,
     motionPlace: String = "",
     fillKey: String? = null,
@@ -363,6 +371,7 @@ internal fun RecommendationRail(
                 leadingIcon = leadingIcon,
                 shimmer = titleShimmer,
                 onClose = onClose,
+                trailing = trailing,
                 onLongClick = if (fillKey == null) null else {
                     {
                         onFillOpen?.invoke()
@@ -647,13 +656,13 @@ private fun RecommendationPager(
                                 modifier = Modifier.align(Alignment.BottomCenter),
                             )
                         }
-                        overlay(movie)
                         }
                         if (movie.id in watched) {
                             WatchedBadge(Modifier.align(Alignment.BottomEnd))
                         } else if (movie.id in favorites) {
                             FavoriteBadge(Modifier.align(Alignment.BottomEnd))
                         }
+                        overlay(movie)
                     }
                     Spacer(Modifier.height(WatchedBadgeHang))
                     PosterCaption(

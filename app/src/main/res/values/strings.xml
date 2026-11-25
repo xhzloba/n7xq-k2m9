@@ -371,6 +371,11 @@
     <string name="search_voice_network">Нужен интернет для голосового ввода</string>
     <string name="nav_home">Главная</string>
     <string name="nav_catalog">Каталог</string>
+    <string name="nav_kinopoisk">Кинопоиск</string>
+    <string name="kp_updated">Обновлено %1$s</string>
+    <string name="kp_rank">Место %1$d</string>
+    <string name="kp_rank_up">Место %1$d, вверх на %2$d</string>
+    <string name="kp_rank_down">Место %1$d, вниз на %2$d</string>
     <string name="nav_favorites">Мое</string>
     <string name="nav_alerts">Уведомление</string>
     <string name="favorites_watched">Просмотрено</string>

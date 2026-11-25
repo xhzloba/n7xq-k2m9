@@ -42,6 +42,7 @@ internal class ShellController(
     sectionNameState: MutableState<String?>,
     openFolderIdState: MutableState<String?>,
     catalogListKeyState: MutableState<String?>,
+    kpListIdState: MutableState<String?>,
     genresTypeState: MutableState<String?>,
     alertsOpenState: MutableState<Boolean>,
     initialBase: AppTab,
@@ -51,6 +52,7 @@ internal class ShellController(
     var sectionName by sectionNameState
     var openFolderId by openFolderIdState
     var catalogListKey by catalogListKeyState
+    var kpListId by kpListIdState
     var genresType by genresTypeState
     var alertsOpen by alertsOpenState
 
@@ -58,6 +60,7 @@ internal class ShellController(
     var searchShown by mutableStateOf(false)
     var homeTop by mutableIntStateOf(0)
     var catalogTop by mutableIntStateOf(0)
+    var kpTop by mutableIntStateOf(0)
     var favoritesTop by mutableIntStateOf(0)
     var settingsTop by mutableIntStateOf(0)
     var peek by mutableStateOf<Movie?>(null)
@@ -100,6 +103,8 @@ internal class ShellController(
             ?.takeIf { tab == AppTab.Home }
 
     fun catalogList(tab: AppTab): String? = catalogListKey?.takeIf { tab == AppTab.Catalog }
+
+    fun kpList(tab: AppTab): String? = kpListId?.takeIf { tab == AppTab.Kinopoisk }
 }
 
 @Composable
@@ -114,6 +119,7 @@ internal fun rememberShellController(
     val sectionName = rememberSaveable { mutableStateOf<String?>(null) }
     val openFolderId = rememberSaveable { mutableStateOf<String?>(null) }
     val catalogListKey = rememberSaveable { mutableStateOf<String?>(null) }
+    val kpListId = rememberSaveable { mutableStateOf<String?>(null) }
     val genresType = rememberSaveable { mutableStateOf<String?>(null) }
     val alertsOpen = rememberSaveable { mutableStateOf(false) }
     val shell = remember {
@@ -121,6 +127,7 @@ internal fun rememberShellController(
             sectionNameState = sectionName,
             openFolderIdState = openFolderId,
             catalogListKeyState = catalogListKey,
+            kpListIdState = kpListId,
             genresTypeState = genresType,
             alertsOpenState = alertsOpen,
             initialBase = if (tab == AppTab.Catalog) AppTab.Home else tab,
@@ -167,6 +174,7 @@ internal fun rememberShellController(
         shell.peek = null
         shell.sectionName = null
         shell.catalogListKey = null
+        shell.kpListId = null
         shell.genresType = null
         if (homeState.searchOpen) homeViewModel.closeSearch()
     }
@@ -184,10 +192,12 @@ internal fun rememberShellController(
         }
     }
     val catalogList = shell.catalogList(tab)
-    LaunchedEffect(catalogList) {
+    val kpList = shell.kpList(tab)
+    val openedList = catalogList ?: kpList
+    LaunchedEffect(openedList) {
         val move = tween<Float>(240, easing = FastOutSlowInEasing)
-        if (catalogList != null) {
-            shell.listShown = catalogList
+        if (openedList != null) {
+            shell.listShown = openedList
             shell.listShift.snapTo(1f)
             withFrameNanos { }
             withFrameNanos { }
@@ -277,7 +287,10 @@ internal fun rememberShellController(
             shell.alertsShown -> shell.alertsOpen = false
             shell.peek != null -> shell.peek = null
             tab == AppTab.Catalog && homeState.searchOpen -> homeViewModel.closeSearch()
-            shell.listShown != null -> shell.catalogListKey = null
+            shell.listShown != null -> {
+                shell.catalogListKey = null
+                shell.kpListId = null
+            }
             shell.genresShown -> shell.genresType = null
             tab == AppTab.Home && shell.sectionShown != null -> shell.sectionName = null
             else -> onTabChange(AppTab.Home.name)
@@ -294,7 +307,7 @@ internal fun rememberShellController(
         }
     }
     LaunchedEffect(tab) {
-        if (tab != AppTab.Home && tab != AppTab.Favorites) shell.peek = null
+        if (tab != AppTab.Home && tab != AppTab.Favorites && tab != AppTab.Kinopoisk) shell.peek = null
         shell.homeNavMenu = false
         shell.libraryNavMenu = false
     }
