@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lumen · парсер Кинопоиска</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #0c0c0e;
+    --panel: #141416;
+    --line: #26262c;
+    --text: #f3f3f4;
+    --muted: #8a8a93;
+    --yellow: #f5c518;
+    --green: #3dd68c;
+    --red: #ff5d5d;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); overflow: hidden; }
+  body {
+    font: 14px/1.35 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    height: 100vh;
+  }
+  aside {
+    height: 100vh;
+    min-height: 0;
+    border-right: 1px solid var(--line);
+    padding: 22px 18px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    overflow: hidden;
+  }
+  .side { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 22px; }
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .mark { width: 8px; height: 8px; border-radius: 99px; background: var(--yellow); }
+  h1 { font-size: 16px; font-weight: 640; margin: 0; letter-spacing: -0.02em; }
+  .sub { color: var(--muted); font-size: 12px; margin-top: 1px; }
+  label.block {
+    display: block; color: var(--muted); font-size: 11px;
+    letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 8px;
+  }
+  .cats { display: flex; flex-direction: column; gap: 4px; }
+  .cat {
+    display: flex; gap: 10px; align-items: flex-start; width: 100%;
+    text-align: left; background: transparent; color: var(--text);
+    border: 0; border-radius: 10px; padding: 8px;
+    cursor: pointer; transition: background .15s ease;
+  }
+  .cat:hover:not(:disabled) { background: #161618; }
+  .cat.on { background: #1a180f; }
+  .cat:disabled { opacity: 0.38; cursor: default; }
+  .tick {
+    width: 16px; height: 16px; margin-top: 1px; flex: none;
+    border: 1px solid #3a3a42; border-radius: 4px;
+  }
+  .cat.on .tick { background: var(--yellow); border-color: var(--yellow); position: relative; }
+  .cat.on .tick::after {
+    content: ""; position: absolute; left: 3px; top: 3px;
+    width: 7px; height: 4px;
+    border-left: 2px solid #1a1400; border-bottom: 2px solid #1a1400;
+    transform: rotate(-45deg);
+  }
+  .cat b { display: block; font-weight: 600; font-size: 13px; }
+  .cat i { display: block; margin-top: 2px; color: var(--muted); font-style: normal; font-size: 11px; }
+  .stepper {
+    display: grid; grid-template-columns: 36px 1fr 36px;
+    border: 1px solid var(--line); border-radius: 10px; overflow: hidden;
+  }
+  .stepper button {
+    background: transparent; color: var(--text); border: 0; font: inherit; font-size: 18px;
+    cursor: pointer;
+  }
+  .stepper button:hover { background: #18181c; }
+  input[type="number"], input[type="text"] {
+    width: 100%; background: transparent; color: var(--text);
+    border: 0; padding: 9px 10px; font: inherit;
+  }
+  input[type="number"] {
+    text-align: center; font-variant-numeric: tabular-nums; font-size: 16px; font-weight: 600;
+  }
+  input[type="text"] {
+    background: transparent; border: 1px solid var(--line); border-radius: 10px; font-size: 12px;
+  }
+  input:focus { outline: none; }
+  input[type="text"]:focus { border-color: var(--yellow); }
+  .hint { color: var(--muted); font-size: 12px; margin-top: 8px; }
+  .fields { display: flex; flex-direction: column; gap: 8px; }
+  .fields label {
+    display: flex; gap: 8px; align-items: center; color: var(--text);
+    text-transform: none; letter-spacing: 0; font-size: 13px; cursor: pointer;
+  }
+  .fields input { accent-color: var(--yellow); margin: 0; }
+  .fields label.locked { color: var(--muted); cursor: default; }
+  button.go {
+    background: var(--yellow); color: #1a1400; border: 0; border-radius: 10px;
+    padding: 11px 14px; font: inherit; font-weight: 700; cursor: pointer;
+    transition: transform .15s ease, filter .15s ease;
+  }
+  button.go:hover:not(:disabled) { filter: brightness(1.06); }
+  button.go:active:not(:disabled) { transform: scale(0.985); }
+  button.go:disabled { opacity: 0.55; cursor: progress; }
+  button.go.stop {
+    background: transparent; color: var(--red);
+    box-shadow: inset 0 0 0 1px #5a2a2a;
+  }
+  button.go.stop:hover:not(:disabled) { filter: none; background: #1a1010; }
+  button.ghost {
+    background: none; color: var(--muted); border: 0; padding: 8px;
+    font: inherit; cursor: pointer;
+  }
+  button.ghost:hover:not(:disabled) { color: var(--text); }
+  button.ghost:disabled { opacity: 0.35; cursor: default; }
+  .actions { flex: none; display: flex; flex-direction: column; gap: 4px; padding-top: 8px; }
+  main {
+    min-width: 0; min-height: 0; height: 100vh; overflow: hidden;
+    display: grid; grid-template-rows: auto auto minmax(0, 1fr);
+    gap: 12px; padding: 18px 18px 0;
+  }
+  .status { display: flex; align-items: baseline; justify-content: space-between; }
+  #phase { font-size: 15px; }
+  #count { color: var(--muted); font-variant-numeric: tabular-nums; }
+  .bar { height: 3px; background: #222228; border-radius: 99px; overflow: hidden; position: relative; }
+  .bar > div {
+    height: 100%; width: 0; background: var(--yellow); position: relative;
+    transition: width .45s cubic-bezier(.2,.7,.2,1);
+  }
+  .bar.live > div::after {
+    content: ""; position: absolute; inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,.55), transparent);
+    transform: translateX(-100%);
+    animation: sheen 1.15s ease-in-out infinite;
+  }
+  .err { color: var(--red); min-height: 1em; font-size: 13px; }
+  .feed { min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: 10px; }
+  .views {
+    display: flex; gap: 6px; overflow-x: auto; flex: none; scrollbar-width: none;
+  }
+  .views::-webkit-scrollbar { display: none; }
+  .views[hidden] { display: none; }
+  .view {
+    flex: none; display: inline-flex; align-items: baseline; gap: 8px;
+    background: transparent; color: var(--muted);
+    border: 1px solid var(--line); border-radius: 999px;
+    padding: 5px 12px; font: inherit; font-size: 12px; cursor: pointer;
+  }
+  .view b { font-weight: 620; color: var(--text); }
+  .view span { font-variant-numeric: tabular-nums; }
+  .view:hover:not(.on) { border-color: #3a3a42; color: var(--text); }
+  .view.on { background: var(--yellow); border-color: var(--yellow); color: #1a1400; }
+  .view.on b { color: #1a1400; }
+  .view.live:not(.on) b { color: var(--yellow); }
+  .view.wait { opacity: 0.45; }
+  .view.on.wait { opacity: 1; }
+  .blank { color: var(--muted); padding: 32px 4px; font-size: 13px; }
+  .scroll { overflow: auto; min-height: 0; flex: 1 1 0; padding-bottom: 8px; }
+  .film {
+    display: grid;
+    grid-template-columns: 72px 76px 1fr auto;
+    gap: 16px;
+    align-items: center;
+    padding: 12px 8px 12px 0;
+    border-bottom: 1px solid #1c1c21;
+    animation: film-in .42s ease both;
+  }
+  .film.quiet { animation: none; }
+  .slot { text-align: right; font-variant-numeric: tabular-nums; }
+  .rank { font-size: 22px; font-weight: 640; letter-spacing: -0.04em; line-height: 1; }
+  .move { margin-top: 6px; font-size: 13px; font-weight: 650; line-height: 1; }
+  .move.flat { color: var(--muted); font-weight: 500; }
+  .poster, .ph {
+    width: 76px; height: 114px; border-radius: 8px; background: #1a1a1e; display: block; object-fit: cover;
+  }
+  .poster { opacity: 0; transform: scale(.98); transition: opacity .4s ease, transform .4s ease; }
+  .poster.ready { opacity: 1; transform: none; }
+  .name { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
+  .orig, .subline { color: var(--muted); font-size: 12px; margin-top: 3px; }
+  .score { text-align: right; min-width: 52px; }
+  .score b { display: block; font-size: 18px; font-weight: 640; font-variant-numeric: tabular-nums; }
+  .score b.empty { color: var(--muted); font-weight: 500; font-size: 13px; }
+  .score .subrate { display: block; margin-top: 4px; color: var(--muted); font-size: 11px; font-weight: 500; }
+  .pos { color: var(--green); }
+  .neg { color: var(--red); }
+  .log {
+    flex: none; max-height: 76px; min-height: 0; overflow: auto;
+    border-top: 1px solid var(--line); padding-top: 8px;
+    font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  .log:empty { display: none; }
+  .logline {
+    display: grid; grid-template-columns: 14px 1fr; gap: 8px; align-items: start;
+    color: var(--muted); padding: 3px 0;
+    animation: log-in .35s ease both;
+  }
+  .logline i {
+    width: 6px; height: 6px; margin-top: 5px; border-radius: 99px; background: #3a3a42;
+  }
+  .logline.up { color: var(--text); }
+  .logline.up i { background: var(--yellow); }
+  .logline.ok i { background: var(--green); }
+  .logline.bad { color: var(--red); }
+  .logline.bad i { background: var(--red); }
+  @keyframes film-in {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes log-in {
+    from { opacity: 0; transform: translateX(-8px); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes sheen { to { transform: translateX(100%); } }
+  @media (prefers-reduced-motion: reduce) {
+    .film, .logline, .bar.live > div::after { animation: none; }
+    .poster { transition: none; }
+  }
+</style>
+</head>
+<body>
+<aside>
+  <div class="side">
+  <div class="brand">
+    <div class="mark"></div>
+    <div>
+      <h1>Lumen</h1>
+      <div class="sub">Кинопоиск</div>
+    </div>
+  </div>
+  <div>
+    <label class="block">Список</label>
+    <div class="cats" id="cats"></div>
+    <div class="hint">Несколько сразу. Сначала первый, потом следующий. У каждого свой файл.</div>
+  </div>
+  <div>
+    <label class="block" for="limit">Сколько</label>
+    <div class="stepper">
+      <button type="button" id="minus" aria-label="Меньше">−</button>
+      <input id="limit" type="number" min="1" max="1000" value="50">
+      <button type="button" id="plus" aria-label="Больше">+</button>
+    </div>
+    <div class="hint" id="limit-hint">1–1000, по 50 на страницу</div>
+  </div>
+  <div>
+    <label class="block">Поля</label>
+    <div class="fields" id="fields"></div>
+  </div>
+  <div>
+    <label class="block">Деталка</label>
+    <button type="button" class="cat" id="details">
+      <span class="tick"></span>
+      <span><b>Страница фильма</b><i>Общий рейтинг и все оценки. Для всех списков.</i></span>
+    </button>
+  </div>
+  <div>
+    <label class="block" for="out">Файл</label>
+    <input id="out" type="text" spellcheck="false" value="output/popular-films.json">
+    <div class="hint" id="out-hint"></div>
+  </div>
+  </div>
+  <div class="actions">
+    <button class="go" id="run" type="button">Парсить</button>
+    <button class="ghost" id="reveal" type="button" disabled>Открыть файл</button>
+  </div>
+</aside>
+<main>
+  <div class="status">
+    <div id="phase">Ждёт запуска</div>
+    <div id="count">0 / 50</div>
+  </div>
+  <div>
+    <div class="bar" id="bar"><div id="fill"></div></div>
+    <div class="err" id="err"></div>
+  </div>
+  <div class="feed">
+    <div class="views" id="views" hidden></div>
+    <div class="scroll" id="list"></div>
+    <div class="log" id="log"></div>
+  </div>
+</main>
+<script>
+const state = {
+  picked: ["popular-films", "popular-series"],
+  order: [],
+  meta: null,
+  savedLimit: "50",
+  running: false,
+  timer: 0,
+  drawn: 0,
+  logged: 0,
+  view: null,
+  shown: null,
+  cache: {},
+  viewKey: "",
+  details: false,
+  revision: 0,
+  stopping: false,
+};
+const $ = (id) => document.getElementById(id);
+
+function selectedFields() {
+  return [...document.querySelectorAll("#fields input:checked:not(:disabled)")]
+    .map((el) => el.value)
+    .filter((value) => value && value !== "on");
+}
+
+function pickedIds() {
+  return state.order.filter((id) => state.picked.includes(id));
+}
+
+function pickedCats() {
+  if (!state.meta) return [];
+  return state.meta.categories.filter((cat) => state.picked.includes(cat.id));
+}
+
+function syncLimit() {
+  const cats = pickedCats();
+  const fixed = cats.filter((cat) => cat.fixed);
+  const flex = cats.filter((cat) => !cat.fixed);
+  const input = $("limit");
+  const hint = $("limit-hint");
+  const lock = flex.length === 0 && fixed.length > 0;
+  input.disabled = lock;
+  $("minus").disabled = lock;
+  $("plus").disabled = lock;
+  if (lock) {
+    input.value = fixed.length === 1 ? String(fixed[0].fixed) : "";
+    hint.textContent = fixed.map((cat) => `${cat.fixed} · ${cat.title}`).join("  ·  ");
+    return;
+  }
+  if (!input.value) input.value = state.savedLimit || "50";
+  hint.textContent = fixed.length
+    ? "Число — для популярных. Топ 500 и топ 250 снимаются целиком."
+    : "1–1000, по 50 на страницу";
+}
+
+function syncOut() {
+  const ids = pickedIds();
+  const hint = $("out-hint");
+  if (ids.length <= 1) {
+    $("out").disabled = false;
+    $("out").value = `output/${ids[0] || "popular-films"}.json`;
+    hint.textContent = "";
+    return;
+  }
+  $("out").disabled = true;
+  $("out").value = "";
+  $("out").placeholder = "свой файл у каждого списка";
+  hint.textContent = ids.map((id) => `output/${id}.json`).join(" · ");
+}
+
+function renderMeta(meta) {
+  state.meta = meta;
+  state.order = meta.categories.map((cat) => cat.id);
+  const cats = $("cats");
+  cats.innerHTML = "";
+  for (const cat of meta.categories) {
+    const on = state.picked.includes(cat.id);
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "cat" + (on ? " on" : "");
+    btn.disabled = !cat.enabled;
+    const kind = cat.kind === "series" ? "сериалы" : "фильмы";
+    const hint = !cat.enabled
+      ? (cat.note || "выключено")
+      : cat.fixed
+        ? `${kind} · ${cat.fixed}`
+        : `${kind} · до 1000`;
+    btn.innerHTML = `<span class="tick"></span><span><b>${esc(cat.title)}</b><i>${esc(hint)}</i></span>`;
+    if (cat.url) btn.title = cat.url;
+    btn.onclick = () => {
+      if (!cat.enabled) return;
+      if (on) {
+        if (state.picked.length === 1) return;
+        state.picked = state.picked.filter((id) => id !== cat.id);
+      } else {
+        state.picked = state.order.filter((id) => state.picked.includes(id) || id === cat.id);
+      }
+      renderMeta(meta);
+    };
+    cats.appendChild(btn);
+  }
+  syncOut();
+  syncLimit();
+  if (!$("run").disabled) $("run").textContent = pickedIds().length > 1 ? `Парсить ${pickedIds().length}` : "Парсить";
+  const fields = $("fields");
+  if (!fields.childElementCount) {
+    const locked = document.createElement("label");
+    locked.className = "locked";
+    locked.innerHTML = `<input type="checkbox" value="kp_id" checked disabled> kp_id`;
+    fields.appendChild(locked);
+    for (const [id, label] of meta.fields) {
+      const row = document.createElement("label");
+      row.innerHTML = `<input type="checkbox" value="${id}" checked> ${label}`;
+      fields.appendChild(row);
+    }
+  }
+}
+
+function esc(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (ch) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+  }[ch]));
+}
+
+function fmtElapsed(seconds) {
+  if (seconds == null || Number.isNaN(Number(seconds))) return "";
+  const value = Number(seconds);
+  if (value < 60) return value.toFixed(1) + " с";
+  const minutes = Math.floor(value / 60);
+  const rest = Math.floor(value % 60);
+  return minutes + ":" + String(rest).padStart(2, "0");
+}
+
+function fmtNum(n) {
+  return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+}
+
+function fmtVotes(n) {
+  if (n == null) return "";
+  return fmtNum(n) + " голосов";
+}
+
+function filmHtml(item, delay, quiet) {
+  const poster = item.poster
+    ? `<img class="poster" alt="" src="${esc(item.poster)}" onload="this.classList.add('ready')">`
+    : `<span class="ph"></span>`;
+  let move = `<div class="move flat">—</div>`;
+  if (item.diff != null && item.diff_kind === "positive") move = `<div class="move pos">↑ ${item.diff}</div>`;
+  else if (item.diff != null && item.diff_kind === "negative") move = `<div class="move neg">↓ ${item.diff}</div>`;
+  else if (item.diff != null) move = `<div class="move">${item.diff}</div>`;
+  const shown = item.page_rating != null ? Number(item.page_rating).toFixed(1) : item.rating;
+  const rate = shown == null || shown === ""
+    ? `<b class="empty">—</b>`
+    : `<b>${shown}</b>`;
+  const subrate = item.page_rating != null && item.rating != null
+    ? `<span class="subrate">список ${item.rating}</span>`
+    : "";
+  const bits = [
+    item.year,
+    item.page_votes != null ? fmtNum(item.page_votes) + " оценок" : fmtVotes(item.votes),
+    item.page_votes != null && item.votes != null ? "список " + fmtNum(item.votes) : "",
+    item.kp_id ? "kp " + item.kp_id : "",
+  ].filter(Boolean);
+  return `<article class="film${quiet ? " quiet" : ""}" style="animation-delay:${delay}ms">
+    <div class="slot"><div class="rank">${item.position ?? ""}</div>${move}</div>
+    ${poster}
+    <div>
+      <div class="name">${esc(item.title || "—")}</div>
+      ${item.original_title ? `<div class="orig">${esc(item.original_title)}</div>` : ""}
+      <div class="subline">${esc(bits.join(" · "))}</div>
+    </div>
+    <div class="score">${rate}${subrate}</div>
+  </article>`;
+}
+
+function logClass(line) {
+  if (line.startsWith("Ошибка")) return "bad";
+  if (line.startsWith("Записал") || line.startsWith("+") || line.startsWith("Готово") || line.startsWith("Остановлено") || line.includes("→")) return "ok";
+  if (line.startsWith("Страница") || line.startsWith("Открываю") || line.startsWith("Список") || line.startsWith("Деталка")) return "up";
+  return "";
+}
+
+function resetFeed() {
+  state.drawn = 0;
+  state.logged = 0;
+  state.view = null;
+  state.shown = null;
+  state.cache = {};
+  state.viewKey = "";
+  state.revision = 0;
+  $("list").innerHTML = "";
+  $("log").innerHTML = "";
+  $("views").innerHTML = "";
+  $("views").hidden = true;
+}
+
+function renderViews(data) {
+  const views = data.views || [];
+  const box = $("views");
+  if (!views.length) {
+    box.hidden = true;
+    box.innerHTML = "";
+    state.viewKey = "";
+    return;
+  }
+  box.hidden = false;
+  const key = views.map((view) => view.id).join(",");
+  if (key !== state.viewKey) {
+    state.viewKey = key;
+    box.innerHTML = views.map((view) =>
+      `<button type="button" class="view" data-id="${esc(view.id)}"><b>${esc(view.title)}</b><span></span></button>`
+    ).join("");
+  }
+  for (const btn of box.querySelectorAll(".view")) {
+    const view = views.find((item) => item.id === btn.dataset.id);
+    const live = !!data.running && btn.dataset.id === data.active_id;
+    btn.classList.toggle("on", btn.dataset.id === data.view);
+    btn.classList.toggle("live", live);
+    btn.classList.toggle("wait", !!(view && view.count === 0 && !live));
+    const count = view
+      ? (live ? `${view.count} / ${view.target}` : String(view.count))
+      : "";
+    btn.querySelector("span").textContent = count;
+  }
+}
+
+function emptyNote(data) {
+  if (data.running && data.view === data.active_id) return "Снимаю список…";
+  const view = (data.views || []).find((item) => item.id === data.view);
+  if (view && view.count === 0) return "В очереди";
+  return "Пусто";
+}
+
+function renderStatus(data) {
+  renderViews(data);
+  const hasView = !!(data.views && data.views.length);
+  const limit = hasView
+    ? (Number(data.target) || 0)
+    : ((data.running || data.done) && data.target
+      ? data.target
+      : (Number($("limit").value) || 50));
+  if (data.items != null) state.cache[data.view || ""] = data.items;
+  const items = data.items != null ? data.items : (state.cache[data.view] || []);
+  const logs = data.log || [];
+  const switched = state.shown != null && data.view !== state.shown;
+  if (switched || items.length < state.drawn) {
+    state.drawn = 0;
+    $("list").innerHTML = "";
+  }
+  if (data.view !== state.shown) state.shown = data.view || "";
+  const steps = data.steps || 1;
+  const step = data.step || 0;
+  const count = data.count != null ? data.count : items.length;
+  $("count").textContent = `${count} / ${limit}`;
+  $("fill").style.width = limit ? Math.min(100, Math.round((count / limit) * 100)) + "%" : "0%";
+  const watchingLive = !!data.running && data.view === data.active_id;
+  $("bar").classList.toggle("live", watchingLive);
+  const took = fmtElapsed(data.elapsed);
+  const detail = (logs[logs.length - 1] || "").match(/^Деталка (\d+\/\d+)/);
+  const where = detail
+    ? `${data.active || "Деталка"} · страница ${detail[1]}`
+    : (steps > 1 && data.active ? `${data.active} · ${step + 1}/${steps}` : "Снимаю список");
+  $("phase").textContent = data.running
+    ? (took ? `${where} · ${took}` : where)
+    : data.done
+      ? (took ? `Готово за ${took}` : "Готово")
+      : (data.restored ? "Сохранённые списки" : "Ждёт запуска");
+  $("err").textContent = data.error || "";
+  if (!data.running) state.stopping = false;
+  $("run").disabled = !!data.running && state.stopping;
+  $("run").classList.toggle("stop", !!data.running);
+  $("run").textContent = data.running
+    ? (state.stopping ? "Останавливаю…" : "Стоп")
+    : (pickedIds().length > 1 ? `Парсить ${pickedIds().length}` : "Парсить");
+  $("reveal").disabled = !data.path;
+  state.running = !!data.running;
+  if (!items.length) {
+    $("list").innerHTML = `<div class="blank">${esc(emptyNote(data))}</div>`;
+    state.drawn = 0;
+  }
+  const revision = data.revision || 0;
+  if (!switched && items.length && items.length === state.drawn && revision !== state.revision) {
+    const list = $("list");
+    const top = list.scrollTop;
+    list.innerHTML = items.map((item) => filmHtml(item, 0, true)).join("");
+    list.scrollTop = top;
+  }
+  state.revision = revision;
+  const batch = items.slice(state.drawn);
+  if (batch.length) {
+    const list = $("list");
+    const paintingAll = state.drawn === 0;
+    if (paintingAll) list.innerHTML = "";
+    const follow = list.scrollHeight - list.scrollTop - list.clientHeight < 220;
+    const quiet = batch.length > 80;
+    const html = batch.map((item, i) => filmHtml(item, quiet ? 0 : Math.min(i, 14) * 28, quiet)).join("");
+    list.insertAdjacentHTML("beforeend", html);
+    state.drawn = items.length;
+    if (switched || (paintingAll && !data.running)) list.scrollTop = 0;
+    else if (paintingAll || follow) list.scrollTop = list.scrollHeight;
+  }
+  if (logs.length < state.logged) {
+    state.logged = 0;
+    $("log").innerHTML = "";
+  }
+  const fresh = logs.slice(state.logged);
+  if (fresh.length) {
+    const html = fresh.map((line) =>
+      `<div class="logline ${logClass(line)}"><i></i><span>${esc(line)}</span></div>`
+    ).join("");
+    $("log").insertAdjacentHTML("beforeend", html);
+    state.logged = logs.length;
+    $("log").scrollTop = $("log").scrollHeight;
+  }
+}
+
+let pollGen = 0;
+
+async function fetchStatus(useSince) {
+  const gen = ++pollGen;
+  clearTimeout(state.timer);
+  state.timer = 0;
+  const params = new URLSearchParams();
+  if (state.view) {
+    params.set("view", state.view);
+    const cached = state.cache[state.view];
+    if (useSince !== false && cached) {
+      params.set("since", String(cached.length));
+      params.set("rev", String(state.revision || 0));
+    }
+  }
+  const query = params.toString();
+  const data = await fetch("/api/status" + (query ? `?${query}` : "")).then((r) => r.json());
+  if (gen !== pollGen) return data;
+  if (data.items == null && data.view && state.cache[data.view] == null && data.count > 0 && useSince !== false) {
+    return fetchStatus(false);
+  }
+  renderStatus(data);
+  if (data.running) state.timer = setTimeout(() => fetchStatus(true), 400);
+  return data;
+}
+
+function poll() {
+  return fetchStatus(true);
+}
+
+$("run").onclick = async () => {
+  if (state.running) {
+    state.stopping = true;
+    $("run").disabled = true;
+    $("run").textContent = "Останавливаю…";
+    await fetch("/api/stop", { method: "POST" });
+    return;
+  }
+  $("err").textContent = "";
+  const needsNumber = pickedCats().some((cat) => !cat.fixed);
+  const limit = Number($("limit").value);
+  if (needsNumber && (!Number.isInteger(limit) || limit < 1 || limit > 1000)) {
+    $("err").textContent = "Количество от 1 до 1000";
+    return;
+  }
+  resetFeed();
+  $("run").disabled = true;
+  const res = await fetch("/api/run", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      categories: pickedIds(),
+      limit,
+      out: pickedIds().length === 1 ? $("out").value : "",
+      fields: selectedFields(),
+      details: state.details,
+    }),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    $("err").textContent = data.error || "Не запустилось";
+    $("run").disabled = false;
+    $("run").textContent = pickedIds().length > 1 ? `Парсить ${pickedIds().length}` : "Парсить";
+    return;
+  }
+  poll();
+};
+
+$("views").onclick = (event) => {
+  const btn = event.target.closest(".view");
+  if (!btn || btn.dataset.id === state.view) return;
+  state.view = btn.dataset.id;
+  fetchStatus(true);
+};
+
+$("details").onclick = () => {
+  state.details = !state.details;
+  $("details").classList.toggle("on", state.details);
+};
+
+$("reveal").onclick = () => fetch("/api/reveal", {
+  method: "POST",
+  headers: { "content-type": "application/json" },
+  body: JSON.stringify({ id: state.shown || state.view || "" }),
+});
+
+function nudge(delta) {
+  if ($("limit").disabled) return;
+  const current = Number($("limit").value);
+  const base = Number.isFinite(current) ? current : 50;
+  $("limit").value = String(Math.min(1000, Math.max(1, base + delta)));
+  state.savedLimit = $("limit").value;
+}
+$("limit").addEventListener("input", () => {
+  if (!$("limit").disabled) state.savedLimit = $("limit").value;
+});
+$("minus").onclick = () => nudge(-50);
+$("plus").onclick = () => nudge(50);
+setInterval(() => fetch("/api/heartbeat", { method: "POST" }), 2000);
+fetch("/api/meta").then((r) => r.json()).then(renderMeta);
+fetchStatus(false);
+</script>
+</body>
+</html>

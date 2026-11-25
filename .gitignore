@@ -10,3 +10,7 @@
 local.properties
 vokino.properties
 .kotlin/
+parser/.venv/
+parser/.chrome-profile/
+parser/output/
+parser/**/__pycache__/
