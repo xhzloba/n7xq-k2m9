@@ -49,7 +49,6 @@ internal fun Movie.kpCard(): Movie = kpCards[id] ?: this
 internal fun Movie.kpApply(detail: MovieDetail): Movie {
     val next = copy(
         logoUrl = detail.logoUrl ?: logoUrl,
-        posterUrl = detail.posterUrl ?: posterUrl,
         backdropUrl = detail.backdrops.firstOrNull() ?: backdropUrl,
         overview = detail.overview.ifBlank { overview },
         genres = detail.genres.joinToString().ifBlank { genres },
