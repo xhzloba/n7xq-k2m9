@@ -43,7 +43,7 @@ internal fun KinopoiskListRoute(
     LaunchedEffect(current?.id) {
         if (movies.isEmpty()) return@LaunchedEffect
         prefetchKpCards(movies.take(24)) { id ->
-            container.getMovieDetail(id).getOrNull()
+            container.getMovieDetail(id, background = true).getOrNull()
         }
     }
     SectionPage(

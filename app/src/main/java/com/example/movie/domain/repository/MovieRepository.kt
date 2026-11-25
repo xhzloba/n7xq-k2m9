@@ -30,7 +30,7 @@ interface MovieRepository {
 
     suspend fun search(name: String, page: Int = 1): Result<MoviePage>
 
-    suspend fun getMovie(id: String): Result<MovieDetail>
+    suspend fun getMovie(id: String, background: Boolean = false): Result<MovieDetail>
 
     suspend fun franchise(id: String, title: String? = null, year: Int? = null): Franchise?
 

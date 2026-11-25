@@ -103,7 +103,7 @@ internal class MovieRepositoryImpl(
         MoviePage(movies = movies, hasMore = !response.page?.next.isNullOrBlank())
     }
 
-    override suspend fun getMovie(id: String): Result<MovieDetail> = runApi {
+    override suspend fun getMovie(id: String, background: Boolean): Result<MovieDetail> = runApi(background) {
         val response = api.view(id, token)
         response.error.throwIfLimited()
         response.toMovieDetail()
@@ -147,14 +147,23 @@ internal class MovieRepositoryImpl(
     }
 
     private suspend fun cardByKp(id: String): Franchise? {
-        val kp = timelineKp(id) ?: return null
-        return try {
-            franchiseApi.details(franchiseToken, kp).toFranchise()
-        } catch (cancelled: CancellationException) {
-            throw cancelled
-        } catch (http: HttpException) {
-            if (http.code() == 404 || http.code() == 410) null else throw http
+        // С Кинопоиска id уже номер Кинопоиска. timeline Вокино его не знает
+        // и в очереди предзагрузки часто не успевает за таймаут.
+        val direct = kinopoiskIdOrNull(id)
+        if (direct != null) {
+            franchiseByKp(direct)?.let { return it }
         }
+        val kp = timelineKp(id) ?: return null
+        if (kp == direct) return null
+        return franchiseByKp(kp)
+    }
+
+    private suspend fun franchiseByKp(kp: Int): Franchise? = try {
+        franchiseApi.details(franchiseToken, kp).toFranchise()
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (http: HttpException) {
+        if (http.code() == 404 || http.code() == 410) null else throw http
     }
 
     private suspend fun cardByTitle(title: String?, year: Int?): Franchise? {
@@ -265,6 +274,11 @@ private class RateLimited : Exception()
 
 /** Два повтора, не пять: «Смотреть» сидит в таймауте 4 с и после них ищет карточку по названию. */
 private const val TimelineRetries = 2
+
+private fun kinopoiskIdOrNull(id: String): Int? {
+    if (id.length !in 1..10 || id.any { !it.isDigit() }) return null
+    return id.toIntOrNull()?.takeIf { it > 0 }
+}
 
 private fun List<FranchiseHitDto>.pick(title: String, year: Int?): FranchiseHitDto? {
     val wanted = title.folded()

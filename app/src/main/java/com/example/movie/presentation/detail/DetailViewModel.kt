@@ -62,9 +62,10 @@ class DetailViewModel(
             // Таймаут, обрыв сети и неответивший эмбед — это Unknown, не «плеера нет».
             // Лоадер гас, качество не появлялось, второй тап по «Смотреть» проходил.
             // Один повтор, пока лоадер ещё крутится. Второй Unknown оставляем как есть.
-            val first = watchCheck(detail.id, detail.title, detail.year)
+            val lookupId = movieId.takeIf(::isKinopoiskId) ?: detail.id
+            val first = watchCheck(lookupId, detail.title, detail.year)
             val check = if (first is WatchCheck.Unknown) {
-                watchCheck(detail.id, detail.title, detail.year)
+                watchCheck(lookupId, detail.title, detail.year)
             } else {
                 first
             }
@@ -81,3 +82,6 @@ class DetailViewModel(
 }
 
 private fun Throwable.asDataError(): DataError = this as? DataError ?: DataError.Unknown()
+
+private fun isKinopoiskId(id: String): Boolean =
+    id.length in 1..10 && id.all(Char::isDigit) && id.toIntOrNull()?.let { it > 0 } == true

@@ -52,6 +52,12 @@ internal object Changelog {
 
     val releases: List<Release> = listOf(
         Release(
+            version = "2.93.1",
+            fixed = listOf(
+                "С Кинопоиска «Смотреть» иногда не догружалось: карточка открывалась, а плеер нет. Теперь он находится сразу по номеру Кинопоиска.",
+            ),
+        ),
+        Release(
             version = "2.93.0",
             added = listOf(
                 "Вкладка «Кинопоиск» сразу после каталога. Знак K.",
