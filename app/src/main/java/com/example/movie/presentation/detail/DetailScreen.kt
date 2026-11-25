@@ -1050,6 +1050,7 @@ private fun DetailContent(
         posterShown,
         settings.extractPlex,
         settings.plexBackdrop,
+        settings.backdropQuality,
     ) {
         when {
             settings.extractPlex -> {
@@ -1065,21 +1066,21 @@ private fun DetailContent(
                         ?: context.extractBackdrop(url, width, height, plex = true)?.also { washCache[key] = it }
                 }
                 suspend fun fromPoster(): PosterWash? = poster?.let { washOf(it, 320, 480) }
+                fun String.toneStill(): String {
+                    if (settings.backdropQuality.normalizedBackdropQuality() == BackdropQualityOriginal) return this
+                    return backdropW1280() ?: this
+                }
                 suspend fun fromStill(): PosterWash? {
                     val source = still ?: return null
-                    val file = if (settings.backdropQuality.normalizedBackdropQuality() == BackdropQualityLow) {
-                        source.backdropW1280() ?: source
-                    } else {
-                        source
-                    }
-                    return washOf(file, 384, 216)
+                    return washOf(source.toneStill(), 384, 216)
                 }
                 val extracted = when {
                     !settings.plexBackdrop -> fromPoster() ?: fromStill()
                     still == null -> fromPoster()
                     else -> {
                         val custom = toneStore.tones.value[washToneKey(detail.id, still)]?.plain() == false
-                        if (washCache["plex:$still"] == null && loadedStills[still] != true) {
+                        val toneFile = still.toneStill()
+                        if (washCache["plex:$toneFile"] == null && loadedStills[still] != true) {
                             val onScreen = snapshotFlow { loadedStills[still] == true }
                             val late = backdropWash == hidden &&
                                 withTimeoutOrNull(PosterStandInDelay) { onScreen.first { it } } == null
