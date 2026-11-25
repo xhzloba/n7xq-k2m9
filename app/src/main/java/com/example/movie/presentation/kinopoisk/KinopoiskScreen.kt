@@ -134,7 +134,9 @@ internal fun KinopoiskScreen(
     LaunchedEffect(loaded) {
         val shelves = loaded ?: return@LaunchedEffect
         prefetchKpCards(shelves.flatMap { it.movies.take(KpRailPreview) }) { id ->
-            container.getMovieDetail(id, background = true).getOrNull()
+            val detail = container.getMovieDetail(id, background = true).getOrNull()
+            if (detail != null && detail.id != id) container.favorites.note(detail.id, id)
+            detail
         }
     }
     Box(modifier.fillMaxSize()) {

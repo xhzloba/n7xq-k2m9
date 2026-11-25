@@ -26,6 +26,34 @@ import androidx.compose.ui.unit.sp
 import com.example.movie.R
 import com.example.movie.data.kinopoisk.KpRank
 
+@Composable
+private fun BoxOfficePlate(gross: String) {
+    val description = stringResource(R.string.kp_box_office, gross)
+    Box(
+        Modifier
+            .fillMaxSize()
+            .semantics { contentDescription = description },
+    ) {
+        Text(
+            text = gross,
+            color = Color.White,
+            fontSize = 11.sp,
+            lineHeight = 13.sp,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            softWrap = false,
+            style = TextStyle(shadow = RankShadow),
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(5.dp)
+                .shadow(8.dp, RoundedCornerShape(5.dp), clip = false)
+                .clip(RoundedCornerShape(5.dp))
+                .background(Color.Black.copy(alpha = 0.72f))
+                .padding(horizontal = 5.dp, vertical = 2.dp),
+        )
+    }
+}
+
 private val RankUp = Color(0xFF3DDC84)
 private val RankDown = Color(0xFFFF5A5A)
 
@@ -37,6 +65,11 @@ private val RankShadow = Shadow(
 
 @Composable
 internal fun KpRankOverlay(rank: KpRank) {
+    val gross = rank.boxOffice
+    if (gross != null) {
+        BoxOfficePlate(gross)
+        return
+    }
     val description = when {
         rank.up == true && rank.diff != null -> stringResource(R.string.kp_rank_up, rank.position, rank.diff)
         rank.up == false && rank.diff != null -> stringResource(R.string.kp_rank_down, rank.position, rank.diff)

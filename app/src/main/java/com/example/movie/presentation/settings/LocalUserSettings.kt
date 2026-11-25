@@ -95,6 +95,8 @@ private object DefaultUserSettings : UserSettingsRepository {
 
     override fun setBackdropDissolve(enabled: Boolean) = Unit
 
+    override fun setBackdropQuality(quality: String) = Unit
+
     override fun setHomeRailVisible(id: String, visible: Boolean) = Unit
 
     override fun setHomeRailsVisible(ids: Collection<String>, visible: Boolean) = Unit

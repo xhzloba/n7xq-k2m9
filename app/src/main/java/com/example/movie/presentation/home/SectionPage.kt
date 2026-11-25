@@ -166,6 +166,7 @@ internal fun SectionPage(
     motion: Boolean = false,
     motionPlace: String = "",
     overlay: @Composable (Movie) -> Unit = {},
+    note: String? = null,
     modifier: Modifier = Modifier,
 ) {
     var confirmClear by remember { mutableStateOf(false) }
@@ -223,6 +224,7 @@ internal fun SectionPage(
                 motion = motion,
                 motionPlace = motionPlace,
                 overlay = overlay,
+                note = note,
             )
         }
         SectionScrim(progress = scrim, modifier = Modifier.align(Alignment.TopCenter))
@@ -567,14 +569,16 @@ internal fun PosterGrid(
     motion: Boolean = false,
     motionPlace: String = "",
     overlay: @Composable (Movie) -> Unit = {},
+    note: String? = null,
 ) {
+    val lead = if (!note.isNullOrBlank() && !placeholder) 1 else 0
     HapticOnAppend(movies.map { it.id })
-    LaunchedEffect(state, movies.size, end, error, placeholder, loadingMore) {
+    LaunchedEffect(state, movies.size, end, error, placeholder, loadingMore, lead) {
         if (placeholder || end || error != null || loadingMore) return@LaunchedEffect
         snapshotFlow { state.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1 }
             .distinctUntilChanged()
             .collect { last ->
-                if (last >= movies.size - 6) onLoadMore()
+                if (last >= movies.size + lead - 6) onLoadMore()
             }
     }
     LazyVerticalGrid(
@@ -585,6 +589,17 @@ internal fun PosterGrid(
         verticalArrangement = Arrangement.spacedBy(PosterGap),
         modifier = Modifier.fillMaxSize(),
     ) {
+        if (lead == 1 && note != null) {
+            item(key = "note", span = { GridItemSpan(maxLineSpan) }) {
+                Text(
+                    text = note,
+                    color = CinemaMuted,
+                    fontSize = 14.sp,
+                    lineHeight = 19.sp,
+                    modifier = Modifier.padding(bottom = 4.dp),
+                )
+            }
+        }
         val count = if (placeholder) 12 else movies.size
         items(count, key = { it }) { index ->
             if (placeholder) {

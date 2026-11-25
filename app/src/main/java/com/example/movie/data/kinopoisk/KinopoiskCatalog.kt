@@ -19,6 +19,7 @@ internal data class KpRank(
     val position: Int,
     val diff: Int?,
     val up: Boolean?,
+    val boxOffice: String? = null,
 )
 
 internal data class KpShelf(
@@ -34,6 +35,7 @@ private val Files = listOf(
     "kinopoisk/popular-series.json",
     "kinopoisk/top500.json",
     "kinopoisk/series-top250.json",
+    "kinopoisk/box-usa-all-time.json",
 )
 
 private val json = Json {
@@ -54,7 +56,7 @@ internal fun Movie.kpApply(detail: MovieDetail): Movie {
         genres = detail.genres.joinToString().ifBlank { genres },
         country = detail.country.ifBlank { country },
         director = detail.director.ifBlank { director },
-        ratingKp = detail.ratingKp ?: ratingKp,
+        ratingKp = ratingKp ?: detail.ratingKp,
         ratingImdb = detail.ratingImdb ?: ratingImdb,
         age = detail.age ?: age,
         year = detail.year ?: year,
@@ -117,9 +119,10 @@ private data class KpItem(
     val year: Int? = null,
     val rating: Double? = null,
     val poster: String? = null,
-    val position: Int = 0,
+    val position: Int? = null,
     val diff: Int? = null,
     @SerialName("diff_kind") val diffKind: String? = null,
+    @SerialName("box_office") val boxOffice: String? = null,
 )
 
 private fun KpFile.toShelf(): KpShelf {
@@ -133,14 +136,18 @@ private fun KpFile.toShelf(): KpShelf {
         val id = item.kpId.toString()
         if (!seen.add(id)) continue
         movies += item.toMovie(id, title, series)
+        val place = item.position?.takeIf { it > 0 }
+        val gross = item.boxOffice?.trim()?.takeIf { it.isNotEmpty() }
+        if (place == null && gross == null) continue
         ranks[id] = KpRank(
-            position = item.position,
+            position = place ?: 0,
             diff = item.diff?.takeIf { it > 0 },
             up = when (item.diffKind) {
                 "positive" -> true
                 "negative" -> false
                 else -> null
             },
+            boxOffice = gross,
         )
     }
     return KpShelf(

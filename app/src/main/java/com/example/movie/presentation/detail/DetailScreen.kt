@@ -152,7 +152,11 @@ import com.example.movie.domain.model.CastMember
 import com.example.movie.domain.model.DataError
 import com.example.movie.domain.model.FranchiseTrailer
 import com.example.movie.domain.model.Movie
+import com.example.movie.domain.model.BackdropQualityAuto
+import com.example.movie.domain.model.BackdropQualityLow
+import com.example.movie.domain.model.BackdropQualityOriginal
 import com.example.movie.domain.model.MovieDetail
+import com.example.movie.domain.model.normalizedBackdropQuality
 import com.example.movie.presentation.palette.PosterWash
 import com.example.movie.presentation.palette.plexWash
 import com.example.movie.presentation.palette.posterWash
@@ -812,6 +816,13 @@ private fun DetailContent(
     // Кинопоиск открывается по kp id, ответ Вокино приходит с mongo id.
     // Ключ экрана не меняем, иначе лого, заливка и скролл собираются заново.
     val openedId = remember { detail.id }
+    fun dropMark(remove: (String) -> Unit) {
+        remove(openedId)
+        if (detail.id != openedId) remove(detail.id)
+    }
+    fun marked() = detail.toSaved().let { saved ->
+        if (openedId == saved.id) saved else saved.copy(kpId = openedId)
+    }
     var watching by remember(openedId) { mutableStateOf<WatchRequest?>(null) }
     var episodesOpen by remember(openedId) { mutableStateOf(false) }
     var seasonWatch by remember(openedId) { mutableStateOf(false) }
@@ -843,6 +854,9 @@ private fun DetailContent(
     val pageAlpha = if (pageShown != null) pageVeil.value else 0f
     val favorites = LocalAppContainer.current.favorites
     val watched = LocalAppContainer.current.watched
+    LaunchedEffect(openedId, detail.id) {
+        if (openedId != detail.id) favorites.note(detail.id, openedId)
+    }
     val offline = LocalAppContainer.current.offline
     val resumeStore = LocalAppContainer.current.resume
     val resumeItems by resumeStore.items.collectAsStateWithLifecycle()
@@ -873,7 +887,7 @@ private fun DetailContent(
             episodesOpen = true
             return
         }
-        if (!serial) watched.remove(detail.id)
+        if (!serial) dropMark(watched::remove)
         if (id != null) watching = WatchRequest(id) else onResolveWatch()
     }
     fun requestPlay(season: Int?, episode: Int?) {
@@ -980,7 +994,7 @@ private fun DetailContent(
         if (watching != null) wantTrailer = false
     }
     val loadedStills = remember(openedId) { mutableStateMapOf<String, Boolean>() }
-    LaunchedEffect(detail.id, frame, backdrops, settings.autoBackdrop, wantTrailer) {
+    LaunchedEffect(detail.id, frame, backdrops, settings.autoBackdrop, settings.backdropQuality, wantTrailer) {
         if (!settings.autoBackdrop || backdrops.size < 2 || wantTrailer) return@LaunchedEffect
         val current = backdrops.getOrNull(frame) ?: return@LaunchedEffect
         if (loadedStills[current] != true) {
@@ -989,10 +1003,15 @@ private fun DetailContent(
             }
         }
         val next = backdrops[(frame + 1) % backdrops.size]
+        val preloadUrl = if (settings.backdropQuality.normalizedBackdropQuality() == BackdropQualityOriginal) {
+            next
+        } else {
+            next.backdropW1280() ?: next
+        }
         val preload = launch {
             runCatching {
                 context.imageLoader.execute(
-                    ImageRequest.Builder(context).data(stillModel(next)).build(),
+                    ImageRequest.Builder(context).data(stillModel(preloadUrl)).build(),
                 )
             }
         }
@@ -1046,7 +1065,15 @@ private fun DetailContent(
                         ?: context.extractBackdrop(url, width, height, plex = true)?.also { washCache[key] = it }
                 }
                 suspend fun fromPoster(): PosterWash? = poster?.let { washOf(it, 320, 480) }
-                suspend fun fromStill(): PosterWash? = still?.let { washOf(it, 384, 216) }
+                suspend fun fromStill(): PosterWash? {
+                    val source = still ?: return null
+                    val file = if (settings.backdropQuality.normalizedBackdropQuality() == BackdropQualityLow) {
+                        source.backdropW1280() ?: source
+                    } else {
+                        source
+                    }
+                    return washOf(file, 384, 216)
+                }
                 val extracted = when {
                     !settings.plexBackdrop -> fromPoster() ?: fromStill()
                     still == null -> fromPoster()
@@ -1465,7 +1492,7 @@ private fun DetailContent(
                         detail.franchise?.seasons.orEmpty().isNotEmpty() ||
                         detail.type == "serial" ||
                         detail.type == "multserial"
-                    if (!serial) watched.remove(detail.id)
+                    if (!serial) dropMark(watched::remove)
                     watching = WatchRequest(id)
                 } else if (franchiseReady) {
                     watchRequested = false
@@ -1547,17 +1574,22 @@ private fun DetailContent(
                 horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
                 verticalAlignment = Alignment.Top,
             ) {
-                val seen = detail.id in watchedIds
+                val seen = openedId in watchedIds || detail.id in watchedIds
+                val favorited = openedId in savedIds || detail.id in savedIds
                 ActionSlot(stringResource(R.string.action_later)) {
                     BookmarkButton(
-                        saved = detail.id in savedIds,
+                        saved = favorited,
                         circled = true,
                         circle = ActionCircle,
                         onClick = {
                             favoriteBuzz?.invoke()
-                            val adding = detail.id !in savedIds
-                            favorites.toggle(detail.toSaved())
-                            if (adding) watched.remove(detail.id)
+                            val adding = !favorited
+                            if (adding) {
+                                favorites.toggle(marked())
+                                dropMark(watched::remove)
+                            } else {
+                                dropMark(favorites::remove)
+                            }
                             notices.show(
                                 if (adding) addedFavorite else removedFavorite,
                                 NoticeShelfFavorites,
@@ -1576,13 +1608,15 @@ private fun DetailContent(
                                 series -> seasonWatch = true
                                 seen -> {
                                     resumeStore.clearMarks(detail.id)
-                                    watched.toggle(detail.toSaved())
+                                    if (detail.id != openedId) resumeStore.clearMarks(openedId)
+                                    dropMark(watched::remove)
                                     notices.show(removedWatched, NoticeShelfWatched)
                                 }
                                 else -> {
                                     resumeStore.forget(detail.id)
-                                    watched.add(detail.toSaved())
-                                    favorites.remove(detail.id)
+                                    if (detail.id != openedId) resumeStore.forget(openedId)
+                                    watched.add(marked())
+                                    dropMark(favorites::remove)
                                     notices.show(addedWatched, NoticeShelfWatched)
                                 }
                             }
@@ -1986,15 +2020,15 @@ private fun DetailContent(
                 logoUrl = detail.logoUrl,
                 startPositionMs = if (!pinned || sameSaved) saved?.positionMs ?: 0L else 0L,
                 onProgress = { position, duration, playedSeason, playedEpisode ->
-                    if (request.season == null && request.episode == null) watched.remove(detail.id)
+                    if (request.season == null && request.episode == null) dropMark(watched::remove)
                     val item = detail.toResume(request.franchiseId, position, duration, playedSeason, playedEpisode)
                     val seasons = detail.franchise?.seasons.orEmpty()
                     val finished = resumeStore.record(item, settings.watchedPercent, settings.progressStartMs) { stored ->
                         seasons.fullyWatched(stored.episodeMarks())
                     }
                     if (finished) {
-                        watched.add(detail.toSaved())
-                        favorites.remove(detail.id)
+                        watched.add(marked())
+                        dropMark(favorites::remove)
                     }
                 },
                 onDismiss = { watching = null },
@@ -3396,29 +3430,66 @@ private fun BackdropStill(
     alignment: Alignment = Alignment.TopCenter,
     mask: Boolean = true,
 ) {
-    AsyncImage(
-        model = stillModel(url),
-        contentDescription = null,
-        contentScale = ContentScale.Crop,
-        alignment = alignment,
-        onSuccess = { onReady() },
-        onError = { onError() },
-        modifier = Modifier
-            .fillMaxSize()
-            .heightIn(max = height * 2)
-            .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
-            .drawWithContent {
-                drawContent()
-                if (mask) drawBackdropMask()
-                if (dim > 0f) {
-                    drawRect(
-                        color = Color.Black.copy(alpha = 0.72f * dim),
-                        blendMode = BlendMode.SrcAtop,
-                    )
-                }
+    val mode = LocalUserSettings.current.settings.collectAsStateWithLifecycle()
+        .value.backdropQuality.normalizedBackdropQuality()
+    val small = remember(url) { url.backdropW1280() }
+    val preview = if (mode == BackdropQualityOriginal) null else small
+    val upgrade = mode == BackdropQualityAuto && preview != null
+    var previewFailed by remember(url, mode) { mutableStateOf(false) }
+    var fullReady by remember(url, mode) { mutableStateOf(preview == null) }
+    val paint = Modifier
+        .fillMaxSize()
+        .heightIn(max = height * 2)
+        .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+        .drawWithContent {
+            drawContent()
+            if (mask) drawBackdropMask()
+            if (dim > 0f) {
+                drawRect(
+                    color = Color.Black.copy(alpha = 0.72f * dim),
+                    blendMode = BlendMode.SrcAtop,
+                )
+            }
+        }
+    val cover = preview == null || previewFailed || fullReady
+    if (preview != null && !previewFailed) {
+        AsyncImage(
+            model = stillModel(preview),
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            alignment = alignment,
+            onSuccess = { onReady() },
+            onError = { previewFailed = true },
+            modifier = paint,
+        )
+    }
+    if (upgrade || preview == null || previewFailed) {
+        AsyncImage(
+            model = stillModel(url),
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            alignment = alignment,
+            onSuccess = {
+                fullReady = true
+                if (preview == null || previewFailed) onReady()
             },
-    )
+            onError = {
+                if (preview == null || previewFailed) onError()
+            },
+            modifier = paint.graphicsLayer { alpha = if (cover) 1f else 0f },
+        )
+    }
 }
+
+/** Быстрый кадр того же файла. Постер не подставляется. */
+private fun String.backdropW1280(): String? {
+    if (startsWith("file:")) return null
+    if (!BackdropTier.containsMatchIn(this)) return null
+    val next = replace(BackdropTier, "/t/p/w1280/")
+    return next.takeIf { it != this }
+}
+
+private val BackdropTier = Regex("/t/p/(?:w\\d+|original)/")
 
 private fun stillModel(url: String): Any {
     if (!url.startsWith("file:")) return url

@@ -2,7 +2,7 @@
   "category": "series-top250",
   "category_title": "Топ 250 сериалов",
   "source": "https://www.kinopoisk.ru/lists/movies/series-top250/",
-  "parsed_at": "2026-11-25T12:25:21+04:00",
+  "parsed_at": "2026-11-25T17:00:58+04:00",
   "count": 250,
   "details": false,
   "items": [
@@ -17,7 +17,8 @@
       "url": "https://www.kinopoisk.ru/series/464963/",
       "position": 1,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 404900,
@@ -30,7 +31,8 @@
       "url": "https://www.kinopoisk.ru/series/404900/",
       "position": 2,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 79848,
@@ -43,7 +45,8 @@
       "url": "https://www.kinopoisk.ru/series/79848/",
       "position": 3,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 5258557,
@@ -56,7 +59,8 @@
       "url": "https://www.kinopoisk.ru/series/5258557/",
       "position": 4,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 1040419,
@@ -69,7 +73,8 @@
       "url": "https://www.kinopoisk.ru/series/1040419/",
       "position": 5,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 6589776,
@@ -82,7 +87,8 @@
       "url": "https://www.kinopoisk.ru/series/6589776/",
       "position": 6,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 796660,
@@ -95,7 +101,8 @@
       "url": "https://www.kinopoisk.ru/series/796660/",
       "position": 7,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 1227803,
@@ -108,7 +115,8 @@
       "url": "https://www.kinopoisk.ru/series/1227803/",
       "position": 8,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 77202,
@@ -121,7 +129,8 @@
       "url": "https://www.kinopoisk.ru/series/77202/",
       "position": 9,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 89540,
@@ -134,7 +143,8 @@
       "url": "https://www.kinopoisk.ru/series/89540/",
       "position": 10,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 77044,
@@ -147,7 +157,8 @@
       "url": "https://www.kinopoisk.ru/series/77044/",
       "position": 11,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 591929,
@@ -160,7 +171,8 @@
       "url": "https://www.kinopoisk.ru/series/591929/",
       "position": 12,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 378244,
@@ -173,7 +185,8 @@
       "url": "https://www.kinopoisk.ru/series/378244/",
       "position": 13,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 253245,
@@ -186,7 +199,8 @@
       "url": "https://www.kinopoisk.ru/series/253245/",
       "position": 14,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 1189814,
@@ -199,7 +213,8 @@
       "url": "https://www.kinopoisk.ru/series/1189814/",
       "position": 15,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 306084,
@@ -212,7 +227,8 @@
       "url": "https://www.kinopoisk.ru/series/306084/",
       "position": 16,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 502838,
@@ -225,7 +241,8 @@
       "url": "https://www.kinopoisk.ru/series/502838/",
       "position": 17,
       "diff": 1,
-      "diff_kind": "positive"
+      "diff_kind": "positive",
+      "box_office": null
     },
     {
       "kp_id": 1009510,
@@ -238,7 +255,8 @@
       "url": "https://www.kinopoisk.ru/series/1009510/",
       "position": 18,
       "diff": 1,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 160958,
@@ -251,7 +269,8 @@
       "url": "https://www.kinopoisk.ru/series/160958/",
       "position": 19,
       "diff": 1,
-      "diff_kind": "positive"
+      "diff_kind": "positive",
+      "box_office": null
     },
     {
       "kp_id": 251568,
@@ -264,7 +283,8 @@
       "url": "https://www.kinopoisk.ru/series/251568/",
       "position": 20,
       "diff": 1,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 4909559,
@@ -277,7 +297,8 @@
       "url": "https://www.kinopoisk.ru/series/4909559/",
       "position": 21,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 1118176,
@@ -290,7 +311,8 @@
       "url": "https://www.kinopoisk.ru/series/1118176/",
       "position": 22,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 77051,
@@ -303,7 +325,8 @@
       "url": "https://www.kinopoisk.ru/series/77051/",
       "position": 23,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 788277,
@@ -316,7 +339,8 @@
       "url": "https://www.kinopoisk.ru/series/788277/",
       "position": 24,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 6056265,
@@ -329,7 +353,8 @@
       "url": "https://www.kinopoisk.ru/series/6056265/",
       "position": 25,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 1356670,
@@ -342,7 +367,8 @@
       "url": "https://www.kinopoisk.ru/series/1356670/",
       "position": 26,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 1309707,
@@ -355,7 +381,8 @@
       "url": "https://www.kinopoisk.ru/series/1309707/",
       "position": 27,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 402955,
@@ -368,7 +395,8 @@
       "url": "https://www.kinopoisk.ru/series/402955/",
       "position": 28,
       "diff": 2,
-      "diff_kind": "positive"
+      "diff_kind": "positive",
+      "box_office": null
     },
     {
       "kp_id": 257386,
@@ -381,7 +409,8 @@
       "url": "https://www.kinopoisk.ru/series/257386/",
       "position": 29,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 4445150,
@@ -394,7 +423,8 @@
       "url": "https://www.kinopoisk.ru/series/4445150/",
       "position": 30,
       "diff": 2,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 79429,
@@ -407,7 +437,8 @@
       "url": "https://www.kinopoisk.ru/series/79429/",
       "position": 31,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 77042,
@@ -420,7 +451,8 @@
       "url": "https://www.kinopoisk.ru/series/77042/",
       "position": 32,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 5281617,
@@ -433,7 +465,8 @@
       "url": "https://www.kinopoisk.ru/series/5281617/",
       "position": 33,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 178710,
@@ -446,7 +479,8 @@
       "url": "https://www.kinopoisk.ru/series/178710/",
       "position": 34,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 277537,
@@ -459,7 +493,8 @@
       "url": "https://www.kinopoisk.ru/series/277537/",
       "position": 35,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 961719,
@@ -472,7 +507,8 @@
       "url": "https://www.kinopoisk.ru/series/961719/",
       "position": 36,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 1047593,
@@ -485,7 +521,8 @@
       "url": "https://www.kinopoisk.ru/series/1047593/",
       "position": 37,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 4642708,
@@ -498,7 +535,8 @@
       "url": "https://www.kinopoisk.ru/series/4642708/",
       "position": 38,
       "diff": 1,
-      "diff_kind": "positive"
+      "diff_kind": "positive",
+      "box_office": null
     },
     {
       "kp_id": 5401195,
@@ -511,7 +549,8 @@
       "url": "https://www.kinopoisk.ru/series/5401195/",
       "position": 39,
       "diff": 1,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 2040161,
@@ -524,7 +563,8 @@
       "url": "https://www.kinopoisk.ru/series/2040161/",
       "position": 40,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 5088599,
@@ -537,7 +577,8 @@
       "url": "https://www.kinopoisk.ru/series/5088599/",
       "position": 41,
       "diff": 1,
-      "diff_kind": "positive"
+      "diff_kind": "positive",
+      "box_office": null
     },
     {
       "kp_id": 1048576,
@@ -550,7 +591,8 @@
       "url": "https://www.kinopoisk.ru/series/1048576/",
       "position": 42,
       "diff": 1,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 5462452,
@@ -563,7 +605,8 @@
       "url": "https://www.kinopoisk.ru/series/5462452/",
       "position": 43,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 5512084,
@@ -576,7 +619,8 @@
       "url": "https://www.kinopoisk.ru/series/5512084/",
       "position": 44,
       "diff": 3,
-      "diff_kind": "positive"
+      "diff_kind": "positive",
+      "box_office": null
     },
     {
       "kp_id": 5458831,
@@ -589,7 +633,8 @@
       "url": "https://www.kinopoisk.ru/series/5458831/",
       "position": 45,
       "diff": 1,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 915196,
@@ -602,7 +647,8 @@
       "url": "https://www.kinopoisk.ru/series/915196/",
       "position": 46,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 6648249,
@@ -615,7 +661,8 @@
       "url": "https://www.kinopoisk.ru/series/6648249/",
       "position": 47,
       "diff": 1,
-      "diff_kind": "positive"
+      "diff_kind": "positive",
+      "box_office": null
     },
     {
       "kp_id": 257376,
@@ -628,7 +675,8 @@
       "url": "https://www.kinopoisk.ru/series/257376/",
       "position": 48,
       "diff": 3,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 1045172,
@@ -641,7 +689,8 @@
       "url": "https://www.kinopoisk.ru/series/1045172/",
       "position": 49,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 6802576,
@@ -654,7 +703,8 @@
       "url": "https://www.kinopoisk.ru/series/6802576/",
       "position": 50,
       "diff": 1,
-      "diff_kind": "positive"
+      "diff_kind": "positive",
+      "box_office": null
     },
     {
       "kp_id": 6058297,
@@ -667,7 +717,8 @@
       "url": "https://www.kinopoisk.ru/series/6058297/",
       "position": 51,
       "diff": 1,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 685246,
@@ -680,7 +731,8 @@
       "url": "https://www.kinopoisk.ru/series/685246/",
       "position": 52,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 406148,
@@ -693,7 +745,8 @@
       "url": "https://www.kinopoisk.ru/series/406148/",
       "position": 53,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 747494,
@@ -706,7 +759,8 @@
       "url": "https://www.kinopoisk.ru/series/747494/",
       "position": 54,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 1224067,
@@ -719,7 +773,8 @@
       "url": "https://www.kinopoisk.ru/series/1224067/",
       "position": 55,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 4786341,
@@ -732,7 +787,8 @@
       "url": "https://www.kinopoisk.ru/series/4786341/",
       "position": 56,
       "diff": 1,
-      "diff_kind": "positive"
+      "diff_kind": "positive",
+      "box_office": null
     },
     {
       "kp_id": 8942289,
@@ -745,7 +801,8 @@
       "url": "https://www.kinopoisk.ru/series/8942289/",
       "position": 57,
       "diff": 1,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 838050,
@@ -758,7 +815,8 @@
       "url": "https://www.kinopoisk.ru/series/838050/",
       "position": 58,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 1407744,
@@ -771,7 +829,8 @@
       "url": "https://www.kinopoisk.ru/series/1407744/",
       "position": 59,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 5267249,
@@ -784,7 +843,8 @@
       "url": "https://www.kinopoisk.ru/series/5267249/",
       "position": 60,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 1108411,
@@ -797,7 +857,8 @@
       "url": "https://www.kinopoisk.ru/series/1108411/",
       "position": 61,
       "diff": 2,
-      "diff_kind": "positive"
+      "diff_kind": "positive",
+      "box_office": null
     },
     {
       "kp_id": 5270353,
@@ -810,7 +871,8 @@
       "url": "https://www.kinopoisk.ru/series/5270353/",
       "position": 62,
       "diff": 1,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 77039,
@@ -823,7 +885,8 @@
       "url": "https://www.kinopoisk.ru/series/77039/",
       "position": 63,
       "diff": 1,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 655800,
@@ -836,7 +899,8 @@
       "url": "https://www.kinopoisk.ru/series/655800/",
       "position": 64,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 1197956,
@@ -849,7 +913,8 @@
       "url": "https://www.kinopoisk.ru/series/1197956/",
       "position": 65,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 4360157,
@@ -862,7 +927,8 @@
       "url": "https://www.kinopoisk.ru/series/4360157/",
       "position": 66,
       "diff": 1,
-      "diff_kind": "positive"
+      "diff_kind": "positive",
+      "box_office": null
     },
     {
       "kp_id": 1395459,
@@ -875,7 +941,8 @@
       "url": "https://www.kinopoisk.ru/series/1395459/",
       "position": 67,
       "diff": 1,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 1435343,
@@ -888,7 +955,8 @@
       "url": "https://www.kinopoisk.ru/series/1435343/",
       "position": 68,
       "diff": 2,
-      "diff_kind": "positive"
+      "diff_kind": "positive",
+      "box_office": null
     },
     {
       "kp_id": 4907587,
@@ -901,7 +969,8 @@
       "url": "https://www.kinopoisk.ru/series/4907587/",
       "position": 69,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 780314,
@@ -914,7 +983,8 @@
       "url": "https://www.kinopoisk.ru/series/780314/",
       "position": 70,
       "diff": 2,
-      "diff_kind": "positive"
+      "diff_kind": "positive",
+      "box_office": null
     },
     {
       "kp_id": 1108899,
@@ -927,7 +997,8 @@
       "url": "https://www.kinopoisk.ru/series/1108899/",
       "position": 71,
       "diff": 3,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 1100777,
@@ -940,7 +1011,8 @@
       "url": "https://www.kinopoisk.ru/series/1100777/",
       "position": 72,
       "diff": 2,
-      "diff_kind": "positive"
+      "diff_kind": "positive",
+      "box_office": null
     },
     {
       "kp_id": 7524629,
@@ -953,7 +1025,8 @@
       "url": "https://www.kinopoisk.ru/series/7524629/",
       "position": 73,
       "diff": 2,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 4489825,
@@ -966,7 +1039,8 @@
       "url": "https://www.kinopoisk.ru/series/4489825/",
       "position": 74,
       "diff": 1,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 1311143,
@@ -979,7 +1053,8 @@
       "url": "https://www.kinopoisk.ru/series/1311143/",
       "position": 75,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 1161789,
@@ -992,7 +1067,8 @@
       "url": "https://www.kinopoisk.ru/series/1161789/",
       "position": 76,
       "diff": 1,
-      "diff_kind": "positive"
+      "diff_kind": "positive",
+      "box_office": null
     },
     {
       "kp_id": 1162606,
@@ -1005,7 +1081,8 @@
       "url": "https://www.kinopoisk.ru/series/1162606/",
       "position": 77,
       "diff": 1,
-      "diff_kind": "positive"
+      "diff_kind": "positive",
+      "box_office": null
     },
     {
       "kp_id": 4393451,
@@ -1018,7 +1095,8 @@
       "url": "https://www.kinopoisk.ru/series/4393451/",
       "position": 78,
       "diff": 4,
-      "diff_kind": "positive"
+      "diff_kind": "positive",
+      "box_office": null
     },
     {
       "kp_id": 5431516,
@@ -1031,7 +1109,8 @@
       "url": "https://www.kinopoisk.ru/series/5431516/",
       "position": 79,
       "diff": 1,
-      "diff_kind": "positive"
+      "diff_kind": "positive",
+      "box_office": null
     },
     {
       "kp_id": 77270,
@@ -1044,7 +1123,8 @@
       "url": "https://www.kinopoisk.ru/series/77270/",
       "position": 80,
       "diff": 4,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 1101298,
@@ -1057,7 +1137,8 @@
       "url": "https://www.kinopoisk.ru/series/1101298/",
       "position": 81,
       "diff": 2,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 5059049,
@@ -1070,7 +1151,8 @@
       "url": "https://www.kinopoisk.ru/series/5059049/",
       "position": 82,
       "diff": 1,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 1093784,
@@ -1083,7 +1165,8 @@
       "url": "https://www.kinopoisk.ru/series/1093784/",
       "position": 83,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 1224030,
@@ -1096,7 +1179,8 @@
       "url": "https://www.kinopoisk.ru/series/1224030/",
       "position": 84,
       "diff": 1,
-      "diff_kind": "positive"
+      "diff_kind": "positive",
+      "box_office": null
     },
     {
       "kp_id": 1274280,
@@ -1109,7 +1193,8 @@
       "url": "https://www.kinopoisk.ru/series/1274280/",
       "position": 85,
       "diff": 1,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 5107166,
@@ -1122,7 +1207,8 @@
       "url": "https://www.kinopoisk.ru/series/5107166/",
       "position": 86,
       "diff": 4,
-      "diff_kind": "positive"
+      "diff_kind": "positive",
+      "box_office": null
     },
     {
       "kp_id": 5895344,
@@ -1135,7 +1221,8 @@
       "url": "https://www.kinopoisk.ru/series/5895344/",
       "position": 87,
       "diff": 1,
-      "diff_kind": "positive"
+      "diff_kind": "positive",
+      "box_office": null
     },
     {
       "kp_id": 681831,
@@ -1148,7 +1235,8 @@
       "url": "https://www.kinopoisk.ru/series/681831/",
       "position": 88,
       "diff": 2,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 1253633,
@@ -1161,7 +1249,8 @@
       "url": "https://www.kinopoisk.ru/series/1253633/",
       "position": 89,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 1387128,
@@ -1174,7 +1263,8 @@
       "url": "https://www.kinopoisk.ru/series/1387128/",
       "position": 90,
       "diff": 3,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 4714902,
@@ -1187,7 +1277,8 @@
       "url": "https://www.kinopoisk.ru/series/4714902/",
       "position": 91,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 766178,
@@ -1200,7 +1291,8 @@
       "url": "https://www.kinopoisk.ru/series/766178/",
       "position": 92,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 6579800,
@@ -1213,7 +1305,8 @@
       "url": "https://www.kinopoisk.ru/series/6579800/",
       "position": 93,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 803233,
@@ -1226,7 +1319,8 @@
       "url": "https://www.kinopoisk.ru/series/803233/",
       "position": 94,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 1203028,
@@ -1239,7 +1333,8 @@
       "url": "https://www.kinopoisk.ru/series/1203028/",
       "position": 95,
       "diff": 5,
-      "diff_kind": "positive"
+      "diff_kind": "positive",
+      "box_office": null
     },
     {
       "kp_id": 7865896,
@@ -1252,7 +1347,8 @@
       "url": "https://www.kinopoisk.ru/series/7865896/",
       "position": 96,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 178707,
@@ -1265,7 +1361,8 @@
       "url": "https://www.kinopoisk.ru/series/178707/",
       "position": 97,
       "diff": 1,
-      "diff_kind": "positive"
+      "diff_kind": "positive",
+      "box_office": null
     },
     {
       "kp_id": 1306640,
@@ -1278,7 +1375,8 @@
       "url": "https://www.kinopoisk.ru/series/1306640/",
       "position": 98,
       "diff": 1,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 1140676,
@@ -1291,7 +1389,8 @@
       "url": "https://www.kinopoisk.ru/series/1140676/",
       "position": 99,
       "diff": 4,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 44076,
@@ -1304,7 +1403,8 @@
       "url": "https://www.kinopoisk.ru/series/44076/",
       "position": 100,
       "diff": 1,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 77185,
@@ -1317,7 +1417,8 @@
       "url": "https://www.kinopoisk.ru/series/77185/",
       "position": 101,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 1254133,
@@ -1330,7 +1431,8 @@
       "url": "https://www.kinopoisk.ru/series/1254133/",
       "position": 102,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 6990425,
@@ -1343,7 +1445,8 @@
       "url": "https://www.kinopoisk.ru/series/6990425/",
       "position": 103,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 5454342,
@@ -1356,7 +1459,8 @@
       "url": "https://www.kinopoisk.ru/series/5454342/",
       "position": 104,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 1049439,
@@ -1369,7 +1473,8 @@
       "url": "https://www.kinopoisk.ru/series/1049439/",
       "position": 105,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 863009,
@@ -1382,7 +1487,8 @@
       "url": "https://www.kinopoisk.ru/series/863009/",
       "position": 106,
       "diff": 1,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 94331,
@@ -1395,7 +1501,8 @@
       "url": "https://www.kinopoisk.ru/series/94331/",
       "position": 107,
       "diff": 3,
-      "diff_kind": "positive"
+      "diff_kind": "positive",
+      "box_office": null
     },
     {
       "kp_id": 7275308,
@@ -1408,7 +1515,8 @@
       "url": "https://www.kinopoisk.ru/series/7275308/",
       "position": 108,
       "diff": 1,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 508161,
@@ -1421,7 +1529,8 @@
       "url": "https://www.kinopoisk.ru/series/508161/",
       "position": 109,
       "diff": 3,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 1348091,
@@ -1434,7 +1543,8 @@
       "url": "https://www.kinopoisk.ru/series/1348091/",
       "position": 110,
       "diff": 1,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 5401330,
@@ -1447,7 +1557,8 @@
       "url": "https://www.kinopoisk.ru/series/5401330/",
       "position": 111,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 928372,
@@ -1460,7 +1571,8 @@
       "url": "https://www.kinopoisk.ru/series/928372/",
       "position": 112,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 716587,
@@ -1473,7 +1585,8 @@
       "url": "https://www.kinopoisk.ru/series/716587/",
       "position": 113,
       "diff": 5,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 7687019,
@@ -1486,7 +1599,8 @@
       "url": "https://www.kinopoisk.ru/series/7687019/",
       "position": 114,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 991739,
@@ -1499,7 +1613,8 @@
       "url": "https://www.kinopoisk.ru/series/991739/",
       "position": 115,
       "diff": 2,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 1306638,
@@ -1512,7 +1627,8 @@
       "url": "https://www.kinopoisk.ru/series/1306638/",
       "position": 116,
       "diff": 1,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 1350067,
@@ -1525,7 +1641,8 @@
       "url": "https://www.kinopoisk.ru/series/1350067/",
       "position": 117,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 947758,
@@ -1538,7 +1655,8 @@
       "url": "https://www.kinopoisk.ru/series/947758/",
       "position": 118,
       "diff": 2,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 803896,
@@ -1551,7 +1669,8 @@
       "url": "https://www.kinopoisk.ru/series/803896/",
       "position": 119,
       "diff": 1,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 5147827,
@@ -1564,7 +1683,8 @@
       "url": "https://www.kinopoisk.ru/series/5147827/",
       "position": 120,
       "diff": 1,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 5378574,
@@ -1577,7 +1697,8 @@
       "url": "https://www.kinopoisk.ru/series/5378574/",
       "position": 121,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 1301800,
@@ -1590,7 +1711,8 @@
       "url": "https://www.kinopoisk.ru/series/1301800/",
       "position": 122,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 9997408,
@@ -1603,7 +1725,8 @@
       "url": "https://www.kinopoisk.ru/series/9997408/",
       "position": 123,
       "diff": 3,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 1236393,
@@ -1616,7 +1739,8 @@
       "url": "https://www.kinopoisk.ru/series/1236393/",
       "position": 124,
       "diff": 1,
-      "diff_kind": "positive"
+      "diff_kind": "positive",
+      "box_office": null
     },
     {
       "kp_id": 104122,
@@ -1629,7 +1753,8 @@
       "url": "https://www.kinopoisk.ru/series/104122/",
       "position": 125,
       "diff": 1,
-      "diff_kind": "positive"
+      "diff_kind": "positive",
+      "box_office": null
     },
     {
       "kp_id": 1189787,
@@ -1642,7 +1767,8 @@
       "url": "https://www.kinopoisk.ru/series/1189787/",
       "position": 126,
       "diff": 2,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 749562,
@@ -1655,7 +1781,8 @@
       "url": "https://www.kinopoisk.ru/series/749562/",
       "position": 127,
       "diff": 4,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 5935451,
@@ -1668,7 +1795,8 @@
       "url": "https://www.kinopoisk.ru/series/5935451/",
       "position": 128,
       "diff": 1,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 696973,
@@ -1681,7 +1809,8 @@
       "url": "https://www.kinopoisk.ru/series/696973/",
       "position": 129,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 573312,
@@ -1694,7 +1823,8 @@
       "url": "https://www.kinopoisk.ru/series/573312/",
       "position": 130,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 586251,
@@ -1707,7 +1837,8 @@
       "url": "https://www.kinopoisk.ru/series/586251/",
       "position": 131,
       "diff": 3,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 1049069,
@@ -1720,7 +1851,8 @@
       "url": "https://www.kinopoisk.ru/series/1049069/",
       "position": 132,
       "diff": 1,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 1331649,
@@ -1733,7 +1865,8 @@
       "url": "https://www.kinopoisk.ru/series/1331649/",
       "position": 133,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 1006538,
@@ -1746,7 +1879,8 @@
       "url": "https://www.kinopoisk.ru/series/1006538/",
       "position": 134,
       "diff": 2,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 5378717,
@@ -1759,7 +1893,8 @@
       "url": "https://www.kinopoisk.ru/series/5378717/",
       "position": 135,
       "diff": 1,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 1263293,
@@ -1772,7 +1907,8 @@
       "url": "https://www.kinopoisk.ru/series/1263293/",
       "position": 136,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 4635062,
@@ -1785,7 +1921,8 @@
       "url": "https://www.kinopoisk.ru/series/4635062/",
       "position": 137,
       "diff": 5,
-      "diff_kind": "positive"
+      "diff_kind": "positive",
+      "box_office": null
     },
     {
       "kp_id": 1266998,
@@ -1798,7 +1935,8 @@
       "url": "https://www.kinopoisk.ru/series/1266998/",
       "position": 138,
       "diff": 1,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 841046,
@@ -1811,7 +1949,8 @@
       "url": "https://www.kinopoisk.ru/series/841046/",
       "position": 139,
       "diff": 4,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 1312253,
@@ -1824,7 +1963,8 @@
       "url": "https://www.kinopoisk.ru/series/1312253/",
       "position": 140,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 723959,
@@ -1837,7 +1977,8 @@
       "url": "https://www.kinopoisk.ru/series/723959/",
       "position": 141,
       "diff": 3,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 89597,
@@ -1850,7 +1991,8 @@
       "url": "https://www.kinopoisk.ru/series/89597/",
       "position": 142,
       "diff": 2,
-      "diff_kind": "positive"
+      "diff_kind": "positive",
+      "box_office": null
     },
     {
       "kp_id": 977734,
@@ -1863,7 +2005,8 @@
       "url": "https://www.kinopoisk.ru/series/977734/",
       "position": 143,
       "diff": 4,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 7919289,
@@ -1876,7 +2019,8 @@
       "url": "https://www.kinopoisk.ru/series/7919289/",
       "position": 144,
       "diff": 1,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 1235049,
@@ -1889,7 +2033,8 @@
       "url": "https://www.kinopoisk.ru/series/1235049/",
       "position": 145,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 405627,
@@ -1902,7 +2047,8 @@
       "url": "https://www.kinopoisk.ru/series/405627/",
       "position": 146,
       "diff": 5,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 762194,
@@ -1915,7 +2061,8 @@
       "url": "https://www.kinopoisk.ru/series/762194/",
       "position": 147,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 838628,
@@ -1928,7 +2075,8 @@
       "url": "https://www.kinopoisk.ru/series/838628/",
       "position": 148,
       "diff": 1,
-      "diff_kind": "positive"
+      "diff_kind": "positive",
+      "box_office": null
     },
     {
       "kp_id": 11804709,
@@ -1941,7 +2089,8 @@
       "url": "https://www.kinopoisk.ru/series/11804709/",
       "position": 149,
       "diff": 1,
-      "diff_kind": "positive"
+      "diff_kind": "positive",
+      "box_office": null
     },
     {
       "kp_id": 682468,
@@ -1954,7 +2103,8 @@
       "url": "https://www.kinopoisk.ru/series/682468/",
       "position": 150,
       "diff": 2,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 508647,
@@ -1967,7 +2117,8 @@
       "url": "https://www.kinopoisk.ru/series/508647/",
       "position": 151,
       "diff": 5,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 283290,
@@ -1980,7 +2131,8 @@
       "url": "https://www.kinopoisk.ru/series/283290/",
       "position": 152,
       "diff": 1,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 460586,
@@ -1993,7 +2145,8 @@
       "url": "https://www.kinopoisk.ru/series/460586/",
       "position": 153,
       "diff": 1,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 768068,
@@ -2006,7 +2159,8 @@
       "url": "https://www.kinopoisk.ru/series/768068/",
       "position": 154,
       "diff": 3,
-      "diff_kind": "positive"
+      "diff_kind": "positive",
+      "box_office": null
     },
     {
       "kp_id": 258048,
@@ -2019,7 +2173,8 @@
       "url": "https://www.kinopoisk.ru/series/258048/",
       "position": 155,
       "diff": 2,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 5367744,
@@ -2032,7 +2187,8 @@
       "url": "https://www.kinopoisk.ru/series/5367744/",
       "position": 156,
       "diff": 1,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 6978183,
@@ -2045,7 +2201,8 @@
       "url": "https://www.kinopoisk.ru/series/6978183/",
       "position": 157,
       "diff": 1,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 916113,
@@ -2058,7 +2215,8 @@
       "url": "https://www.kinopoisk.ru/series/916113/",
       "position": 158,
       "diff": 1,
-      "diff_kind": "positive"
+      "diff_kind": "positive",
+      "box_office": null
     },
     {
       "kp_id": 603888,
@@ -2071,7 +2229,8 @@
       "url": "https://www.kinopoisk.ru/series/603888/",
       "position": 159,
       "diff": 5,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 1108682,
@@ -2084,7 +2243,8 @@
       "url": "https://www.kinopoisk.ru/series/1108682/",
       "position": 160,
       "diff": 2,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 610422,
@@ -2097,7 +2257,8 @@
       "url": "https://www.kinopoisk.ru/series/610422/",
       "position": 161,
       "diff": 1,
-      "diff_kind": "positive"
+      "diff_kind": "positive",
+      "box_office": null
     },
     {
       "kp_id": 1207237,
@@ -2110,7 +2271,8 @@
       "url": "https://www.kinopoisk.ru/series/1207237/",
       "position": 162,
       "diff": 2,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 818708,
@@ -2123,7 +2285,8 @@
       "url": "https://www.kinopoisk.ru/series/818708/",
       "position": 163,
       "diff": 2,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 1046206,
@@ -2136,7 +2299,8 @@
       "url": "https://www.kinopoisk.ru/series/1046206/",
       "position": 164,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 839356,
@@ -2149,7 +2313,8 @@
       "url": "https://www.kinopoisk.ru/series/839356/",
       "position": 165,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 1346615,
@@ -2162,7 +2327,8 @@
       "url": "https://www.kinopoisk.ru/series/1346615/",
       "position": 166,
       "diff": 2,
-      "diff_kind": "positive"
+      "diff_kind": "positive",
+      "box_office": null
     },
     {
       "kp_id": 1228254,
@@ -2175,7 +2341,8 @@
       "url": "https://www.kinopoisk.ru/series/1228254/",
       "position": 167,
       "diff": 4,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 1330171,
@@ -2188,7 +2355,8 @@
       "url": "https://www.kinopoisk.ru/series/1330171/",
       "position": 168,
       "diff": 2,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 1445230,
@@ -2201,7 +2369,8 @@
       "url": "https://www.kinopoisk.ru/series/1445230/",
       "position": 169,
       "diff": 1,
-      "diff_kind": "positive"
+      "diff_kind": "positive",
+      "box_office": null
     },
     {
       "kp_id": 571335,
@@ -2214,7 +2383,8 @@
       "url": "https://www.kinopoisk.ru/series/571335/",
       "position": 170,
       "diff": 2,
-      "diff_kind": "positive"
+      "diff_kind": "positive",
+      "box_office": null
     },
     {
       "kp_id": 996611,
@@ -2227,7 +2397,8 @@
       "url": "https://www.kinopoisk.ru/series/996611/",
       "position": 171,
       "diff": 2,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 1387213,
@@ -2240,7 +2411,8 @@
       "url": "https://www.kinopoisk.ru/series/1387213/",
       "position": 172,
       "diff": 5,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 5321393,
@@ -2253,7 +2425,8 @@
       "url": "https://www.kinopoisk.ru/series/5321393/",
       "position": 173,
       "diff": 1,
-      "diff_kind": "positive"
+      "diff_kind": "positive",
+      "box_office": null
     },
     {
       "kp_id": 820540,
@@ -2266,7 +2439,8 @@
       "url": "https://www.kinopoisk.ru/series/820540/",
       "position": 174,
       "diff": 1,
-      "diff_kind": "positive"
+      "diff_kind": "positive",
+      "box_office": null
     },
     {
       "kp_id": 1032606,
@@ -2279,7 +2453,8 @@
       "url": "https://www.kinopoisk.ru/series/1032606/",
       "position": 175,
       "diff": 4,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 5461927,
@@ -2292,7 +2467,8 @@
       "url": "https://www.kinopoisk.ru/series/5461927/",
       "position": 176,
       "diff": 3,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 477458,
@@ -2305,7 +2481,8 @@
       "url": "https://www.kinopoisk.ru/series/477458/",
       "position": 177,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 958500,
@@ -2318,7 +2495,8 @@
       "url": "https://www.kinopoisk.ru/series/958500/",
       "position": 178,
       "diff": 2,
-      "diff_kind": "positive"
+      "diff_kind": "positive",
+      "box_office": null
     },
     {
       "kp_id": 614015,
@@ -2331,7 +2509,8 @@
       "url": "https://www.kinopoisk.ru/series/614015/",
       "position": 179,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 7684174,
@@ -2344,7 +2523,8 @@
       "url": "https://www.kinopoisk.ru/series/7684174/",
       "position": 180,
       "diff": 4,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 838281,
@@ -2357,7 +2537,8 @@
       "url": "https://www.kinopoisk.ru/series/838281/",
       "position": 181,
       "diff": 3,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 5230828,
@@ -2370,7 +2551,8 @@
       "url": "https://www.kinopoisk.ru/series/5230828/",
       "position": 182,
       "diff": 2,
-      "diff_kind": "positive"
+      "diff_kind": "positive",
+      "box_office": null
     },
     {
       "kp_id": 5188890,
@@ -2383,7 +2565,8 @@
       "url": "https://www.kinopoisk.ru/series/5188890/",
       "position": 183,
       "diff": 3,
-      "diff_kind": "positive"
+      "diff_kind": "positive",
+      "box_office": null
     },
     {
       "kp_id": 4470538,
@@ -2396,7 +2579,8 @@
       "url": "https://www.kinopoisk.ru/series/4470538/",
       "position": 184,
       "diff": 2,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 8744383,
@@ -2409,7 +2593,8 @@
       "url": "https://www.kinopoisk.ru/series/8744383/",
       "position": 185,
       "diff": 2,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 84358,
@@ -2422,7 +2607,8 @@
       "url": "https://www.kinopoisk.ru/series/84358/",
       "position": 186,
       "diff": 5,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 767379,
@@ -2435,7 +2621,8 @@
       "url": "https://www.kinopoisk.ru/series/767379/",
       "position": 187,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 5305583,
@@ -2448,7 +2635,8 @@
       "url": "https://www.kinopoisk.ru/series/5305583/",
       "position": 188,
       "diff": 3,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 1235054,
@@ -2461,7 +2649,8 @@
       "url": "https://www.kinopoisk.ru/series/1235054/",
       "position": 189,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 424970,
@@ -2474,7 +2663,8 @@
       "url": "https://www.kinopoisk.ru/series/424970/",
       "position": 190,
       "diff": 7,
-      "diff_kind": "positive"
+      "diff_kind": "positive",
+      "box_office": null
     },
     {
       "kp_id": 1316601,
@@ -2487,7 +2677,8 @@
       "url": "https://www.kinopoisk.ru/series/1316601/",
       "position": 191,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 1398876,
@@ -2500,7 +2691,8 @@
       "url": "https://www.kinopoisk.ru/series/1398876/",
       "position": 192,
       "diff": 4,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 1009255,
@@ -2513,7 +2705,8 @@
       "url": "https://www.kinopoisk.ru/series/1009255/",
       "position": 193,
       "diff": 1,
-      "diff_kind": "positive"
+      "diff_kind": "positive",
+      "box_office": null
     },
     {
       "kp_id": 1399056,
@@ -2526,7 +2719,8 @@
       "url": "https://www.kinopoisk.ru/series/1399056/",
       "position": 194,
       "diff": 4,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 5897895,
@@ -2539,7 +2733,8 @@
       "url": "https://www.kinopoisk.ru/series/5897895/",
       "position": 195,
       "diff": 3,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 1171895,
@@ -2552,7 +2747,8 @@
       "url": "https://www.kinopoisk.ru/series/1171895/",
       "position": 196,
       "diff": 1,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 1108690,
@@ -2565,7 +2761,8 @@
       "url": "https://www.kinopoisk.ru/series/1108690/",
       "position": 197,
       "diff": 1,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 1436045,
@@ -2578,7 +2775,8 @@
       "url": "https://www.kinopoisk.ru/series/1436045/",
       "position": 198,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 79923,
@@ -2591,7 +2789,8 @@
       "url": "https://www.kinopoisk.ru/series/79923/",
       "position": 199,
       "diff": 1,
-      "diff_kind": "positive"
+      "diff_kind": "positive",
+      "box_office": null
     },
     {
       "kp_id": 5261682,
@@ -2604,7 +2803,8 @@
       "url": "https://www.kinopoisk.ru/series/5261682/",
       "position": 200,
       "diff": 1,
-      "diff_kind": "positive"
+      "diff_kind": "positive",
+      "box_office": null
     },
     {
       "kp_id": 542445,
@@ -2617,7 +2817,8 @@
       "url": "https://www.kinopoisk.ru/series/542445/",
       "position": 201,
       "diff": 8,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 412344,
@@ -2630,7 +2831,8 @@
       "url": "https://www.kinopoisk.ru/series/412344/",
       "position": 202,
       "diff": 2,
-      "diff_kind": "positive"
+      "diff_kind": "positive",
+      "box_office": null
     },
     {
       "kp_id": 10086817,
@@ -2643,7 +2845,8 @@
       "url": "https://www.kinopoisk.ru/series/10086817/",
       "position": 203,
       "diff": 4,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 4857811,
@@ -2656,7 +2859,8 @@
       "url": "https://www.kinopoisk.ru/series/4857811/",
       "position": 204,
       "diff": 5,
-      "diff_kind": "positive"
+      "diff_kind": "positive",
+      "box_office": null
     },
     {
       "kp_id": 841018,
@@ -2669,7 +2873,8 @@
       "url": "https://www.kinopoisk.ru/series/841018/",
       "position": 205,
       "diff": 3,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 994622,
@@ -2682,7 +2887,8 @@
       "url": "https://www.kinopoisk.ru/series/994622/",
       "position": 206,
       "diff": 1,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 1209850,
@@ -2695,7 +2901,8 @@
       "url": "https://www.kinopoisk.ru/series/1209850/",
       "position": 207,
       "diff": 4,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 1235046,
@@ -2708,7 +2915,8 @@
       "url": "https://www.kinopoisk.ru/series/1235046/",
       "position": 208,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 1394131,
@@ -2721,7 +2929,8 @@
       "url": "https://www.kinopoisk.ru/series/1394131/",
       "position": 209,
       "diff": 2,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 923154,
@@ -2734,7 +2943,8 @@
       "url": "https://www.kinopoisk.ru/series/923154/",
       "position": 210,
       "diff": 4,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 1220920,
@@ -2747,7 +2957,8 @@
       "url": "https://www.kinopoisk.ru/series/1220920/",
       "position": 211,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 161142,
@@ -2760,7 +2971,8 @@
       "url": "https://www.kinopoisk.ru/series/161142/",
       "position": 212,
       "diff": 2,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 1226631,
@@ -2773,7 +2985,8 @@
       "url": "https://www.kinopoisk.ru/series/1226631/",
       "position": 213,
       "diff": 2,
-      "diff_kind": "positive"
+      "diff_kind": "positive",
+      "box_office": null
     },
     {
       "kp_id": 7446876,
@@ -2786,7 +2999,8 @@
       "url": "https://www.kinopoisk.ru/series/7446876/",
       "position": 214,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 8560572,
@@ -2799,7 +3013,8 @@
       "url": "https://www.kinopoisk.ru/series/8560572/",
       "position": 215,
       "diff": 3,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 1118138,
@@ -2812,7 +3027,8 @@
       "url": "https://www.kinopoisk.ru/series/1118138/",
       "position": 216,
       "diff": 2,
-      "diff_kind": "positive"
+      "diff_kind": "positive",
+      "box_office": null
     },
     {
       "kp_id": 77183,
@@ -2825,7 +3041,8 @@
       "url": "https://www.kinopoisk.ru/series/77183/",
       "position": 217,
       "diff": 1,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 1381125,
@@ -2838,7 +3055,8 @@
       "url": "https://www.kinopoisk.ru/series/1381125/",
       "position": 218,
       "diff": 1,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 986788,
@@ -2851,7 +3069,8 @@
       "url": "https://www.kinopoisk.ru/series/986788/",
       "position": 219,
       "diff": 6,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 4639604,
@@ -2864,7 +3083,8 @@
       "url": "https://www.kinopoisk.ru/series/4639604/",
       "position": 220,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 1278808,
@@ -2877,7 +3097,8 @@
       "url": "https://www.kinopoisk.ru/series/1278808/",
       "position": 221,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 4646634,
@@ -2890,7 +3111,8 @@
       "url": "https://www.kinopoisk.ru/series/4646634/",
       "position": 222,
       "diff": 3,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 803363,
@@ -2903,7 +3125,8 @@
       "url": "https://www.kinopoisk.ru/series/803363/",
       "position": 223,
       "diff": 1,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 1044487,
@@ -2916,7 +3139,8 @@
       "url": "https://www.kinopoisk.ru/series/1044487/",
       "position": 224,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 4668048,
@@ -2929,7 +3153,8 @@
       "url": "https://www.kinopoisk.ru/series/4668048/",
       "position": 225,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 5125322,
@@ -2942,7 +3167,8 @@
       "url": "https://www.kinopoisk.ru/series/5125322/",
       "position": 226,
       "diff": 3,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 5417357,
@@ -2955,7 +3181,8 @@
       "url": "https://www.kinopoisk.ru/series/5417357/",
       "position": 227,
       "diff": 2,
-      "diff_kind": "positive"
+      "diff_kind": "positive",
+      "box_office": null
     },
     {
       "kp_id": 701593,
@@ -2968,7 +3195,8 @@
       "url": "https://www.kinopoisk.ru/series/701593/",
       "position": 228,
       "diff": 2,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 2000102,
@@ -2981,7 +3209,8 @@
       "url": "https://www.kinopoisk.ru/series/2000102/",
       "position": 229,
       "diff": 1,
-      "diff_kind": "positive"
+      "diff_kind": "positive",
+      "box_office": null
     },
     {
       "kp_id": 972781,
@@ -2994,7 +3223,8 @@
       "url": "https://www.kinopoisk.ru/series/972781/",
       "position": 230,
       "diff": 3,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 4491006,
@@ -3007,7 +3237,8 @@
       "url": "https://www.kinopoisk.ru/series/4491006/",
       "position": 231,
       "diff": 3,
-      "diff_kind": "positive"
+      "diff_kind": "positive",
+      "box_office": null
     },
     {
       "kp_id": 4624770,
@@ -3020,7 +3251,8 @@
       "url": "https://www.kinopoisk.ru/series/4624770/",
       "position": 232,
       "diff": 4,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 5364758,
@@ -3033,7 +3265,8 @@
       "url": "https://www.kinopoisk.ru/series/5364758/",
       "position": 233,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 4902844,
@@ -3046,7 +3279,8 @@
       "url": "https://www.kinopoisk.ru/series/4902844/",
       "position": 234,
       "diff": 3,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 4324714,
@@ -3059,7 +3293,8 @@
       "url": "https://www.kinopoisk.ru/series/4324714/",
       "position": 235,
       "diff": 3,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 4424478,
@@ -3072,7 +3307,8 @@
       "url": "https://www.kinopoisk.ru/series/4424478/",
       "position": 236,
       "diff": 1,
-      "diff_kind": "positive"
+      "diff_kind": "positive",
+      "box_office": null
     },
     {
       "kp_id": 843221,
@@ -3085,7 +3321,8 @@
       "url": "https://www.kinopoisk.ru/series/843221/",
       "position": 237,
       "diff": 1,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 5394545,
@@ -3098,7 +3335,8 @@
       "url": "https://www.kinopoisk.ru/series/5394545/",
       "position": 238,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 1331276,
@@ -3111,7 +3349,8 @@
       "url": "https://www.kinopoisk.ru/series/1331276/",
       "position": 239,
       "diff": 1,
-      "diff_kind": "positive"
+      "diff_kind": "positive",
+      "box_office": null
     },
     {
       "kp_id": 913033,
@@ -3124,7 +3363,8 @@
       "url": "https://www.kinopoisk.ru/series/913033/",
       "position": 240,
       "diff": 5,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 1301710,
@@ -3137,7 +3377,8 @@
       "url": "https://www.kinopoisk.ru/series/1301710/",
       "position": 241,
       "diff": 2,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 971114,
@@ -3150,7 +3391,8 @@
       "url": "https://www.kinopoisk.ru/series/971114/",
       "position": 242,
       "diff": 1,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 5276677,
@@ -3163,7 +3405,8 @@
       "url": "https://www.kinopoisk.ru/series/5276677/",
       "position": 243,
       "diff": 3,
-      "diff_kind": "positive"
+      "diff_kind": "positive",
+      "box_office": null
     },
     {
       "kp_id": 1330017,
@@ -3176,7 +3419,8 @@
       "url": "https://www.kinopoisk.ru/series/1330017/",
       "position": 244,
       "diff": 1,
-      "diff_kind": "positive"
+      "diff_kind": "positive",
+      "box_office": null
     },
     {
       "kp_id": 468147,
@@ -3189,7 +3433,8 @@
       "url": "https://www.kinopoisk.ru/series/468147/",
       "position": 245,
       "diff": 1,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 4885823,
@@ -3202,7 +3447,8 @@
       "url": "https://www.kinopoisk.ru/series/4885823/",
       "position": 246,
       "diff": 4,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 9026145,
@@ -3215,7 +3461,8 @@
       "url": "https://www.kinopoisk.ru/series/9026145/",
       "position": 247,
       "diff": 4,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 1178003,
@@ -3228,7 +3475,8 @@
       "url": "https://www.kinopoisk.ru/series/1178003/",
       "position": 248,
       "diff": 1,
-      "diff_kind": "negative"
+      "diff_kind": "negative",
+      "box_office": null
     },
     {
       "kp_id": 841048,
@@ -3241,7 +3489,8 @@
       "url": "https://www.kinopoisk.ru/series/841048/",
       "position": 249,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     },
     {
       "kp_id": 5437615,
@@ -3254,7 +3503,8 @@
       "url": "https://www.kinopoisk.ru/series/5437615/",
       "position": 250,
       "diff": null,
-      "diff_kind": null
+      "diff_kind": null,
+      "box_office": null
     }
   ]
 }

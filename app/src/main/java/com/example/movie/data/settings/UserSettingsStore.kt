@@ -17,11 +17,13 @@ import com.example.movie.domain.model.HapticSlot
 import com.example.movie.domain.model.withHapticFeel
 import com.example.movie.domain.model.UserSettings
 import com.example.movie.domain.model.UserSettingsRepository
+import com.example.movie.domain.model.BackdropQualityAuto
 import com.example.movie.domain.model.BarScrollAuto
 import com.example.movie.domain.model.BarScrollOff
 import com.example.movie.domain.model.DefaultImageParallel
 import com.example.movie.domain.model.PosterMotionAuto
 import com.example.movie.domain.model.PosterQualityFull
+import com.example.movie.domain.model.normalizedBackdropQuality
 import com.example.movie.domain.model.normalizedBarScroll
 import com.example.movie.domain.model.PosterQualityLight
 import com.example.movie.domain.model.normalizedImageParallel
@@ -83,6 +85,10 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
     override fun setShowLogos(enabled: Boolean) = write { it.copy(showLogos = enabled) }
 
     override fun setAutoBackdrop(enabled: Boolean) = write { it.copy(autoBackdrop = enabled) }
+
+    override fun setBackdropQuality(quality: String) = write {
+        it.copy(backdropQuality = quality.normalizedBackdropQuality())
+    }
 
     override fun setWatchGlow(enabled: Boolean) = write { it.copy(watchGlow = enabled) }
 
@@ -171,6 +177,7 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
         settings.copy(
             playerCodec = settings.playerCodec.normalizedPlayerCodec(),
             posterQuality = settings.posterQuality.normalizedPosterQuality(),
+            backdropQuality = settings.backdropQuality.normalizedBackdropQuality(),
             barScroll = settings.barScroll.normalizedBarScroll(),
             imageParallel = settings.imageParallel.normalizedImageParallel(),
             posterMotion = settings.posterMotion.normalizedPosterMotion(),
@@ -267,6 +274,7 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
             .putString(KEY_PLEX_PICK, next.plexPick.pick4().joinToString(","))
             .putBoolean(KEY_LOGOS, next.showLogos)
             .putBoolean(KEY_BACKDROP, next.autoBackdrop)
+            .putString(KEY_BACKDROP_QUALITY, next.backdropQuality)
             .putBoolean(KEY_WATCH_GLOW, next.watchGlow)
             .putBoolean(KEY_HAPTIC, next.haptic)
             .putBoolean(KEY_GYRO, next.gyro)
@@ -394,6 +402,9 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
         plexPick = prefs.getString(KEY_PLEX_PICK, null).toPick(),
         showLogos = prefs.getBoolean(KEY_LOGOS, true),
         autoBackdrop = prefs.getBoolean(KEY_BACKDROP, true),
+        backdropQuality = prefs.getString(KEY_BACKDROP_QUALITY, BackdropQualityAuto)
+            .orEmpty()
+            .normalizedBackdropQuality(),
         watchGlow = prefs.getBoolean(KEY_WATCH_GLOW, false),
         haptic = prefs.getBoolean(KEY_HAPTIC, true),
         gyro = prefs.getBoolean(KEY_GYRO, false),
@@ -631,6 +642,7 @@ class UserSettingsStore(context: Context) : UserSettingsRepository {
         const val KEY_PLEX_PICK = "plex_pick"
         const val KEY_LOGOS = "show_logos"
         const val KEY_BACKDROP = "auto_backdrop"
+        const val KEY_BACKDROP_QUALITY = "backdrop_quality"
         const val KEY_WATCH_GLOW = "watch_glow"
         const val KEY_HAPTIC = "haptic"
         const val KEY_GYRO = "gyro"

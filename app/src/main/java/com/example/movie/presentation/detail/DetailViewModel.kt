@@ -43,7 +43,8 @@ class DetailViewModel(
                 _state.value = DetailUiState(phase = DetailPhase.Loading)
             }
             getMovieDetail(movieId)
-                .onSuccess { detail ->
+                .onSuccess { loaded ->
+                    val detail = loaded.keepParsedKp(movieId)
                     _state.value = DetailUiState(detail = detail, phase = DetailPhase.Ready)
                     resolveWatch(detail)
                 }
@@ -85,3 +86,10 @@ private fun Throwable.asDataError(): DataError = this as? DataError ?: DataError
 
 private fun isKinopoiskId(id: String): Boolean =
     id.length in 1..10 && id.all(Char::isDigit) && id.toIntOrNull()?.let { it > 0 } == true
+
+/** С полки Кинопоиска рейтинг парсинга не затирается ответом Вокино. IMDb берётся из Вокино. */
+private fun MovieDetail.keepParsedKp(openedId: String): MovieDetail {
+    if (!isKinopoiskId(openedId)) return this
+    val parsed = DetailSeed.get(openedId)?.ratingKp ?: return this
+    return if (ratingKp == parsed) this else copy(ratingKp = parsed)
+}

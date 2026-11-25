@@ -2,7 +2,8 @@
 
 Хеши в CSS-модулях (`styles_position__nfMVF`) меняются между выкладками.
 Держимся за стабильный кусок имени: `styles_position__`, `styles_diff__`,
-`styles_kinopoiskValue__`, `styles_kinopoiskCount__`, `data-test-id`.
+`styles_boxOfficesLeft__`, `styles_kinopoiskValue__`, `styles_kinopoiskCount__`,
+`data-test-id`.
 """
 
 from __future__ import annotations
@@ -14,6 +15,7 @@ from decimal import Decimal, ROUND_HALF_UP
 _ITEM = "data-test-id=\"movie-list-item\""
 _POS = re.compile(r'class="[^"]*styles_position__[^"]*"[^>]*>(\d+)<')
 _DIFF = re.compile(r'class="([^"]*styles_diff__[^"]*)"[^>]*>([^<]*)<')
+_BOX = re.compile(r'class="[^"]*styles_boxOfficesLeft__[^"]*"[^>]*>([^<]*)<')
 _TITLE = re.compile(r'class="[^"]*styles_mainTitle__[^"]*"[^>]*>([^<]+)<')
 _ORIG = re.compile(
     r'class="[^"]*desktop-list-main-info_secondaryTitle__[^"]*"[^>]*>([^<]*)<'
@@ -78,6 +80,8 @@ def _parse_item(chunk: str) -> dict | None:
     position_diff, direction = (None, None)
     if diff_match:
         position_diff, direction = _parse_diff(diff_match.group(1), diff_match.group(2))
+    box_match = _BOX.search(chunk)
+    box_office = _clean(box_match.group(1)) if box_match else ""
     rating_match = _RATING.search(chunk)
     votes_match = _VOTES.search(chunk)
     return {
@@ -85,6 +89,7 @@ def _parse_item(chunk: str) -> dict | None:
         "position": int(pos_match.group(1)) if pos_match else None,
         "diff": position_diff,
         "diff_kind": direction,
+        "box_office": box_office or None,
         "title": title or None,
         "original_title": original,
         "year": year,

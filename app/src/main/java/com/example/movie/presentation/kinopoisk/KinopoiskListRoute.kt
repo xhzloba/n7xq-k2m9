@@ -8,6 +8,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import com.example.movie.R
 import com.example.movie.data.kinopoisk.KinopoiskCatalog
 import com.example.movie.data.kinopoisk.KpShelf
 import com.example.movie.data.kinopoisk.kpCard
@@ -43,7 +45,9 @@ internal fun KinopoiskListRoute(
     LaunchedEffect(current?.id) {
         if (movies.isEmpty()) return@LaunchedEffect
         prefetchKpCards(movies.take(24)) { id ->
-            container.getMovieDetail(id, background = true).getOrNull()
+            val detail = container.getMovieDetail(id, background = true).getOrNull()
+            if (detail != null && detail.id != id) container.favorites.note(detail.id, id)
+            detail
         }
     }
     SectionPage(
@@ -59,6 +63,11 @@ internal fun KinopoiskListRoute(
         onMovieClick = onMovieClick,
         onMoviePeek = onMoviePeek,
         onHideBar = onHideBar,
+        note = if (current?.id == "box-usa-all-time") {
+            stringResource(R.string.kp_box_usa_about)
+        } else {
+            null
+        },
         overlay = { movie ->
             val rank = current?.ranks?.get(movie.id) ?: return@SectionPage
             KpRankOverlay(rank)

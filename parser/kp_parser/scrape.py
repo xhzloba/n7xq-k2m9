@@ -67,6 +67,14 @@ CATEGORIES: tuple[Category, ...] = (
         enabled=True,
         fixed=250,
     ),
+    Category(
+        id="box-usa-all-time",
+        title="США: самые кассовые",
+        kind="movie",
+        url="https://www.kinopoisk.ru/lists/movies/box-usa-all-time/",
+        enabled=True,
+        fixed=881,
+    ),
 )
 
 FIELDS: tuple[tuple[str, str], ...] = (
@@ -79,6 +87,7 @@ FIELDS: tuple[tuple[str, str], ...] = (
     ("url", "Ссылка"),
     ("position", "Позиция"),
     ("diff", "Сдвиг"),
+    ("box_office", "Сборы"),
 )
 
 
@@ -138,7 +147,11 @@ def scrape(
                 collected.extend(fresh)
                 positive = sum(1 for item in fresh if item["diff_kind"] == "positive")
                 negative = sum(1 for item in fresh if item["diff_kind"] == "negative")
-                log(f"+{len(fresh)} · всего {len(collected)} · ↑ {positive} · ↓ {negative}")
+                boxed = sum(1 for item in fresh if item.get("box_office"))
+                if boxed:
+                    log(f"+{len(fresh)} · всего {len(collected)} · сборы {boxed}")
+                else:
+                    log(f"+{len(fresh)} · всего {len(collected)} · ↑ {positive} · ↓ {negative}")
                 if on_items:
                     on_items(collected[:limit])
                 if len(collected) >= limit or not fresh:

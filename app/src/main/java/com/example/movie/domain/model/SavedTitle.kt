@@ -1,5 +1,6 @@
 package com.example.movie.domain.model
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -20,7 +21,12 @@ data class SavedTitle(
     val ratingImdb: Float? = null,
     val age: Int? = null,
     val logoUrl: String? = null,
+    /** Номер Кинопоиска, если карточка Вокино и полка — один фильм. */
+    @SerialName("kp_id") val kpId: String? = null,
 )
+
+internal fun String.isKinopoiskId(): Boolean =
+    length in 1..10 && all(Char::isDigit) && toIntOrNull()?.let { it > 0 } == true
 
 internal fun Movie.toSaved(): SavedTitle = SavedTitle(
     id = id,

@@ -159,7 +159,7 @@
   .scroll { overflow: auto; min-height: 0; flex: 1 1 0; padding-bottom: 8px; }
   .film {
     display: grid;
-    grid-template-columns: 72px 76px 1fr auto;
+    grid-template-columns: 96px 76px 1fr auto;
     gap: 16px;
     align-items: center;
     padding: 12px 8px 12px 0;
@@ -169,6 +169,7 @@
   .film.quiet { animation: none; }
   .slot { text-align: right; font-variant-numeric: tabular-nums; }
   .rank { font-size: 22px; font-weight: 640; letter-spacing: -0.04em; line-height: 1; }
+  .gross { font-size: 13px; font-weight: 650; line-height: 1.2; letter-spacing: -0.02em; }
   .move { margin-top: 6px; font-size: 13px; font-weight: 650; line-height: 1; }
   .move.flat { color: var(--muted); font-weight: 500; }
   .poster, .ph {
@@ -331,7 +332,7 @@ function syncLimit() {
   }
   if (!input.value) input.value = state.savedLimit || "50";
   hint.textContent = fixed.length
-    ? "Число — для популярных. Топ 500 и топ 250 снимаются целиком."
+    ? "Число — для популярных. Топ 500, топ 250 и кассовые США снимаются целиком."
     : "1–1000, по 50 на страницу";
 }
 
@@ -430,6 +431,9 @@ function filmHtml(item, delay, quiet) {
   if (item.diff != null && item.diff_kind === "positive") move = `<div class="move pos">↑ ${item.diff}</div>`;
   else if (item.diff != null && item.diff_kind === "negative") move = `<div class="move neg">↓ ${item.diff}</div>`;
   else if (item.diff != null) move = `<div class="move">${item.diff}</div>`;
+  const slot = item.box_office
+    ? `<div class="slot"><div class="gross">${esc(item.box_office)}</div></div>`
+    : `<div class="slot"><div class="rank">${item.position ?? ""}</div>${move}</div>`;
   const shown = item.page_rating != null ? Number(item.page_rating).toFixed(1) : item.rating;
   const rate = shown == null || shown === ""
     ? `<b class="empty">—</b>`
@@ -444,7 +448,7 @@ function filmHtml(item, delay, quiet) {
     item.kp_id ? "kp " + item.kp_id : "",
   ].filter(Boolean);
   return `<article class="film${quiet ? " quiet" : ""}" style="animation-delay:${delay}ms">
-    <div class="slot"><div class="rank">${item.position ?? ""}</div>${move}</div>
+    ${slot}
     ${poster}
     <div>
       <div class="name">${esc(item.title || "—")}</div>
