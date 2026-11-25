@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
@@ -26,10 +27,12 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.foundation.Image
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -50,7 +53,6 @@ import com.example.movie.presentation.common.headerThemeBrush
 import com.example.movie.presentation.common.topScrimFade
 import com.example.movie.presentation.common.topScrimHeight
 import com.example.movie.presentation.common.topScrimPalette
-import com.example.movie.presentation.home.components.LogoAspect
 import com.example.movie.presentation.home.components.LogoHeight
 import com.example.movie.data.kinopoisk.KinopoiskCatalog
 import com.example.movie.data.kinopoisk.KpShelf
@@ -63,7 +65,6 @@ import com.example.movie.presentation.common.HideBarOnScroll
 import com.example.movie.presentation.common.scrollToTopOn
 import com.example.movie.presentation.home.CatalogGap
 import com.example.movie.presentation.home.components.BrandTopInset
-import com.example.movie.presentation.home.components.BrandWordmark
 import com.example.movie.presentation.home.components.HomeContentInset
 import com.example.movie.presentation.home.components.BrandLogoBleed
 import com.example.movie.presentation.home.components.RecommendationRail
@@ -71,11 +72,12 @@ import com.example.movie.presentation.settings.LocalUserSettings
 import com.example.movie.presentation.shell.ShellIcons
 import com.example.movie.ui.theme.CinemaMuted
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.movie.ui.theme.PlayBlue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 internal const val KpRailPreview = 15
+
+private val KpLogoAspect = 500f / 73f
 
 @Composable
 private fun KpUpdatedMark(label: String) {
@@ -202,7 +204,7 @@ internal fun KinopoiskScreen(
                     drawTopScrim(fill, plate, null, palette) {
                         val y = topInset.toPx() + BrandTopInset.toPx() + 20.dp.toPx()
                         val radius = 140.dp.toPx()
-                        val logoWidth = LogoHeight.toPx() * LogoAspect
+                        val logoWidth = LogoHeight.toPx() * KpLogoAspect
                         val logoX = (HomeContentInset - BrandLogoBleed).toPx() + logoWidth / 2f
                         drawCircle(
                             brush = Brush.radialGradient(
@@ -231,7 +233,13 @@ internal fun KinopoiskScreen(
                 .onSizeChanged { brandHeight = it.height },
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            BrandWordmark(play = PlayBlue)
+            Image(
+                painter = painterResource(R.drawable.kinopoisk_logo),
+                contentDescription = stringResource(R.string.nav_kinopoisk),
+                modifier = Modifier
+                    .height(LogoHeight)
+                    .aspectRatio(KpLogoAspect, matchHeightConstraintsFirst = true),
+            )
         }
     }
 }

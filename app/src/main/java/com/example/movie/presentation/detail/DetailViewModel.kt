@@ -44,7 +44,7 @@ class DetailViewModel(
             }
             getMovieDetail(movieId)
                 .onSuccess { loaded ->
-                    val detail = loaded.keepParsedKp(movieId)
+                    val detail = loaded.withKinopoiskSeed(movieId)
                     _state.value = DetailUiState(detail = detail, phase = DetailPhase.Ready)
                     resolveWatch(detail)
                 }
@@ -87,9 +87,24 @@ private fun Throwable.asDataError(): DataError = this as? DataError ?: DataError
 private fun isKinopoiskId(id: String): Boolean =
     id.length in 1..10 && id.all(Char::isDigit) && id.toIntOrNull()?.let { it > 0 } == true
 
-/** С полки Кинопоиска рейтинг парсинга не затирается ответом Вокино. IMDb берётся из Вокино. */
-private fun MovieDetail.keepParsedKp(openedId: String): MovieDetail {
+/**
+ * Вокино на неизвестный id Кинопоиска отвечает пустой карточкой.
+ * Тогда остаётся название и рейтинг с полки. Если фильм есть, рейтинг
+ * парсинга всё равно не затирается. IMDb берётся из Вокино.
+ */
+private fun MovieDetail.withKinopoiskSeed(openedId: String): MovieDetail {
     if (!isKinopoiskId(openedId)) return this
-    val parsed = DetailSeed.get(openedId)?.ratingKp ?: return this
+    val seed = DetailSeed.get(openedId)
+    if (title.isBlank() && seed != null && seed.title.isNotBlank()) {
+        val missing = id.isBlank() || id == openedId
+        if (missing) return seed.toPreviewDetail()
+        return copy(
+            title = seed.title,
+            ratingKp = seed.ratingKp ?: ratingKp,
+            posterUrl = posterUrl ?: seed.posterUrl,
+            year = year ?: seed.year,
+        )
+    }
+    val parsed = seed?.ratingKp ?: return this
     return if (ratingKp == parsed) this else copy(ratingKp = parsed)
 }
