@@ -376,6 +376,7 @@
     <string name="kp_updated">Обновлено %1$s</string>
     <string name="kp_box_office">Сборы %1$s</string>
     <string name="kp_box_usa_about">Рейтинг самых кассовых фильмов кинопроката США (в список включены фильмы, собравшие от $100 млн).</string>
+    <string name="kp_popular_about">Рейтинг составлен на основе посещаемости страниц фильмов, а также запросов к поисковой системе сайта. Список обновляется один раз в сутки.</string>
     <string name="kp_rank">Место %1$d</string>
     <string name="kp_rank_up">Место %1$d, вверх на %2$d</string>
     <string name="kp_rank_down">Место %1$d, вниз на %2$d</string>

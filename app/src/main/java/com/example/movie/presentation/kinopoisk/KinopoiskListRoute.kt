@@ -89,10 +89,10 @@ internal fun KinopoiskListRoute(
         onMovieClick = onMovieClick,
         onMoviePeek = onMoviePeek,
         onHideBar = onHideBar,
-        note = if (current?.id == "box-usa-all-time") {
-            stringResource(R.string.kp_box_usa_about)
-        } else {
-            null
+        note = when (current?.id) {
+            "box-usa-all-time" -> stringResource(R.string.kp_box_usa_about)
+            "popular-films", "popular-series" -> stringResource(R.string.kp_popular_about)
+            else -> null
         },
         overlay = { movie ->
             val rank = current?.ranks?.get(movie.id) ?: return@SectionPage
