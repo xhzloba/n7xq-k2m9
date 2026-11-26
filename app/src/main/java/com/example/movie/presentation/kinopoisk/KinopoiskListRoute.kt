@@ -9,9 +9,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.movie.R
 import com.example.movie.data.kinopoisk.KinopoiskCatalog
-import com.example.movie.data.kinopoisk.KpShelf
 import com.example.movie.data.kinopoisk.kpCard
 import com.example.movie.data.kinopoisk.prefetchKpCards
 import com.example.movie.di.LocalAppContainer
@@ -31,12 +31,12 @@ internal fun KinopoiskListRoute(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
+    val revision by KinopoiskCatalog.revision.collectAsStateWithLifecycle()
     var shelf by remember(id) { mutableStateOf(KinopoiskCatalog.peek(id)) }
-    LaunchedEffect(id) {
-        if (shelf == null) {
-            shelf = withContext(Dispatchers.IO) {
-                KinopoiskCatalog.load(context).firstOrNull { it.id == id }
-            }
+    LaunchedEffect(id, revision) {
+        val known = KinopoiskCatalog.peek(id)
+        shelf = known ?: withContext(Dispatchers.IO) {
+            KinopoiskCatalog.ensure(context).firstOrNull { it.id == id }
         }
     }
     val current = shelf

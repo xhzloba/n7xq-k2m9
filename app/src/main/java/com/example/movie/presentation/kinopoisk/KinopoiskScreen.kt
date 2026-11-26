@@ -1,6 +1,8 @@
 package com.example.movie.presentation.kinopoisk
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -38,6 +40,8 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -67,7 +71,9 @@ import com.example.movie.presentation.home.CatalogGap
 import com.example.movie.presentation.home.components.BrandTopInset
 import com.example.movie.presentation.home.components.HomeContentInset
 import com.example.movie.presentation.home.components.BrandLogoBleed
+import com.example.movie.presentation.home.components.PosterGridInset
 import com.example.movie.presentation.home.components.RecommendationRail
+import com.example.movie.presentation.home.components.RecommendationRailSkeleton
 import com.example.movie.presentation.settings.LocalUserSettings
 import com.example.movie.presentation.shell.ShellIcons
 import com.example.movie.ui.theme.CinemaMuted
@@ -76,6 +82,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 internal const val KpRailPreview = 15
+
+private const val KpShelfSlots = 5
+
+private val KpTitleWidths = floatArrayOf(0.46f, 0.34f, 0.52f, 0.4f, 0.3f)
 
 private val KpLogoAspect = 500f / 73f
 
@@ -105,8 +115,32 @@ private fun KpUpdatedMark(label: String) {
 }
 
 @Composable
+private fun KpShelfSkeleton(titleWidth: Float) {
+    Column(Modifier.fillMaxWidth()) {
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = PosterGridInset)
+                .height(18.dp),
+            contentAlignment = Alignment.CenterStart,
+        ) {
+            Box(
+                Modifier
+                    .fillMaxWidth(titleWidth)
+                    .height(12.dp)
+                    .clip(RoundedCornerShape(3.dp))
+                    .background(Color.White.copy(alpha = 0.10f)),
+            )
+        }
+        Spacer(Modifier.height(10.dp))
+        RecommendationRailSkeleton()
+    }
+}
+
+@Composable
 internal fun KinopoiskScreen(
     scrollTop: Int,
+    active: Boolean,
     onMovieClick: (String) -> Unit,
     onMoviePeek: (Movie) -> Unit,
     onOpenList: (String) -> Unit,
@@ -114,9 +148,16 @@ internal fun KinopoiskScreen(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
-    var shelves by remember { mutableStateOf<List<KpShelf>?>(null) }
-    LaunchedEffect(Unit) {
-        shelves = withContext(Dispatchers.IO) { KinopoiskCatalog.load(context) }
+    var shelves by remember { mutableStateOf(KinopoiskCatalog.snapshot()) }
+    val revision by KinopoiskCatalog.revision.collectAsStateWithLifecycle()
+    LaunchedEffect(active) {
+        if (!active) return@LaunchedEffect
+        shelves = withContext(Dispatchers.IO) { KinopoiskCatalog.ensure(context) }
+        withContext(Dispatchers.IO) { KinopoiskCatalog.refresh(context) }
+    }
+    LaunchedEffect(revision) {
+        if (revision == 0) return@LaunchedEffect
+        KinopoiskCatalog.snapshot()?.let { shelves = it }
     }
     val density = LocalDensity.current
     var brandHeight by remember { mutableIntStateOf(0) }
@@ -154,34 +195,33 @@ internal fun KinopoiskScreen(
             ),
         ) {
             if (loaded == null) {
-                items(4, key = { "kp-wait-$it" }) { index ->
-                    if (index > 0) Spacer(Modifier.height(CatalogGap))
-                    RecommendationRail(
-                        movies = emptyList(),
-                        onMovieClick = {},
-                        onMoviePeek = {},
-                        modifier = Modifier.fillMaxWidth(),
-                    )
+                items(KpShelfSlots, key = { "kp-wait-$it" }) { index ->
+                    Column(Modifier.fillMaxWidth()) {
+                        if (index > 0) Spacer(Modifier.height(CatalogGap))
+                        KpShelfSkeleton(KpTitleWidths[index])
+                    }
                 }
             } else {
                 items(loaded, key = { it.id }) { shelf ->
-                    if (shelf.id != loaded.first().id) Spacer(Modifier.height(CatalogGap))
-                    val preview = shelf.movies.take(KpRailPreview).map { it.kpCard() }
-                    RecommendationRail(
-                        movies = preview,
-                        onMovieClick = onMovieClick,
-                        onMoviePeek = onMoviePeek,
-                        title = shelf.title,
-                        onOpen = { onOpenList(shelf.id) },
-                        trailing = shelf.updated?.let { label ->
-                            { KpUpdatedMark(label) }
-                        },
-                        overlay = { movie ->
-                            val rank = shelf.ranks[movie.id] ?: return@RecommendationRail
-                            KpRankOverlay(rank)
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
+                    Column(Modifier.fillMaxWidth()) {
+                        if (shelf.id != loaded.first().id) Spacer(Modifier.height(CatalogGap))
+                        val preview = shelf.movies.take(KpRailPreview).map { it.kpCard() }
+                        RecommendationRail(
+                            movies = preview,
+                            onMovieClick = onMovieClick,
+                            onMoviePeek = onMoviePeek,
+                            title = shelf.title,
+                            onOpen = { onOpenList(shelf.id) },
+                            trailing = shelf.updated?.let { label ->
+                                { KpUpdatedMark(label) }
+                            },
+                            overlay = { movie ->
+                                val rank = shelf.ranks[movie.id] ?: return@RecommendationRail
+                                KpRankOverlay(rank)
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
                 }
             }
         }

@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import os
+import re
 import subprocess
 import threading
 import time
@@ -14,8 +16,12 @@ from urllib.parse import parse_qs, urlsplit
 from kp_parser.scrape import CATEGORIES, FIELDS, category_by_id, scrape
 
 ROOT = Path(__file__).resolve().parent.parent
+REPO = ROOT.parent
+ASSETS = REPO / "app" / "src" / "main" / "assets" / "kinopoisk"
 UI = Path(__file__).resolve().parent / "ui.html"
 CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+_TOKEN = re.compile(r"(ghp_|github_pat_|gho_|ghu_|ghs_|ghr_)[A-Za-z0-9_]+")
+_URL_SECRET = re.compile(r"https://[^/\s]+@")
 
 _lock = threading.Lock()
 _job = {
@@ -37,6 +43,9 @@ _job = {
     "revision": 0,
     "details": False,
     "cancel": False,
+    "pushing": False,
+    "push_error": None,
+    "push_note": "",
 }
 _last_beat = time.monotonic()
 
@@ -79,6 +88,14 @@ def _snapshot(view: str | None = None, since: int | None = None, rev: int | None
             "view": chosen,
             "restored": _job["restored"],
             "revision": _job["revision"],
+            "pushing": _job["pushing"],
+            "push_error": _job["push_error"],
+            "push_note": _job["push_note"],
+            "pushable": [
+                item["title"]
+                for item in lists.values()
+                if item.get("path")
+            ],
             "views": [
                 {
                     "id": item["id"],
@@ -158,6 +175,14 @@ class Handler(BaseHTTPRequestHandler):
                 if _job["running"]:
                     _job["cancel"] = True
             self._send(204, "text/plain", b"")
+            return
+        if self.path == "/api/push":
+            try:
+                _start_push()
+            except Exception as error:
+                self._send(400, "application/json", _dump({"error": str(error)}))
+                return
+            self._send(200, "application/json", _dump({"ok": True}))
             return
         if self.path == "/api/reveal":
             spec = _read_json(self) if int(self.headers.get("Content-Length", "0") or 0) else {}
@@ -259,6 +284,8 @@ def _start(spec: dict) -> None:
     with _lock:
         if _job["running"]:
             raise RuntimeError("Парс уже идёт")
+        if _job["pushing"]:
+            raise RuntimeError("Сначала дождись заливки на GitHub")
         lists = {
             category.id: {
                 "id": category.id,
@@ -288,6 +315,8 @@ def _start(spec: dict) -> None:
             revision=0,
             details=details,
             cancel=False,
+            push_error=None,
+            push_note="",
         )
     threading.Thread(
         target=_run,
@@ -384,6 +413,164 @@ def _project(item: dict, fields: list[str], details: bool = False) -> dict:
         picked["page_rating"] = item.get("page_rating")
         picked["page_votes"] = item.get("page_votes")
     return picked
+
+
+def _safe(text: str) -> str:
+    text = _URL_SECRET.sub("https://", text)
+    return _TOKEN.sub("[token]", text)
+
+
+def _git(*args: str) -> subprocess.CompletedProcess[str]:
+    env = os.environ.copy()
+    env["GIT_TERMINAL_PROMPT"] = "0"
+    return subprocess.run(
+        ["git", *args],
+        cwd=REPO,
+        capture_output=True,
+        text=True,
+        check=False,
+        env=env,
+    )
+
+
+def _git_error(proc: subprocess.CompletedProcess[str]) -> str:
+    text = _safe((proc.stderr or proc.stdout or "").strip())
+    return text[-500:] if len(text) > 500 else text
+
+
+def _start_push() -> None:
+    with _lock:
+        if _job["running"]:
+            raise RuntimeError("Сначала дождись конца парса")
+        if _job["pushing"]:
+            raise RuntimeError("Заливка уже идёт")
+        items: list[tuple[str, Path, str]] = []
+        for cid, bucket in _job["lists"].items():
+            try:
+                category_by_id(cid)
+            except KeyError:
+                continue
+            raw = bucket.get("path")
+            if not raw:
+                continue
+            src = Path(raw)
+            if src.is_file():
+                items.append((cid, src, str(bucket.get("title") or cid)))
+        if not items:
+            raise RuntimeError("Нет сохранённых списков")
+        _job["pushing"] = True
+        _job["push_error"] = None
+        _job["push_note"] = ""
+    threading.Thread(target=_push, args=(items,), daemon=True).start()
+
+
+def _push(items: list[tuple[str, Path, str]]) -> None:
+    try:
+        ready = _read_lists(items)
+        _preflight()
+        rels = _write_assets(ready)
+        _publish(rels, [title for _cid, title, _text in ready])
+    except Exception as error:
+        message = _safe(str(error))
+        with _lock:
+            _job["push_error"] = message
+        _log(f"Ошибка: {message}")
+    finally:
+        with _lock:
+            _job["pushing"] = False
+
+
+def _read_lists(items: list[tuple[str, Path, str]]) -> list[tuple[str, str, str]]:
+    ready: list[tuple[str, str, str]] = []
+    for cid, src, title in items:
+        text = src.read_text(encoding="utf-8")
+        payload = json.loads(text)
+        if not isinstance(payload, dict) or payload.get("category") != cid:
+            raise RuntimeError(f"{title}: в файле другая категория")
+        if not isinstance(payload.get("items"), list):
+            raise RuntimeError(f"{title}: нет списка items")
+        ready.append((cid, title, text))
+    return ready
+
+
+def _preflight() -> None:
+    if not ASSETS.is_dir():
+        raise RuntimeError(f"Нет папки приложения: {ASSETS}")
+    top = _git("rev-parse", "--show-toplevel")
+    if top.returncode != 0 or Path(top.stdout.strip()).resolve() != REPO.resolve():
+        raise RuntimeError("Парсер не в корне репозитория")
+    branch = _git("rev-parse", "--abbrev-ref", "HEAD")
+    if branch.returncode != 0 or branch.stdout.strip() != "main":
+        name = branch.stdout.strip() or "?"
+        raise RuntimeError(f"Сейчас ветка {name}, заливка идёт только с main")
+    _log("GitHub · сверяюсь с origin")
+    fetch = _git("fetch", "origin", "main")
+    if fetch.returncode != 0:
+        raise RuntimeError(_git_error(fetch) or "Не достучался до GitHub")
+    ahead = _ahead_names()
+    outside = [name for name in ahead if not name.startswith("app/src/main/assets/kinopoisk/")]
+    if outside:
+        raise RuntimeError("Локальная main впереди origin не только списками. Сначала разбери эти коммиты.")
+    behind = _git("rev-list", "--count", "HEAD..origin/main")
+    if behind.returncode != 0:
+        raise RuntimeError(_git_error(behind) or "Не сравнил с origin/main")
+    if int(behind.stdout.strip() or "0") > 0:
+        raise RuntimeError("На GitHub есть коммиты, которых нет локально. Сначала подтяни main.")
+
+
+def _write_assets(ready: list[tuple[str, str, str]]) -> list[str]:
+    _log("GitHub · копирую в приложение")
+    rels: list[str] = []
+    root = ASSETS.resolve()
+    repo = REPO.resolve()
+    for cid, title, text in ready:
+        dest = (ASSETS / f"{cid}.json").resolve()
+        if dest.parent != root:
+            raise RuntimeError(f"{title}: плохой путь")
+        dest.write_text(text, encoding="utf-8")
+        rels.append(dest.relative_to(repo).as_posix())
+        _log(f"{title} → {dest.name}")
+    return rels
+
+
+def _publish(rels: list[str], titles: list[str]) -> None:
+    dirty = _git("status", "--porcelain", "--", *rels)
+    if dirty.returncode != 0:
+        raise RuntimeError(_git_error(dirty) or "git status не прошёл")
+    changed = bool(dirty.stdout.strip())
+    if changed:
+        add = _git("add", "--", *rels)
+        if add.returncode != 0:
+            raise RuntimeError(_git_error(add) or "git add не прошёл")
+        message = "Обновить списки Кинопоиска: " + ", ".join(titles) + "."
+        commit = _git("commit", "-m", message, "--", *rels)
+        if commit.returncode != 0:
+            raise RuntimeError(_git_error(commit) or "Коммит не прошёл")
+        _log("GitHub · коммит готов")
+    ahead_now = _git("rev-list", "--count", "origin/main..HEAD")
+    if ahead_now.returncode != 0:
+        raise RuntimeError(_git_error(ahead_now) or "Не сравнил с origin/main")
+    if int(ahead_now.stdout.strip() or "0") == 0:
+        note = "Уже на GitHub, списки те же"
+        with _lock:
+            _job["push_note"] = note
+        _log(note)
+        return
+    _log("GitHub · пушу")
+    push = _git("push", "origin", "HEAD")
+    if push.returncode != 0:
+        raise RuntimeError(_git_error(push) or "Push не прошёл")
+    note = "На GitHub: " + ", ".join(titles)
+    with _lock:
+        _job["push_note"] = note
+    _log(note)
+
+
+def _ahead_names() -> list[str]:
+    diff = _git("diff", "--name-only", "origin/main..HEAD")
+    if diff.returncode != 0:
+        raise RuntimeError(_git_error(diff) or "Не сравнил с origin/main")
+    return [line.strip() for line in diff.stdout.splitlines() if line.strip()]
 
 
 def _output_path(raw: str) -> Path:

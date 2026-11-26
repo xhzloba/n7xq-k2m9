@@ -67,6 +67,7 @@ internal fun ShellPager(
                 AppTab.Catalog -> Unit
                 AppTab.Kinopoisk -> KinopoiskScreen(
                     scrollTop = shell.kpTop,
+                    active = tab == AppTab.Kinopoisk,
                     onMovieClick = onMovieClick,
                     onMoviePeek = { shell.peek = it },
                     onOpenList = { shell.kpListId = "kp:$it" },

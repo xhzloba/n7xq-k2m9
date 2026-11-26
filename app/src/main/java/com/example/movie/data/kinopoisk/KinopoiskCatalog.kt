@@ -5,15 +5,31 @@ import androidx.compose.runtime.mutableStateMapOf
 import com.example.movie.domain.model.ContentKind
 import com.example.movie.domain.model.Movie
 import com.example.movie.domain.model.MovieDetail
+import java.io.File
 import java.time.LocalDate
 import java.time.OffsetDateTime
+import java.util.concurrent.TimeUnit
+import kotlin.coroutines.cancellation.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.withPermit
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import okhttp3.OkHttpClient
+import okhttp3.Request
 
 internal data class KpRank(
     val position: Int,
@@ -85,28 +101,147 @@ internal suspend fun prefetchKpCards(
     }
 }
 
+private const val CatalogRepo = "xhzloba/n7xq-k2m9"
+
+internal fun kpCatalogUrl(path: String): String =
+    "https://raw.githubusercontent.com/$CatalogRepo/main/app/src/main/assets/$path"
+
+internal fun kpRemoteBody(fileName: String, raw: String): String? {
+    val trimmed = raw.trim()
+    if (trimmed.isEmpty()) return null
+    val file = runCatching { json.decodeFromString(KpFile.serializer(), trimmed) }.getOrNull() ?: return null
+    val expected = fileName.removeSuffix(".json")
+    if (file.category != expected || file.items.isEmpty()) return null
+    return trimmed
+}
+
 internal object KinopoiskCatalog {
-    private val lock = Any()
-    private var cached: List<KpShelf>? = null
-
-    fun peek(id: String): KpShelf? = synchronized(lock) { cached?.firstOrNull { it.id == id } }
-
-    fun load(context: Context): List<KpShelf> = synchronized(lock) {
-        cached?.let { return it }
-        val shelves = Files.map { path ->
-            context.assets.open(path).bufferedReader().use { it.readText() }
-                .let { raw -> json.decodeFromString(KpFile.serializer(), raw) }
-                .toShelf()
-        }
-        cached = shelves
-        shelves
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val gate = Mutex()
+    private val files = Mutex()
+    private var ongoing: Deferred<List<KpShelf>>? = null
+    @Volatile private var cached: List<KpShelf>? = null
+    private val revisions = MutableStateFlow(0)
+    val revision: StateFlow<Int> = revisions
+    private val http by lazy {
+        OkHttpClient.Builder()
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .callTimeout(45, TimeUnit.SECONDS)
+            .followRedirects(true)
+            .build()
     }
+
+    fun peek(id: String): KpShelf? = cached?.firstOrNull { it.id == id }
+
+    fun snapshot(): List<KpShelf>? = cached
+
+    suspend fun ensure(context: Context): List<KpShelf> {
+        cached?.let { return it }
+        val app = context.applicationContext
+        return withContext(Dispatchers.IO) {
+            files.withLock { cached ?: readLocal(app).also { cached = it } }
+        }
+    }
+
+    suspend fun refresh(context: Context): List<KpShelf> {
+        val app = context.applicationContext
+        val job = gate.withLock {
+            val current = ongoing
+            if (current != null && !current.isCompleted) {
+                current
+            } else {
+                val created = scope.async { pull(app) }
+                ongoing = created
+                created.invokeOnCompletion {
+                    scope.launch { gate.withLock { if (ongoing === created) ongoing = null } }
+                }
+                created
+            }
+        }
+        return job.await()
+    }
+
+    private suspend fun pull(context: Context): List<KpShelf> {
+        val fetched = coroutineScope {
+            Files.map { path ->
+                async { path to download(path) }
+            }.awaitAll()
+        }
+        return files.withLock {
+            var changed = false
+            for ((path, text) in fetched) {
+                if (text != null && write(context, path, text)) changed = true
+            }
+            val current = cached
+            if (!changed && current != null) return@withLock current
+            readLocal(context).also {
+                cached = it
+                revisions.value = revisions.value + 1
+            }
+        }
+    }
+
+    private fun download(path: String): String? {
+        val request = Request.Builder()
+            .url(kpCatalogUrl(path))
+            .header("User-Agent", "AmigoPlay")
+            .header("Accept", "application/json")
+            .build()
+        return try {
+            http.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return null
+                kpRemoteBody(path.substringAfterLast('/'), response.body?.string().orEmpty())
+            }
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Exception) {
+            null
+        }
+    }
+}
+
+private fun cacheDir(context: Context): File =
+    File(context.filesDir, "kinopoisk").apply { mkdirs() }
+
+private fun readLocal(context: Context): List<KpShelf> =
+    Files.map { path ->
+        json.decodeFromString(KpFile.serializer(), textFor(context, path)).toShelf()
+    }
+
+private fun textFor(context: Context, path: String): String {
+    val name = path.substringAfterLast('/')
+    val disk = File(cacheDir(context), name)
+    if (disk.isFile) {
+        val raw = runCatching { disk.readText() }.getOrNull()
+        if (raw != null && kpRemoteBody(name, raw) != null) return raw.trim()
+    }
+    return context.assets.open(path).bufferedReader().use { it.readText() }
+}
+
+private fun write(context: Context, path: String, text: String): Boolean {
+    val name = path.substringAfterLast('/')
+    val body = kpRemoteBody(name, text) ?: return false
+    val dir = cacheDir(context)
+    val dest = File(dir, name)
+    if (dest.isFile && runCatching { dest.readText() }.getOrNull()?.trim() == body) return false
+    val tmp = File(dir, "$name.tmp")
+    tmp.writeText(body)
+    val backup = File(dir, "$name.bak")
+    if (dest.exists() && !dest.renameTo(backup)) dest.delete()
+    if (!tmp.renameTo(dest)) {
+        if (backup.exists()) backup.renameTo(dest)
+        tmp.delete()
+        return false
+    }
+    backup.delete()
+    return true
 }
 
 @Serializable
 private data class KpFile(
     val category: String,
-    @SerialName("category_title") val categoryTitle: String,
+    @SerialName("category_title") val categoryTitle: String = "",
     @SerialName("parsed_at") val parsedAt: String = "",
     val items: List<KpItem> = emptyList(),
 )
@@ -152,7 +287,7 @@ private fun KpFile.toShelf(): KpShelf {
     }
     return KpShelf(
         id = category,
-        title = categoryTitle,
+        title = categoryTitle.ifBlank { category },
         updated = kpUpdatedLabel(parsedAt),
         movies = movies,
         ranks = ranks,

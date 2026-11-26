@@ -114,6 +114,13 @@
   }
   button.ghost:hover:not(:disabled) { color: var(--text); }
   button.ghost:disabled { opacity: 0.35; cursor: default; }
+  button.push {
+    background: transparent; color: var(--text); border: 0; border-radius: 10px;
+    padding: 9px 14px; font: inherit; font-weight: 650; cursor: pointer;
+    box-shadow: inset 0 0 0 1px var(--line);
+  }
+  button.push:hover:not(:disabled) { border-color: transparent; box-shadow: inset 0 0 0 1px var(--yellow); color: var(--yellow); }
+  button.push:disabled { opacity: 0.4; cursor: default; }
   .actions { flex: none; display: flex; flex-direction: column; gap: 4px; padding-top: 8px; }
   main {
     min-width: 0; min-height: 0; height: 100vh; overflow: hidden;
@@ -135,6 +142,7 @@
     animation: sheen 1.15s ease-in-out infinite;
   }
   .err { color: var(--red); min-height: 1em; font-size: 13px; }
+  .note { color: var(--green); font-size: 13px; }
   .feed { min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: 10px; }
   .views {
     display: flex; gap: 6px; overflow-x: auto; flex: none; scrollbar-width: none;
@@ -262,6 +270,7 @@
   </div>
   <div class="actions">
     <button class="go" id="run" type="button">Парсить</button>
+    <button class="push" id="push" type="button" disabled>На GitHub</button>
     <button class="ghost" id="reveal" type="button" disabled>Открыть файл</button>
   </div>
 </aside>
@@ -273,6 +282,7 @@
   <div>
     <div class="bar" id="bar"><div id="fill"></div></div>
     <div class="err" id="err"></div>
+    <div class="note" id="note"></div>
   </div>
   <div class="feed">
     <div class="views" id="views" hidden></div>
@@ -297,6 +307,8 @@ const state = {
   details: false,
   revision: 0,
   stopping: false,
+  pushing: false,
+  pushable: [],
 };
 const $ = (id) => document.getElementById(id);
 
@@ -461,8 +473,8 @@ function filmHtml(item, delay, quiet) {
 
 function logClass(line) {
   if (line.startsWith("Ошибка")) return "bad";
-  if (line.startsWith("Записал") || line.startsWith("+") || line.startsWith("Готово") || line.startsWith("Остановлено") || line.includes("→")) return "ok";
-  if (line.startsWith("Страница") || line.startsWith("Открываю") || line.startsWith("Список") || line.startsWith("Деталка")) return "up";
+  if (line.startsWith("На GitHub") || line.startsWith("Уже на GitHub") || line.startsWith("Записал") || line.startsWith("+") || line.startsWith("Готово") || line.startsWith("Остановлено") || line.includes("→")) return "ok";
+  if (line.startsWith("GitHub") || line.startsWith("Страница") || line.startsWith("Открываю") || line.startsWith("Список") || line.startsWith("Деталка")) return "up";
   return "";
 }
 
@@ -548,16 +560,23 @@ function renderStatus(data) {
     : (steps > 1 && data.active ? `${data.active} · ${step + 1}/${steps}` : "Снимаю список");
   $("phase").textContent = data.running
     ? (took ? `${where} · ${took}` : where)
-    : data.done
-      ? (took ? `Готово за ${took}` : "Готово")
-      : (data.restored ? "Сохранённые списки" : "Ждёт запуска");
-  $("err").textContent = data.error || "";
+    : data.pushing
+      ? "Заливаю на GitHub"
+      : data.done
+        ? (took ? `Готово за ${took}` : "Готово")
+        : (data.restored ? "Сохранённые списки" : "Ждёт запуска");
+  $("err").textContent = data.error || data.push_error || "";
+  $("note").textContent = data.push_error ? "" : (data.push_note || "");
   if (!data.running) state.stopping = false;
-  $("run").disabled = !!data.running && state.stopping;
+  state.pushing = !!data.pushing;
+  state.pushable = data.pushable || [];
+  $("run").disabled = !!data.pushing || (!!data.running && state.stopping);
   $("run").classList.toggle("stop", !!data.running);
   $("run").textContent = data.running
     ? (state.stopping ? "Останавливаю…" : "Стоп")
     : (pickedIds().length > 1 ? `Парсить ${pickedIds().length}` : "Парсить");
+  $("push").disabled = !!data.running || !!data.pushing || !state.pushable.length;
+  $("push").textContent = data.pushing ? "Заливаю…" : "На GitHub";
   $("reveal").disabled = !data.path;
   state.running = !!data.running;
   if (!items.length) {
@@ -622,7 +641,7 @@ async function fetchStatus(useSince) {
     return fetchStatus(false);
   }
   renderStatus(data);
-  if (data.running) state.timer = setTimeout(() => fetchStatus(true), 400);
+  if (data.running || data.pushing) state.timer = setTimeout(() => fetchStatus(true), 400);
   return data;
 }
 
@@ -678,6 +697,25 @@ $("views").onclick = (event) => {
 $("details").onclick = () => {
   state.details = !state.details;
   $("details").classList.toggle("on", state.details);
+};
+
+$("push").onclick = async () => {
+  if (state.running || state.pushing || !state.pushable.length) return;
+  if (!confirm("Залить на GitHub?\n\n" + state.pushable.join("\n"))) return;
+  $("err").textContent = "";
+  $("note").textContent = "";
+  $("push").disabled = true;
+  $("push").textContent = "Заливаю…";
+  const res = await fetch("/api/push", { method: "POST" });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    $("err").textContent = data.error || "Не залилось";
+    $("push").disabled = false;
+    $("push").textContent = "На GitHub";
+    return;
+  }
+  state.pushing = true;
+  poll();
 };
 
 $("reveal").onclick = () => fetch("/api/reveal", {
