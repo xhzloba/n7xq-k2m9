@@ -79,6 +79,7 @@ import com.example.movie.presentation.shell.ShellIcons
 import com.example.movie.ui.theme.CinemaMuted
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 
 internal const val KpRailPreview = 15
@@ -153,6 +154,8 @@ internal fun KinopoiskScreen(
     LaunchedEffect(active) {
         if (!active) return@LaunchedEffect
         shelves = withContext(Dispatchers.IO) { KinopoiskCatalog.ensure(context) }
+        // Сначала постеры. Пять JSON с GitHub на той же сети их иначе держат.
+        delay(1_000)
         withContext(Dispatchers.IO) { KinopoiskCatalog.refresh(context) }
     }
     LaunchedEffect(revision) {
@@ -176,13 +179,16 @@ internal fun KinopoiskScreen(
     val container = LocalAppContainer.current
     LaunchedEffect(loaded) {
         val shelves = loaded ?: return@LaunchedEffect
-        prefetchKpCards(shelves.flatMap { it.movies.take(KpRailPreview) }) { id ->
-            val detail = container.getMovieDetail(id, background = true).getOrNull()
-            if (detail != null && detail.id != id) {
-                container.favorites.note(detail.id, id)
-                container.watched.note(detail.id, id)
+        delay(500)
+        for (shelf in shelves) {
+            prefetchKpCards(shelf.movies.take(KpRailPreview)) { id ->
+                val detail = container.getMovieDetail(id, background = true).getOrNull()
+                if (detail != null && detail.id != id) {
+                    container.favorites.note(detail.id, id)
+                    container.watched.note(detail.id, id)
+                }
+                detail
             }
-            detail
         }
     }
     Box(modifier.fillMaxSize()) {

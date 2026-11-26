@@ -38,13 +38,41 @@ internal data class KpRank(
     val boxOffice: String? = null,
 )
 
+internal const val KpPageSize = 15
+
 internal data class KpShelf(
     val id: String,
     val title: String,
     val updated: String?,
     val movies: List<Movie>,
     val ranks: Map<String, KpRank>,
+    val nextOffset: Int,
+    val end: Boolean,
 )
+
+/** Уже прочитанный кусок списка. `nextOffset` — с какого места читать следующую страницу. */
+internal data class KpSlice(
+    val id: String,
+    val title: String,
+    val updated: String?,
+    val movies: List<Movie>,
+    val ranks: Map<String, KpRank>,
+    val nextOffset: Int,
+    val end: Boolean,
+) {
+    operator fun plus(next: KpSlice): KpSlice {
+        if (next.movies.isEmpty()) return copy(nextOffset = next.nextOffset, end = next.end)
+        val seen = HashSet<String>(movies.size + next.movies.size)
+        movies.mapTo(seen) { it.id }
+        val fresh = next.movies.filter { seen.add(it.id) }
+        return copy(
+            movies = movies + fresh,
+            ranks = ranks + next.ranks,
+            nextOffset = next.nextOffset,
+            end = next.end,
+        )
+    }
+}
 
 private val Files = listOf(
     "kinopoisk/popular-films.json",
@@ -134,7 +162,19 @@ internal object KinopoiskCatalog {
 
     fun peek(id: String): KpShelf? = cached?.firstOrNull { it.id == id }
 
+    fun peekSlice(id: String): KpSlice? = peek(id)?.toSlice()
+
     fun snapshot(): List<KpShelf>? = cached
+
+    /** Одна страница списка. На полке это первые [KpPageSize], дальше — при прокрутке полного списка. */
+    suspend fun page(context: Context, id: String, offset: Int): KpSlice {
+        val path = Files.firstOrNull { it.endsWith("/$id.json") } ?: return KpSlice(id, "", null, emptyList(), emptyMap(), offset, true)
+        val app = context.applicationContext
+        val text = withContext(Dispatchers.IO) {
+            files.withLock { textFor(app, path) }
+        }
+        return kpSlice(text, offset, KpPageSize)
+    }
 
     suspend fun ensure(context: Context): List<KpShelf> {
         cached?.let { return it }
@@ -201,22 +241,28 @@ internal object KinopoiskCatalog {
     }
 }
 
+private val kpTexts = HashMap<String, String>()
+
 private fun cacheDir(context: Context): File =
     File(context.filesDir, "kinopoisk").apply { mkdirs() }
 
 private fun readLocal(context: Context): List<KpShelf> =
     Files.map { path ->
-        json.decodeFromString(KpFile.serializer(), textFor(context, path)).toShelf()
+        kpSlice(textFor(context, path), 0, KpPageSize).toShelf()
     }
 
 private fun textFor(context: Context, path: String): String {
+    kpTexts[path]?.let { return it }
     val name = path.substringAfterLast('/')
     val disk = File(cacheDir(context), name)
-    if (disk.isFile) {
-        val raw = runCatching { disk.readText() }.getOrNull()
-        if (raw != null && kpRemoteBody(name, raw) != null) return raw.trim()
+    val diskText = if (disk.isFile) runCatching { disk.readText() }.getOrNull()?.trim() else null
+    val raw = if (diskText != null && kpCachedBody(name, diskText)) {
+        diskText
+    } else {
+        context.assets.open(path).bufferedReader().use { it.readText() }
     }
-    return context.assets.open(path).bufferedReader().use { it.readText() }
+    kpTexts[path] = raw
+    return raw
 }
 
 private fun write(context: Context, path: String, text: String): Boolean {
@@ -225,6 +271,7 @@ private fun write(context: Context, path: String, text: String): Boolean {
     val dir = cacheDir(context)
     val dest = File(dir, name)
     if (dest.isFile && runCatching { dest.readText() }.getOrNull()?.trim() == body) return false
+    kpTexts.remove(path)
     val tmp = File(dir, "$name.tmp")
     tmp.writeText(body)
     val backup = File(dir, "$name.bak")
@@ -260,8 +307,40 @@ private data class KpItem(
     @SerialName("box_office") val boxOffice: String? = null,
 )
 
-private fun KpFile.toShelf(): KpShelf {
-    val series = category == "popular-series" || category == "series-top250"
+internal fun kpCachedBody(fileName: String, raw: String): Boolean {
+    val trimmed = raw.trim()
+    if (trimmed.length < 2 || trimmed.first() != '{' || trimmed.last() != '}') return false
+    val expected = fileName.removeSuffix(".json")
+    if (jsonString(trimmed, "category") != expected) return false
+    val key = trimmed.indexOf("\"items\"")
+    if (key < 0) return false
+    val open = trimmed.indexOf('[', key + 7)
+    if (open < 0) return false
+    var index = open + 1
+    while (index < trimmed.length && trimmed[index].isWhitespace()) index++
+    return index < trimmed.length && trimmed[index] == '{'
+}
+
+private fun jsonString(raw: String, field: String): String? {
+    val key = raw.indexOf("\"$field\"")
+    if (key < 0) return null
+    val colon = raw.indexOf(':', key + field.length + 2)
+    if (colon < 0) return null
+    val quote = raw.indexOf('"', colon + 1)
+    if (quote < 0) return null
+    val end = raw.indexOf('"', quote + 1)
+    if (end < 0) return null
+    return raw.substring(quote + 1, end)
+}
+
+/**
+ * Страница из большого JSON. Разбираются только [limit] карточек, начиная с [offset].
+ * Остальной массив не превращается в фильмы.
+ */
+internal fun kpSlice(text: String, offset: Int, limit: Int): KpSlice {
+    val head = headOf(text)
+    val (items, next, end) = takeItems(text, offset, limit)
+    val series = head?.category == "popular-series" || head?.category == "series-top250"
     val seen = HashSet<String>()
     val movies = ArrayList<Movie>(items.size)
     val ranks = HashMap<String, KpRank>(items.size)
@@ -285,14 +364,129 @@ private fun KpFile.toShelf(): KpShelf {
             boxOffice = gross,
         )
     }
-    return KpShelf(
-        id = category,
-        title = categoryTitle.ifBlank { category },
-        updated = kpUpdatedLabel(parsedAt),
+    return KpSlice(
+        id = head?.category.orEmpty(),
+        title = head?.categoryTitle?.ifBlank { head.category }.orEmpty(),
+        updated = head?.let { kpUpdatedLabel(it.parsedAt) },
         movies = movies,
         ranks = ranks,
+        nextOffset = next,
+        end = end,
     )
 }
+
+private fun headOf(text: String): KpFile? {
+    val marker = text.indexOf("\"items\"")
+    if (marker < 0) return null
+    val head = text.substring(0, marker) + "\"items\":[]}"
+    return runCatching { json.decodeFromString(KpFile.serializer(), head) }.getOrNull()
+}
+
+private fun takeItems(text: String, offset: Int, limit: Int): Triple<List<KpItem>, Int, Boolean> {
+    val key = text.indexOf("\"items\"")
+    if (key < 0 || limit <= 0) return Triple(emptyList(), offset, true)
+    val open = text.indexOf('[', key + 7)
+    if (open < 0) return Triple(emptyList(), offset, true)
+    val raw = ArrayList<String>(limit)
+    var index = open + 1
+    var depth = 0
+    var inString = false
+    var escape = false
+    var start = -1
+    var seen = 0
+    var end = true
+    while (index < text.length) {
+        val char = text[index]
+        if (inString) {
+            if (escape) {
+                escape = false
+            } else if (char == '\\') {
+                escape = true
+            } else if (char == '"') {
+                inString = false
+            }
+            index++
+            continue
+        }
+        when (char) {
+            '"' -> inString = true
+            '{' -> {
+                if (depth == 0) start = index
+                depth++
+            }
+            '}' -> {
+                if (depth > 0) {
+                    depth--
+                    if (depth == 0 && start >= 0) {
+                        if (seen >= offset && raw.size < limit) raw += text.substring(start, index + 1)
+                        seen++
+                        start = -1
+                        if (raw.size == limit) {
+                            end = !moreItem(text, index + 1)
+                            index = text.length
+                            continue
+                        }
+                    }
+                }
+            }
+            ']' -> if (depth == 0) {
+                end = true
+                index = text.length
+                continue
+            }
+        }
+        index++
+    }
+    val items = raw.mapNotNull { runCatching { json.decodeFromString(KpItem.serializer(), it) }.getOrNull() }
+    return Triple(items, seen, end)
+}
+
+private fun moreItem(text: String, from: Int): Boolean {
+    var index = from
+    var inString = false
+    var escape = false
+    while (index < text.length) {
+        val char = text[index]
+        if (inString) {
+            if (escape) {
+                escape = false
+            } else if (char == '\\') {
+                escape = true
+            } else if (char == '"') {
+                inString = false
+            }
+            index++
+            continue
+        }
+        when (char) {
+            '"' -> inString = true
+            '{' -> return true
+            ']' -> return false
+        }
+        index++
+    }
+    return false
+}
+
+private fun KpSlice.toShelf(): KpShelf = KpShelf(
+    id = id,
+    title = title,
+    updated = updated,
+    movies = movies,
+    ranks = ranks,
+    nextOffset = nextOffset,
+    end = end,
+)
+
+private fun KpShelf.toSlice(): KpSlice = KpSlice(
+    id = id,
+    title = title,
+    updated = updated,
+    movies = movies,
+    ranks = ranks,
+    nextOffset = nextOffset,
+    end = end,
+)
 
 private val KpMonths = arrayOf(
     "янв", "фев", "мар", "апр", "май", "июн",

@@ -5,6 +5,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -19,6 +20,7 @@ import com.example.movie.domain.model.Movie
 import com.example.movie.presentation.home.SectionPage
 import com.example.movie.presentation.home.SectionUiState
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 @Composable
@@ -31,37 +33,58 @@ internal fun KinopoiskListRoute(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val revision by KinopoiskCatalog.revision.collectAsStateWithLifecycle()
-    var shelf by remember(id) { mutableStateOf(KinopoiskCatalog.peek(id)) }
-    LaunchedEffect(id, revision) {
-        val known = KinopoiskCatalog.peek(id)
-        shelf = known ?: withContext(Dispatchers.IO) {
-            KinopoiskCatalog.ensure(context).firstOrNull { it.id == id }
-        }
-    }
-    val current = shelf
+    var slice by remember(id) { mutableStateOf(KinopoiskCatalog.peekSlice(id)) }
+    var loadingMore by remember(id) { mutableStateOf(false) }
     val container = LocalAppContainer.current
-    val movies = current?.movies.orEmpty()
-    LaunchedEffect(current?.id) {
-        if (movies.isEmpty()) return@LaunchedEffect
-        prefetchKpCards(movies.take(24)) { id ->
-            val detail = container.getMovieDetail(id, background = true).getOrNull()
-            if (detail != null && detail.id != id) {
-                container.favorites.note(detail.id, id)
-                container.watched.note(detail.id, id)
+    LaunchedEffect(id, revision) {
+        val known = if (revision == 0) slice else null
+        val first = known ?: withContext(Dispatchers.IO) {
+            KinopoiskCatalog.page(context, id, 0)
+        }
+        slice = first
+        loadingMore = false
+        if (first.movies.isEmpty()) return@LaunchedEffect
+        prefetchKpCards(first.movies) { movieId ->
+            val detail = container.getMovieDetail(movieId, background = true).getOrNull()
+            if (detail != null && detail.id != movieId) {
+                container.favorites.note(detail.id, movieId)
+                container.watched.note(detail.id, movieId)
             }
             detail
         }
     }
+    val current = slice
     SectionPage(
         title = current?.title.orEmpty(),
         state = SectionUiState(
-            movies = movies.map { it.kpCard() },
+            movies = current?.movies.orEmpty().map { it.kpCard() },
             loading = current == null,
-            end = true,
+            loadingMore = loadingMore,
+            end = current?.end == true,
         ),
         onBack = onBack,
-        onLoadMore = {},
+        onLoadMore = {
+            val shown = current ?: return@SectionPage
+            if (shown.end || loadingMore) return@SectionPage
+            loadingMore = true
+            scope.launch {
+                val next = withContext(Dispatchers.IO) {
+                    KinopoiskCatalog.page(context, id, shown.nextOffset)
+                }
+                slice = shown + next
+                loadingMore = false
+                prefetchKpCards(next.movies) { movieId ->
+                    val detail = container.getMovieDetail(movieId, background = true).getOrNull()
+                    if (detail != null && detail.id != movieId) {
+                        container.favorites.note(detail.id, movieId)
+                        container.watched.note(detail.id, movieId)
+                    }
+                    detail
+                }
+            }
+        },
         onRetry = {},
         onMovieClick = onMovieClick,
         onMoviePeek = onMoviePeek,
