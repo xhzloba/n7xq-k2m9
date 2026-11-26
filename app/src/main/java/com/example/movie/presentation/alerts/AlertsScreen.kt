@@ -3,7 +3,6 @@ package com.example.movie.presentation.alerts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -44,15 +43,13 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.movie.R
 import com.example.movie.presentation.common.PosterImage
 import com.example.movie.di.LocalAppContainer
-import com.example.movie.domain.model.ContentKind
-import com.example.movie.domain.model.FeedCard
 import com.example.movie.domain.model.FeedKind
+import com.example.movie.domain.model.FeedShelf
 import com.example.movie.domain.model.Movie
 import com.example.movie.domain.model.SeriesAlert
 import com.example.movie.domain.model.kept
 import com.example.movie.presentation.haptic.rememberHapticTick
 import com.example.movie.presentation.home.components.PosterGridInset
-import com.example.movie.presentation.home.components.RecommendationRail
 import com.example.movie.presentation.shell.ShellIcons
 import com.example.movie.ui.theme.CinemaMuted
 import com.example.movie.ui.theme.PosterShape
@@ -165,7 +162,7 @@ internal fun AlertsScreen(
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
-                    imageVector = ShellIcons.gear,
+                    imageVector = ShellIcons.settings,
                     contentDescription = stringResource(R.string.alerts_settings),
                     tint = Color.White,
                     modifier = Modifier.size(22.dp),
@@ -173,39 +170,40 @@ internal fun AlertsScreen(
             }
         }
         if (settings) FeedSheet(onDismiss = { settings = false })
-        if (alerts.isEmpty() && shown.isEmpty()) {
+        val sections = noticeSections(shown, alerts)
+        if (sections.isEmpty()) {
             Text(
                 text = stringResource(R.string.alerts_empty),
-                modifier = Modifier.padding(horizontal = PosterGridInset, vertical = 18.dp),
+                modifier = Modifier.padding(horizontal = PosterGridInset, vertical = 28.dp),
                 color = CinemaMuted,
                 fontSize = 15.sp,
                 lineHeight = 21.sp,
             )
         } else {
-            Spacer(Modifier.height(12.dp))
             LazyColumn(
-                contentPadding = PaddingValues(bottom = 120.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
+                contentPadding = PaddingValues(top = 8.dp, bottom = 120.dp),
             ) {
-                items(shown, key = { it.kind }) { shelf ->
-                    Column {
-                        RecommendationRail(
-                            movies = shelf.cards.map { it.toMovie() },
-                            title = stringResource(
-                                R.string.alerts_shelf_count,
-                                stringResource(categoryTitle(shelf.kind)),
-                                shelf.cards.size,
+                for (section in sections) {
+                    item(key = "head-${section.key}") {
+                        Text(
+                            text = section.title,
+                            modifier = Modifier.padding(
+                                start = PosterGridInset,
+                                end = PosterGridInset,
+                                top = 18.dp,
+                                bottom = 2.dp,
                             ),
-                            onMovieClick = onMovieClick,
-                            onMoviePeek = onMoviePeek,
+                            color = CinemaMuted,
+                            fontWeight = FontWeight.Medium,
+                            fontSize = 13.sp,
+                            lineHeight = 16.sp,
                         )
-                        Spacer(Modifier.height(14.dp))
                     }
-                }
-                items(alerts, key = { it.id }) { alert ->
-                    AlertRow(alert) {
-                        store.markMovie(alert.movieId)
-                        onMovieClick(alert.movieId)
+                    items(section.rows, key = { "${section.key}:${it.id}" }) { row ->
+                        NoticeLine(row) {
+                            store.markMovie(row.id)
+                            onMovieClick(row.id)
+                        }
                     }
                 }
             }
@@ -213,98 +211,190 @@ internal fun AlertsScreen(
     }
 }
 
+private val NoticeOrder = listOf(
+    FeedKind.SeriesUpdates,
+    FeedKind.MovieUpdates,
+    FeedKind.SeriesFresh,
+    FeedKind.MovieFresh,
+    NoticeQuality,
+    NoticeAvailable,
+)
+
+private const val NoticeQuality = "quality"
+private const val NoticeAvailable = "available"
+
 @Composable
-private fun AlertRow(alert: SeriesAlert, onClick: () -> Unit) {
+private fun noticeSections(
+    shelves: List<FeedShelf>,
+    alerts: List<SeriesAlert>,
+): List<NoticeSection> {
+    val bits = ArrayList<NoticeBit>()
+    for (shelf in shelves) {
+        val at = if (shelf.at > 0) shelf.at else System.currentTimeMillis()
+        for (card in shelf.cards) {
+            bits += NoticeBit(
+                section = shelf.kind,
+                id = card.id,
+                title = card.title,
+                posterUrl = card.posterUrl,
+                at = at,
+            )
+        }
+    }
+    for (alert in alerts) {
+        bits += NoticeBit(
+            section = when {
+                alert.quality -> NoticeQuality
+                alert.available -> NoticeAvailable
+                else -> FeedKind.SeriesUpdates
+            },
+            id = alert.movieId,
+            title = alert.title,
+            posterUrl = alert.posterUrl,
+            at = alert.at,
+            detail = when {
+                alert.quality || alert.available -> null
+                alert.feed -> stringResource(R.string.alerts_feed)
+                else -> stringResource(R.string.alerts_episode, alert.season, alert.episode)
+            },
+            unread = !alert.read,
+        )
+    }
+    return bits.toSections()
+}
+
+@Composable
+private fun NoticeLine(row: NoticeRow, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(
-                interactionSource = remember(alert.id) { MutableInteractionSource() },
+                interactionSource = remember(row.id) { MutableInteractionSource() },
                 indication = null,
                 onClick = onClick,
             )
-            .padding(horizontal = PosterGridInset, vertical = 8.dp),
+            .padding(horizontal = PosterGridInset, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         PosterImage(
-            url = alert.posterUrl,
-            movieId = alert.movieId,
+            url = row.posterUrl,
+            movieId = row.id,
             contentDescription = null,
             modifier = Modifier
-                .width(46.dp)
-                .height(68.dp)
+                .width(56.dp)
+                .height(84.dp)
                 .clip(PosterShape)
                 .background(Color(0xFF1C1C1E)),
-            iconSize = 18.dp,
+            iconSize = 22.dp,
         )
         Column(
             modifier = Modifier
                 .weight(1f)
-                .padding(start = 12.dp, end = 8.dp),
+                .padding(start = 12.dp, end = 10.dp),
         ) {
             Text(
-                text = alert.title,
-                color = if (alert.read) CinemaMuted else Color.White,
+                text = row.title,
+                color = Color.White,
                 fontWeight = FontWeight.Medium,
                 fontSize = 16.sp,
                 lineHeight = 20.sp,
-                maxLines = 2,
+                maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            Text(
-                text = stringResource(alert.textRes(), alert.season, alert.episode),
-                modifier = Modifier.padding(top = 3.dp),
-                color = CinemaMuted,
-                fontSize = 13.sp,
-                lineHeight = 17.sp,
-            )
+            val detail = row.detail
+            if (detail != null) {
+                Text(
+                    text = detail,
+                    modifier = Modifier.padding(top = 2.dp),
+                    color = CinemaMuted,
+                    fontSize = 13.sp,
+                    lineHeight = 17.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
-        if (!alert.read) {
+        if (row.unread) {
             Box(
                 modifier = Modifier
-                    .size(8.dp)
+                    .padding(end = 8.dp)
+                    .size(7.dp)
                     .clip(CircleShape)
                     .background(Color(0xFFE23B5A)),
             )
         }
         Text(
-            text = alert.at.shortDay(),
-            modifier = Modifier.padding(start = 8.dp),
+            text = row.at.noticeStamp(),
             color = CinemaMuted,
             fontSize = 12.sp,
+            lineHeight = 16.sp,
         )
     }
 }
 
-private fun FeedCard.toMovie(): Movie = Movie(
-    id = id,
-    title = title,
-    originalTitle = originalTitle,
-    year = year,
-    overview = "",
-    genres = "",
-    country = "",
-    director = "",
-    posterUrl = posterUrl,
-    backdropUrl = null,
-    logoUrl = null,
-    ratingKp = ratingKp,
-    ratingImdb = ratingImdb,
-    age = age,
-    kind = when (type) {
-        "serial", "multserial" -> ContentKind.Series
-        "anime" -> ContentKind.Anime
-        else -> ContentKind.Movie
-    },
-    camrip = false,
-    type = type,
+private data class NoticeBit(
+    val section: String,
+    val id: String,
+    val title: String,
+    val posterUrl: String?,
+    val at: Long,
+    val detail: String? = null,
+    val unread: Boolean = false,
 )
 
-private fun Long.shortDay(): String {
-    val date = Instant.ofEpochMilli(this).atZone(ZoneId.systemDefault()).toLocalDate()
+private data class NoticeRow(
+    val id: String,
+    val title: String,
+    val posterUrl: String?,
+    val at: Long,
+    val detail: String?,
+    val unread: Boolean,
+)
+
+private data class NoticeSection(
+    val key: String,
+    val title: String,
+    val rows: List<NoticeRow>,
+)
+
+@Composable
+private fun List<NoticeBit>.toSections(): List<NoticeSection> =
+    groupBy { it.section }
+        .entries
+        .sortedBy { (key, _) ->
+            val index = NoticeOrder.indexOf(key)
+            if (index < 0) NoticeOrder.size else index
+        }
+        .map { (key, items) ->
+            val rows = items
+                .groupBy { it.id }
+                .map { (id, same) ->
+                    val latest = same.maxBy { it.at }
+                    NoticeRow(
+                        id = id,
+                        title = latest.title,
+                        posterUrl = same.firstNotNullOfOrNull { it.posterUrl },
+                        at = latest.at,
+                        detail = same.firstNotNullOfOrNull { it.detail },
+                        unread = same.any { it.unread },
+                    )
+                }
+                .sortedByDescending { it.at }
+            NoticeSection(key, stringResource(sectionTitle(key)), rows)
+        }
+
+private fun sectionTitle(key: String): Int = when (key) {
+    NoticeQuality -> R.string.alerts_sec_quality
+    NoticeAvailable -> R.string.alerts_available
+    else -> categoryTitle(key)
+}
+
+private fun Long.noticeStamp(): String {
+    val moment = Instant.ofEpochMilli(this).atZone(ZoneId.systemDefault())
+    val date = moment.toLocalDate()
     val today = LocalDate.now()
     return when (date) {
-        today -> "сегодня"
+        today -> moment.format(DateTimeFormatter.ofPattern("HH:mm"))
         today.minusDays(1) -> "вчера"
         else -> date.format(DateTimeFormatter.ofPattern("d MMM", Locale.forLanguageTag("ru")))
     }

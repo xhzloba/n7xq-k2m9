@@ -9,13 +9,12 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
@@ -24,7 +23,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -42,6 +40,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.app.ActivityCompat
@@ -50,10 +50,14 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.movie.R
 import com.example.movie.di.LocalAppContainer
 import com.example.movie.domain.model.FeedKind
+import com.example.movie.presentation.common.THEME_GRAPHITE
 import com.example.movie.presentation.haptic.rememberHapticTick
 import com.example.movie.presentation.common.appBackground
 import com.example.movie.presentation.common.appChrome
+import com.example.movie.presentation.home.components.PosterGridInset
+import com.example.movie.presentation.settings.LocalUserSettings
 import com.example.movie.ui.theme.CinemaMuted
+import com.example.movie.ui.theme.CinemaSurface
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
@@ -105,86 +109,83 @@ internal fun FeedSheet(onDismiss: () -> Unit) {
                     .background(Color.White.copy(alpha = 0.28f)),
             )
             Text(
-                text = stringResource(R.string.alerts_feed_title),
-                modifier = Modifier.padding(horizontal = 20.dp),
+                text = stringResource(R.string.alerts_settings),
+                modifier = Modifier.padding(horizontal = PosterGridInset),
                 color = Color.White,
                 fontWeight = FontWeight.Medium,
                 fontSize = 18.sp,
                 lineHeight = 24.sp,
             )
-            Text(
-                text = stringResource(R.string.alerts_feed_interval),
-                modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 16.dp),
-                color = CinemaMuted,
-                fontSize = 13.sp,
-                lineHeight = 18.sp,
+            SheetLabel(
+                text = stringResource(R.string.alerts_feed_title),
+                modifier = Modifier.padding(start = PosterGridInset + 4.dp, end = PosterGridInset, top = 18.dp, bottom = 8.dp),
             )
-            Row(
+            Column(
                 modifier = Modifier
-                    .padding(start = 20.dp, end = 20.dp, top = 10.dp)
-                    .horizontalScroll(rememberScrollState()),
+                    .padding(horizontal = PosterGridInset)
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(sheetPanel()),
             ) {
-                FeedKind.intervals.forEach { hours ->
-                    val selected = feed.intervalHours == hours
-                    Text(
-                        text = stringResource(R.string.alerts_feed_hour, hours),
+                FeedKind.all.forEachIndexed { index, kind ->
+                    if (index > 0) {
+                        Box(
+                            modifier = Modifier
+                                .padding(horizontal = 16.dp)
+                                .fillMaxWidth()
+                                .height(0.5.dp)
+                                .background(Color.White.copy(alpha = 0.08f)),
+                        )
+                    }
+                    val on = feed.enabled(kind)
+                    Row(
                         modifier = Modifier
-                            .padding(end = 8.dp)
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(if (selected) Color.White else Color(0xFF2C2C30))
+                            .fillMaxWidth()
                             .clickable(
-                                interactionSource = remember(hours) { MutableInteractionSource() },
+                                interactionSource = remember(kind) { MutableInteractionSource() },
                                 indication = null,
                                 onClick = {
-                                    if (selected) return@clickable
                                     tick?.invoke()
-                                    store.setInterval(hours)
+                                    if (!on) context.askNotify()
+                                    store.setKind(kind, !on)
                                     refresh()
                                 },
                             )
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
-                        color = if (selected) Color.Black else Color.White,
-                        fontSize = 14.sp,
-                        lineHeight = 18.sp,
-                    )
-                }
-            }
-            Spacer(Modifier.height(8.dp))
-            FeedKind.all.forEach { kind ->
-                val on = feed.enabled(kind)
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable(
-                            interactionSource = remember(kind) { MutableInteractionSource() },
-                            indication = null,
-                            onClick = {
-                                tick?.invoke()
-                                if (!on) context.askNotify()
-                                store.setKind(kind, !on)
-                                refresh()
-                            },
+                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = stringResource(categoryTitle(kind)),
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(end = 16.dp),
+                            color = Color.White,
+                            fontWeight = FontWeight.Medium,
+                            fontSize = 16.sp,
+                            lineHeight = 22.sp,
+                            letterSpacing = (-0.2).sp,
                         )
-                        .padding(horizontal = 20.dp, vertical = 13.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = stringResource(categoryTitle(kind)),
-                        modifier = Modifier.weight(1f),
-                        color = Color.White,
-                        fontWeight = FontWeight.Medium,
-                        fontSize = 16.sp,
-                        lineHeight = 22.sp,
-                    )
-                    FeedSwitch(on)
+                        FeedSwitch(on)
+                    }
                 }
             }
             Text(
                 text = stringResource(R.string.alerts_feed_hint),
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp),
+                modifier = Modifier.padding(start = PosterGridInset + 4.dp, end = PosterGridInset, top = 8.dp),
                 color = CinemaMuted,
                 fontSize = 13.sp,
                 lineHeight = 18.sp,
+            )
+            SheetLabel(
+                text = stringResource(R.string.alerts_feed_interval),
+                modifier = Modifier.padding(start = PosterGridInset + 4.dp, end = PosterGridInset, top = 22.dp, bottom = 8.dp),
+            )
+            IntervalStepper(
+                hours = feed.intervalHours,
+                onPick = { hours ->
+                    if (hours == feed.intervalHours) return@IntervalStepper
+                    store.setInterval(hours)
+                    refresh()
+                },
             )
         }
     }
@@ -199,7 +200,107 @@ internal fun categoryTitle(kind: String): Int = when (kind) {
 }
 
 @Composable
+private fun SheetLabel(text: String, modifier: Modifier) {
+    Text(
+        text = text,
+        modifier = modifier,
+        color = CinemaMuted,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 13.sp,
+        lineHeight = 16.sp,
+        letterSpacing = 0.4.sp,
+    )
+}
+
+@Composable
+private fun sheetPanel(): Color {
+    val settings by LocalUserSettings.current.settings.collectAsStateWithLifecycle()
+    return if (settings.appTheme == THEME_GRAPHITE) Color(0xFF22262E) else CinemaSurface
+}
+
+@Composable
+private fun IntervalStepper(hours: Int, onPick: (Int) -> Unit) {
+    val tick = rememberHapticTick()
+    val steps = FeedKind.intervals
+    fun step(delta: Int) {
+        val index = steps.indexOf(hours).let { if (it < 0) 0 else it }
+        tick?.invoke()
+        onPick(steps[(index + delta).mod(steps.size)])
+    }
+    Box(
+        modifier = Modifier
+            .padding(horizontal = PosterGridInset)
+            .fillMaxWidth()
+            .height(48.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(sheetPanel()),
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .padding(horizontal = 48.dp)
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = { step(1) },
+                ),
+        )
+        Text(
+            text = stringResource(R.string.alerts_feed_hour, hours),
+            modifier = Modifier.padding(horizontal = 52.dp),
+            color = Color.White,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Medium,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        StepKey(
+            glyph = "−",
+            modifier = Modifier
+                .align(Alignment.CenterStart)
+                .padding(start = 6.dp),
+            onClick = { step(-1) },
+        )
+        StepKey(
+            glyph = "+",
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .padding(end = 6.dp),
+            onClick = { step(1) },
+        )
+    }
+}
+
+@Composable
+private fun StepKey(glyph: String, modifier: Modifier, onClick: () -> Unit) {
+    Box(
+        modifier
+            .size(36.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color.White.copy(alpha = 0.14f))
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick,
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = glyph,
+            color = Color.White,
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Medium,
+            textAlign = TextAlign.Center,
+        )
+    }
+}
+
+@Composable
 private fun FeedSwitch(checked: Boolean) {
+    val settings by LocalUserSettings.current.settings.collectAsStateWithLifecycle()
+    val offTrack = if (settings.appTheme == THEME_GRAPHITE) Color(0xFF2A2F38) else Color(0xFF2C2C30)
     val travel by animateDpAsState(
         targetValue = if (checked) 20.dp else 0.dp,
         animationSpec = spring(dampingRatio = 1f, stiffness = 500f),
@@ -210,7 +311,7 @@ private fun FeedSwitch(checked: Boolean) {
             .width(48.dp)
             .height(28.dp)
             .clip(RoundedCornerShape(14.dp))
-            .background(if (checked) Color.White else Color(0xFF2C2C30))
+            .background(if (checked) Color.White else offTrack)
             .padding(3.dp),
     ) {
         Box(

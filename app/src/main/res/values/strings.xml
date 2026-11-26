@@ -119,7 +119,7 @@
     <string name="action_alert">Уведомление</string>
     <string name="notice_alert_on">Сообщим, когда выйдет новая серия</string>
     <string name="notice_alert_off">Больше не сообщим о новых сериях</string>
-    <string name="alerts_empty">Колокольчик на сериале — про новую серию. Шестерёнка — новинки и обновления каталога.</string>
+    <string name="alerts_empty">Колокольчик на сериале — про новую серию. Настройки — новинки и обновления каталога.</string>
     <string name="alerts_clear">Очистить</string>
     <string name="alerts_episode">Сезон %1$d, серия %2$d</string>
     <string name="alerts_feed">Вышло обновление на Lumen</string>
@@ -133,6 +133,7 @@
     <string name="alerts_cat_movie_updates">Обновление фильмов</string>
     <string name="alerts_cat_series_fresh">Новинки сериалов</string>
     <string name="alerts_cat_movie_fresh">Новинки фильмов</string>
+    <string name="alerts_sec_quality">Качество</string>
     <string name="alerts_shelf_count">%1$s · %2$d</string>
     <string name="alerts_shelf_body">Появилось %1$d</string>
     <string name="alert_channel">Новые серии</string>
