@@ -15,9 +15,14 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -29,15 +34,21 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.movie.BuildConfig
 import com.example.movie.R
 import com.example.movie.presentation.tv.dpadSkip
 import com.example.movie.presentation.common.appBackground
 import com.example.movie.presentation.settings.LocalUserSettings
+import com.example.movie.ui.theme.CinemaMuted
 import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
 
@@ -57,6 +68,7 @@ private fun Vibrator.splashBuzz() {
 @Composable
 internal fun SplashScreen(onReveal: () -> Unit, onFinished: () -> Unit) {
     val enter = remember { Animatable(0f) }
+    val version = remember { Animatable(0f) }
     val veil = remember { Animatable(1f) }
     val settings by LocalUserSettings.current.settings.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -67,7 +79,8 @@ internal fun SplashScreen(onReveal: () -> Unit, onFinished: () -> Unit) {
         if (settings.haptic) vibrator?.splashBuzz()
         try {
             enter.animateTo(1f, tween(820, easing = Enter))
-            delay(280)
+            version.animateTo(1f, tween(280, easing = FastOutSlowInEasing))
+            delay(500)
             onReveal()
             delay(200)
             veil.animateTo(0f, tween(640, easing = FastOutSlowInEasing))
@@ -90,10 +103,23 @@ internal fun SplashScreen(onReveal: () -> Unit, onFinished: () -> Unit) {
             ),
         contentAlignment = Alignment.Center,
     ) {
+        val mark = maxWidth
         SplashWordmark(
             enter = enter.value,
-            width = maxWidth * 0.82f,
-            slide = maxWidth * 0.7f,
+            width = mark * 0.58f,
+            slide = mark * 0.5f,
+        )
+        Text(
+            text = stringResource(R.string.settings_version_value, BuildConfig.VERSION_NAME),
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .windowInsetsPadding(WindowInsets.navigationBars)
+                .padding(bottom = 28.dp)
+                .graphicsLayer { alpha = version.value },
+            color = CinemaMuted,
+            fontWeight = FontWeight.Medium,
+            fontSize = 14.sp,
+            lineHeight = 18.sp,
         )
     }
 }
