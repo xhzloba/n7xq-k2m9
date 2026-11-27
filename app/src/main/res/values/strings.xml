@@ -342,6 +342,9 @@
     <string name="section_music">Музыка</string>
     <string name="section_musical">Мюзикл</string>
     <string name="section_recommendations">Возможно, вам понравится</string>
+    <string name="section_uhd">4K</string>
+    <string name="section_hdr">HDR</string>
+    <string name="section_dolby">Dolby Vision</string>
     <string name="section_continue">Продолжить просмотр</string>
     <string name="section_history">История просмотров</string>
     <string name="history_clear_title">Удалить историю?</string>

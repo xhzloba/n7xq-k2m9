@@ -113,6 +113,9 @@ internal fun TvHomeScreen(
     menuFocused: Boolean,
     onBrowsing: (Boolean) -> Unit,
     onRetry: () -> Unit,
+    categories: List<TvCategory> = emptyList(),
+    categoryId: String = "",
+    onCategory: (String) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -132,8 +135,16 @@ internal fun TvHomeScreen(
         (picks[rail.id] ?: 0).coerceIn(0, (rail.movies.size - 1).coerceAtLeast(0))
     } ?: 0
     val movie = activeRail?.movies?.getOrNull(pick)
-    SideEffect { onBrowsing(visible && pick > 0 && activeRail?.movies?.isNotEmpty() == true) }
-    val shown = movie
+    var held by remember { mutableStateOf<Movie?>(null) }
+    if (movie != null && movie != held) held = movie
+    SideEffect {
+        if (visible) onBrowsing(pick > 0 && activeRail?.movies?.isNotEmpty() == true)
+    }
+    val categoryRequesters = remember(categories) { List(categories.size) { FocusRequester() } }
+    val categoryIndex = categories.indexOfFirst { it.id == categoryId }.coerceAtLeast(0)
+    val categoryFocus = categoryRequesters.getOrNull(categoryIndex)
+    var categoryFocused by remember { mutableStateOf(false) }
+    val shown = movie ?: held
 
     val settings by LocalUserSettings.current.settings.collectAsStateWithLifecycle()
     val fromFrame = settings.plexBackdrop
@@ -159,7 +170,9 @@ internal fun TvHomeScreen(
 
     val shift = remember { Animatable(activeIndex.toFloat()) }
     LaunchedEffect(activeIndex) {
-        shift.animateTo(activeIndex.toFloat(), tween(420, easing = FastOutSlowInEasing))
+        val jump = kotlin.math.abs(shift.value - activeIndex)
+        if (jump > 1f) shift.snapTo(activeIndex.toFloat())
+        else shift.animateTo(activeIndex.toFloat(), tween(420, easing = FastOutSlowInEasing))
     }
 
     BoxWithConstraints(
@@ -173,14 +186,20 @@ internal fun TvHomeScreen(
                 }
                 when (event.key) {
                     Key.DirectionDown -> {
+                        if (categoryFocused) return@onPreviewKeyEvent false
                         val next = rails.getOrNull(activeIndex + 1) ?: return@onPreviewKeyEvent true
                         onActiveId(next.id)
                         true
                     }
                     Key.DirectionUp -> {
+                        if (categoryFocused) return@onPreviewKeyEvent false
                         val prev = rails.getOrNull(activeIndex - 1)
-                        if (prev != null) onActiveId(prev.id)
-                        true
+                        if (prev != null) {
+                            onActiveId(prev.id)
+                            true
+                        } else {
+                            categories.isEmpty()
+                        }
                     }
                     else -> false
                 }
@@ -221,6 +240,7 @@ internal fun TvHomeScreen(
                 activeRail?.movies?.getOrNull(pick - 1),
             ),
             width = textW,
+            overviewLines = if (categories.isEmpty()) 3 else 2,
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .padding(start = SideInset, top = 28.dp),
@@ -231,6 +251,21 @@ internal fun TvHomeScreen(
         val density = LocalDensity.current
         val rowPx = with(density) { rowHeight.toPx() }
         val window = (activeIndex - 1)..(activeIndex + 1)
+        if (categories.isNotEmpty() && categoryFocus != null) {
+            TvCategoryBar(
+                categories = categories,
+                categoryId = categoryId,
+                requesters = categoryRequesters,
+                menuFocus = menuFocus,
+                posterTarget = posterTarget,
+                visible = visible,
+                onCategory = onCategory,
+                onFocused = { categoryFocused = it },
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(bottom = stageHeight + 8.dp),
+            )
+        }
         Box(
             modifier = Modifier
                 .align(Alignment.BottomStart)
@@ -249,6 +284,8 @@ internal fun TvHomeScreen(
                         menuFocus = menuFocus,
                         menuFocused = menuFocused,
                         visible = visible,
+                        skipAutoFocus = categoryFocused,
+                        upFocus = if (index == 0) categoryFocus else null,
                         posterTarget = posterTarget,
                         onPick = { picks[rail.id] = it },
                         onRetry = onRetry,
@@ -331,6 +368,7 @@ private fun TvHeroMeta(
     movie: Movie?,
     neighbors: List<Movie>,
     width: Dp,
+    overviewLines: Int = 3,
     modifier: Modifier = Modifier,
 ) {
     val container = LocalAppContainer.current
@@ -369,13 +407,13 @@ private fun TvHeroMeta(
             },
             label = "hero",
         ) { item ->
-            if (item != null) TvHeroBody(item, width, facts[item.id])
+            if (item != null) TvHeroBody(item, width, facts[item.id], overviewLines)
         }
     }
 }
 
 @Composable
-private fun TvHeroBody(movie: Movie, width: Dp, facts: HeroFacts?) {
+private fun TvHeroBody(movie: Movie, width: Dp, facts: HeroFacts?, overviewLines: Int) {
     val pulse = rememberInfiniteTransition(label = "hero-bone")
     val bone by pulse.animateFloat(
         initialValue = 0.08f,
@@ -443,9 +481,14 @@ private fun TvHeroBody(movie: Movie, width: Dp, facts: HeroFacts?) {
         Spacer(Modifier.height(4.dp))
         if (overview.isBlank() && waiting) {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Bone(Modifier.fillMaxWidth().height(10.dp), bone)
-                Bone(Modifier.fillMaxWidth(0.92f).height(10.dp), bone)
-                Bone(Modifier.fillMaxWidth(0.66f).height(10.dp), bone)
+                repeat(overviewLines) { line ->
+                    val fraction = when (line) {
+                        0 -> 1f
+                        overviewLines - 1 -> 0.66f
+                        else -> 0.92f
+                    }
+                    Bone(Modifier.fillMaxWidth(fraction).height(10.dp), bone)
+                }
             }
         } else {
             Text(
@@ -454,8 +497,8 @@ private fun TvHeroBody(movie: Movie, width: Dp, facts: HeroFacts?) {
                 fontSize = 12.sp,
                 lineHeight = 16.sp,
                 fontWeight = FontWeight.Normal,
-                minLines = 3,
-                maxLines = 3,
+                minLines = overviewLines,
+                maxLines = overviewLines,
                 overflow = TextOverflow.Ellipsis,
             )
         }
@@ -500,6 +543,64 @@ private fun TvLogo(title: String, logoUrl: String?, width: Dp, onFailed: () -> U
     )
 }
 
+@Composable
+private fun TvCategoryBar(
+    categories: List<TvCategory>,
+    categoryId: String,
+    requesters: List<FocusRequester>,
+    menuFocus: FocusRequester,
+    posterTarget: TvPosterTarget,
+    visible: Boolean,
+    onCategory: (String) -> Unit,
+    onFocused: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
+            .onFocusChanged { onFocused(it.hasFocus) }
+            .padding(start = RailRest),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        categories.forEachIndexed { index, category ->
+            val selected = category.id == categoryId
+            var focused by remember(category.id) { mutableStateOf(false) }
+            Text(
+                text = stringResource(category.label),
+                color = if (selected || focused) Color.White else Color.White.copy(alpha = 0.62f),
+                fontSize = 14.sp,
+                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+                modifier = Modifier
+                    .focusRequester(requesters[index])
+                    .onFocusChanged {
+                        focused = it.isFocused
+                        if (it.isFocused && category.id != categoryId) onCategory(category.id)
+                    }
+                    .focusProperties {
+                        canFocus = visible
+                        if (index == 0) left = menuFocus
+                        if (index == categories.lastIndex) right = FocusRequester.Cancel
+                        up = FocusRequester.Cancel
+                        down = posterTarget.requester ?: FocusRequester.Cancel
+                    }
+                    .clip(RoundedCornerShape(16.dp))
+                    .border(
+                        width = if (focused) 2.dp else 0.dp,
+                        color = if (focused) Color.White else Color.Transparent,
+                        shape = RoundedCornerShape(16.dp),
+                    )
+                    .background(if (selected) Color.White.copy(alpha = 0.16f) else Color.White.copy(alpha = 0.06f))
+                    .clickable(
+                        interactionSource = remember(category.id) { MutableInteractionSource() },
+                        indication = null,
+                        onClick = { onCategory(category.id) },
+                    )
+                    .padding(horizontal = 14.dp, vertical = 7.dp),
+            )
+        }
+    }
+}
+
 private fun Int.asRuntime(): String {
     val hours = this / 60
     val minutes = this % 60
@@ -519,6 +620,8 @@ private fun TvRailRow(
     menuFocus: FocusRequester,
     menuFocused: Boolean,
     visible: Boolean,
+    skipAutoFocus: Boolean = false,
+    upFocus: FocusRequester? = null,
     posterTarget: TvPosterTarget,
     onPick: (Int) -> Unit,
     onRetry: () -> Unit,
@@ -534,8 +637,8 @@ private fun TvRailRow(
     if (active && visible) {
         posterTarget.requester = if (count == 0) emptyFocus else requesters[selected]
     }
-    LaunchedEffect(active, rail.id, count, menuFocused, visible) {
-        if (!active || !visible || menuFocused) return@LaunchedEffect
+    LaunchedEffect(active, rail.id, count, menuFocused, visible, skipAutoFocus) {
+        if (!active || !visible || menuFocused || skipAutoFocus) return@LaunchedEffect
         val requester = if (count == 0) emptyFocus else requesters[selected]
         repeat(8) {
             val moved = runCatching { requester.requestFocus() }
@@ -577,7 +680,10 @@ private fun TvRailRow(
                     .height(posterHeight + 16.dp)
                     .fillMaxWidth()
                     .focusRequester(emptyFocus)
-                    .focusProperties { canFocus = active && visible }
+                    .focusProperties {
+                        canFocus = active && visible
+                        if (upFocus != null) up = upFocus
+                    }
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
@@ -643,6 +749,7 @@ private fun TvRailRow(
                             }
                             .focusProperties {
                                 canFocus = active && visible
+                                if (upFocus != null) up = upFocus
                                 if (index == 0) left = menuFocus
                                 if (index == movies.lastIndex) right = FocusRequester.Cancel
                             }

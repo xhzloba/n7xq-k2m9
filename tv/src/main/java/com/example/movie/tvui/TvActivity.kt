@@ -36,6 +36,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
@@ -90,7 +91,10 @@ class TvActivity : ComponentActivity() {
 
 @Composable
 private fun TvShell(model: TvHomeViewModel) {
+    val container = LocalAppContainer.current
+    val catalogModel: TvCatalogViewModel = viewModel(factory = TvCatalogViewModel.factory(container))
     val rails by model.rails.collectAsStateWithLifecycle()
+    val catalogRails by catalogModel.rails.collectAsStateWithLifecycle()
     var tab by rememberSaveable { mutableStateOf(AppTab.Home) }
     var menuFocused by remember { mutableStateOf(false) }
     var browsing by remember { mutableStateOf(false) }
@@ -99,11 +103,20 @@ private fun TvShell(model: TvHomeViewModel) {
     var homeRail by rememberSaveable { mutableStateOf("popular") }
     val homePicks = remember { mutableStateMapOf<String, Int>() }
     var homeReset by remember { mutableIntStateOf(0) }
+    var catalogType by rememberSaveable { mutableStateOf(TvCatalogViewModel.Kinds.first().id) }
+    val catalogRail = remember { mutableStateMapOf<String, String>() }
+    val catalogPicks = remember { mutableStateMapOf<String, Int>() }
+    var catalogReset by remember { mutableIntStateOf(0) }
+    LaunchedEffect(catalogType, tab) {
+        if (tab == AppTab.Catalog) catalogModel.show(catalogType)
+    }
     LaunchedEffect(tab) {
-        if (tab != AppTab.Home) browsing = false
+        if (tab != AppTab.Home && tab != AppTab.Catalog) browsing = false
     }
     SideEffect {
-        if (tab != AppTab.Home && tab != AppTab.Settings) posterTarget.requester = null
+        if (tab != AppTab.Home && tab != AppTab.Catalog && tab != AppTab.Settings) {
+            posterTarget.requester = null
+        }
     }
     Box(
         modifier = Modifier
@@ -122,15 +135,38 @@ private fun TvShell(model: TvHomeViewModel) {
             menuFocused = menuFocused,
             onBrowsing = { browsing = it },
             onRetry = model::reload,
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .zIndex(if (tab == AppTab.Home) 1f else 0f),
+        )
+        TvHomeScreen(
+            rails = catalogRails,
+            activeId = catalogRail[catalogType].orEmpty(),
+            onActiveId = { catalogRail[catalogType] = it },
+            picks = catalogPicks,
+            reset = catalogReset,
+            visible = tab == AppTab.Catalog,
+            posterTarget = posterTarget,
+            menuFocus = tabFocus[AppTab.Catalog.ordinal],
+            menuFocused = menuFocused,
+            onBrowsing = { browsing = it },
+            onRetry = catalogModel::reload,
+            categories = TvCatalogViewModel.Kinds,
+            categoryId = catalogType,
+            onCategory = { catalogType = it },
+            modifier = Modifier
+                .fillMaxSize()
+                .zIndex(if (tab == AppTab.Catalog) 1f else 0f),
         )
         if (tab == AppTab.Settings) {
             TvSettingsScreen(
                 menuFocus = tabFocus[tab.ordinal],
                 posterTarget = posterTarget,
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .zIndex(2f),
             )
-        } else if (tab != AppTab.Home) {
+        } else if (tab != AppTab.Home && tab != AppTab.Catalog) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text(
                     text = stringResource(tab.label),
@@ -146,12 +182,22 @@ private fun TvShell(model: TvHomeViewModel) {
             posterTarget = posterTarget,
             onSelect = { next -> if (next != tab) tab = next },
             onReselect = { next ->
-                if (next == AppTab.Home) homeReset++
+                when (next) {
+                    AppTab.Home -> homeReset++
+                    AppTab.Catalog -> {
+                        catalogType = TvCatalogViewModel.Kinds.first().id
+                        catalogPicks.clear()
+                        catalogRail.clear()
+                        catalogReset++
+                    }
+                    else -> Unit
+                }
             },
             onMenuFocus = { menuFocused = it },
             compact = browsing,
             modifier = Modifier
                 .align(Alignment.CenterStart)
+                .zIndex(3f)
                 .padding(start = 8.dp),
         )
     }

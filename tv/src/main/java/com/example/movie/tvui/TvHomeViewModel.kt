@@ -34,6 +34,9 @@ internal class TvHomeViewModel(
         add(Spec("popular", R.string.catalog_popular, CatalogQuery("popular")))
         add(Spec("watching", R.string.section_watching, CatalogQuery(sort = "watching")))
         add(Spec("recommendations", R.string.section_recommendations, recommendations = true))
+        add(Spec("uhd", R.string.section_uhd, CatalogQuery(sort = "new", uhd = true)))
+        add(Spec("hdr", R.string.section_hdr, CatalogQuery(sort = "new", hdr = true)))
+        add(Spec("dolby", R.string.section_dolby, CatalogQuery(sort = "new", dolbyVision = true)))
         HomeRails.Genres.forEach { entry ->
             val genre = GenreRails.All.first { it.id == entry.id }
             add(
@@ -114,7 +117,7 @@ internal class TvHomeViewModel(
 
     companion object {
         const val RailSize = 15
-        val Primary = setOf("popular", "watching", "recommendations")
+        val Primary = setOf("popular", "watching", "recommendations", "uhd", "hdr", "dolby")
 
         fun factory(container: AppContainer): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {
