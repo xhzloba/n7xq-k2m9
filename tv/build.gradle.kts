@@ -1,0 +1,90 @@
+import java.util.Properties
+
+plugins {
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.serialization)
+}
+
+val localSecrets = Properties().apply {
+    val file = rootProject.file("vokino.properties")
+    if (file.exists()) file.inputStream().use { load(it) }
+}
+val vokinoToken = localSecrets.getProperty("VOKINO_TOKEN").orEmpty()
+val franchiseToken = localSecrets.getProperty("FRANCHISE_TOKEN").orEmpty()
+
+android {
+    namespace = "com.example.movie"
+    compileSdk {
+        version = release(36)
+    }
+
+    defaultConfig {
+        applicationId = "com.example.movie.tv"
+        minSdk = 36
+        targetSdk = 36
+        versionCode = 1
+        versionName = "1.0.0"
+
+        buildConfigField("String", "VOKINO_BASE_URL", "\"https://api.vokino.pro/\"")
+        buildConfigField("String", "VOKINO_TOKEN", "\"${vokinoToken.replace("\"", "\\\"")}\"")
+        buildConfigField("String", "FRANCHISE_BASE_URL", "\"https://api.bhcesh.me/\"")
+        buildConfigField("String", "FRANCHISE_TOKEN", "\"${franchiseToken.replace("\"", "\\\"")}\"")
+    }
+
+    buildTypes {
+        release {
+            isMinifyEnabled = false
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
+        }
+    }
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
+    }
+    kotlinOptions {
+        jvmTarget = "11"
+    }
+    buildFeatures {
+        compose = true
+        buildConfig = true
+    }
+    sourceSets.named("main") {
+        java.srcDir("../app/src/main/java")
+        res.srcDir("../app/src/main/res")
+        assets.srcDir("../app/src/main/assets")
+    }
+}
+
+dependencies {
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.activity.compose)
+    implementation(platform(libs.androidx.compose.bom))
+    implementation(libs.androidx.compose.ui)
+    implementation(libs.androidx.compose.ui.graphics)
+    implementation(libs.androidx.compose.ui.tooling.preview)
+    implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.compose.foundation)
+    implementation(libs.androidx.lifecycle.viewmodel.ktx)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.androidx.lifecycle.runtime.compose)
+    implementation(libs.retrofit)
+    implementation(libs.okhttp)
+    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.retrofit.kotlinx.serialization)
+    implementation(libs.coil.compose)
+    implementation(libs.androidx.palette)
+    implementation(libs.haze)
+    implementation(libs.androidx.media3.exoplayer)
+    implementation(libs.androidx.media3.exoplayer.hls)
+    implementation(libs.androidx.media3.exoplayer.dash)
+    implementation(libs.androidx.media3.database)
+    implementation(libs.androidx.media3.ui)
+    debugImplementation(libs.androidx.compose.ui.tooling)
+    debugImplementation(libs.androidx.compose.ui.test.manifest)
+}
