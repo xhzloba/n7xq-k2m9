@@ -30,23 +30,25 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -79,13 +81,14 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.example.movie.R
 import com.example.movie.di.LocalAppContainer
 import com.example.movie.domain.model.Movie
-import com.example.movie.presentation.common.ImdbScore
-import com.example.movie.presentation.common.KpScore
 import com.example.movie.presentation.detail.drawPlexWash
+import com.example.movie.presentation.shell.ShellIcons
+import com.example.movie.presentation.settings.LocalUserSettings
 import com.example.movie.ui.theme.PosterShape
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -95,12 +98,16 @@ private val SideInset = 56.dp
 private val RailRest = SideInset
 private val TitleHeight = 28.dp
 private val RowGap = 26.dp
-private val Peek = TitleHeight
 private val MetaInk = Color.White.copy(alpha = 0.92f)
 
 @Composable
 internal fun TvHomeScreen(
     rails: List<TvRail>,
+    activeId: String,
+    onActiveId: (String) -> Unit,
+    picks: MutableMap<String, Int>,
+    reset: Int,
+    visible: Boolean,
     posterTarget: TvPosterTarget,
     menuFocus: FocusRequester,
     menuFocused: Boolean,
@@ -109,31 +116,40 @@ internal fun TvHomeScreen(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
-    var activeId by rememberSaveable { mutableStateOf(rails.firstOrNull()?.id ?: "popular") }
     LaunchedEffect(rails) {
-        if (rails.none { it.id == activeId } && rails.isNotEmpty()) activeId = rails.first().id
+        if (rails.none { it.id == activeId } && rails.isNotEmpty()) onActiveId(rails.first().id)
+    }
+    var seenReset by remember { mutableIntStateOf(reset) }
+    LaunchedEffect(reset) {
+        if (reset == seenReset) return@LaunchedEffect
+        seenReset = reset
+        rails.firstOrNull()?.let { onActiveId(it.id) }
+        picks.clear()
     }
     val activeIndex = rails.indexOfFirst { it.id == activeId }.coerceAtLeast(0)
     val activeRail = rails.getOrNull(activeIndex)
-    val picks = remember { mutableStateMapOf<String, Int>() }
     val pick = activeRail?.let { rail ->
         (picks[rail.id] ?: 0).coerceIn(0, (rail.movies.size - 1).coerceAtLeast(0))
     } ?: 0
     val movie = activeRail?.movies?.getOrNull(pick)
-    SideEffect { onBrowsing(pick > 0 && activeRail?.movies?.isNotEmpty() == true) }
+    SideEffect { onBrowsing(visible && pick > 0 && activeRail?.movies?.isNotEmpty() == true) }
     val shown = movie
 
+    val settings by LocalUserSettings.current.settings.collectAsStateWithLifecycle()
+    val fromFrame = settings.plexBackdrop
     val motion = remember { TvWashMotion() }
     val wash = motion.current()
     val cache = remember { HashMap<String, PosterWashCache>() }
-    LaunchedEffect(shown?.id, shown?.backdropUrl, shown?.posterUrl) {
+    LaunchedEffect(shown?.id, shown?.backdropUrl, shown?.posterUrl, fromFrame) {
         val item = shown ?: return@LaunchedEffect
-        val cached = cache[item.id]
-        val next = if (cached != null && cached.url == item.washUrl()) {
+        val url = item.washSource(fromFrame)
+        val key = "${item.id}|$fromFrame|$url"
+        val cached = cache[key]
+        val next = if (cached != null && cached.url == url) {
             cached.wash
         } else {
-            item.extractBackdropWash(context)?.also { wash ->
-                cache[item.id] = PosterWashCache(item.washUrl(), wash)
+            item.extractTvWash(context, fromFrame)?.also { wash ->
+                cache[key] = PosterWashCache(url, wash)
             }
         } ?: return@LaunchedEffect
         motion.glide(next)
@@ -149,19 +165,21 @@ internal fun TvHomeScreen(
     BoxWithConstraints(
         modifier = modifier
             .fillMaxSize()
+            .graphicsLayer { alpha = if (visible) 1f else 0f }
             .onPreviewKeyEvent { event ->
+                if (!visible) return@onPreviewKeyEvent false
                 if (event.type != KeyEventType.KeyDown || event.nativeKeyEvent.repeatCount > 0) {
                     return@onPreviewKeyEvent false
                 }
                 when (event.key) {
                     Key.DirectionDown -> {
                         val next = rails.getOrNull(activeIndex + 1) ?: return@onPreviewKeyEvent true
-                        activeId = next.id
+                        onActiveId(next.id)
                         true
                     }
                     Key.DirectionUp -> {
                         val prev = rails.getOrNull(activeIndex - 1)
-                        if (prev != null) activeId = prev.id
+                        if (prev != null) onActiveId(prev.id)
                         true
                     }
                     else -> false
@@ -209,14 +227,13 @@ internal fun TvHomeScreen(
         )
         val posterH = (maxHeight * 0.36f).coerceIn(148.dp, 240.dp)
         val rowHeight = posterH + 50.dp + RowGap
-        val stageHeight = rowHeight + Peek
+        val stageHeight = rowHeight + TitleHeight + 14.dp + posterH * 0.16f
         val density = LocalDensity.current
         val rowPx = with(density) { rowHeight.toPx() }
         val window = (activeIndex - 1)..(activeIndex + 1)
         Box(
             modifier = Modifier
                 .align(Alignment.BottomStart)
-                .padding(bottom = 28.dp)
                 .fillMaxWidth()
                 .height(stageHeight)
                 .clipToBounds(),
@@ -231,6 +248,7 @@ internal fun TvHomeScreen(
                         posterHeight = posterH,
                         menuFocus = menuFocus,
                         menuFocused = menuFocused,
+                        visible = visible,
                         posterTarget = posterTarget,
                         onPick = { picks[rail.id] = it },
                         onRetry = onRetry,
@@ -241,7 +259,6 @@ internal fun TvHomeScreen(
                 }
             }
         }
-        Spacer(Modifier.height(RowGap))
     }
 }
 
@@ -249,8 +266,6 @@ private class PosterWashCache(
     val url: String?,
     val wash: com.example.movie.presentation.palette.PosterWash,
 )
-
-private fun Movie.washUrl(): String? = backdropUrl?.takeIf { it.isNotBlank() } ?: posterUrl
 
 private fun Modifier.cornerFade(): Modifier = graphicsLayer {
     compositingStrategy = CompositingStrategy.Offscreen
@@ -370,14 +385,17 @@ private fun TvHeroBody(movie: Movie, width: Dp, facts: HeroFacts?) {
     )
     val logo = facts?.logo ?: movie.logoUrl
     val overview = facts?.overview?.takeIf { it.isNotBlank() } ?: movie.overview
-            val waiting = facts == null
-            val runtime = facts?.runtime
+    val waiting = facts == null
+    val runtime = facts?.runtime
+    var logoFailed by remember(movie.id, logo) { mutableStateOf(logo.isNullOrBlank()) }
     Column(Modifier.width(width)) {
-        Box(Modifier.height(46.dp)) {
-            if (logo.isNullOrBlank() && waiting) {
+        when {
+            logo.isNullOrBlank() && waiting -> Box(Modifier.height(46.dp)) {
                 Bone(Modifier.width(168.dp).height(28.dp), bone)
-            } else {
-                TvLogo(title = movie.title, logoUrl = logo, width = width)
+            }
+            logoFailed -> TvTitleFallback(movie.title)
+            else -> Box(Modifier.height(46.dp)) {
+                TvLogo(title = movie.title, logoUrl = logo, width = width, onFailed = { logoFailed = true })
             }
         }
         Spacer(Modifier.height(8.dp))
@@ -422,36 +440,7 @@ private fun TvHeroBody(movie: Movie, width: Dp, facts: HeroFacts?) {
                 )
             }
         }
-        Spacer(Modifier.height(6.dp))
-        Row(
-            modifier = Modifier.heightIn(min = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            movie.ratingImdb?.let { score ->
-                ImdbScore(
-                    score = score,
-                    color = Color.White,
-                    iconHeight = 10.dp,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Normal,
-                )
-            }
-            movie.ratingKp?.let { score ->
-                KpScore(
-                    score = score,
-                    color = Color.White,
-                    iconSize = 10.dp,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Normal,
-                )
-            }
-            if (movie.ratingImdb == null && movie.ratingKp == null && waiting) {
-                Bone(Modifier.width(56.dp).height(12.dp), bone)
-                Bone(Modifier.width(56.dp).height(12.dp), bone)
-            }
-        }
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(4.dp))
         if (overview.isBlank() && waiting) {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Bone(Modifier.fillMaxWidth().height(10.dp), bone)
@@ -483,31 +472,32 @@ private fun Bone(modifier: Modifier, alpha: Float) {
 }
 
 @Composable
-private fun TvLogo(title: String, logoUrl: String?, width: Dp) {
-    var failed by remember(logoUrl) { mutableStateOf(logoUrl.isNullOrBlank()) }
-    if (!failed) {
-        AsyncImage(
-            model = logoUrl,
-            contentDescription = title,
-            contentScale = ContentScale.Fit,
-            alignment = Alignment.CenterStart,
-            onError = { failed = true },
-            modifier = Modifier
-                .height(46.dp)
-                .widthIn(max = width.coerceAtMost(240.dp))
-                .fillMaxWidth(),
-        )
-    } else {
-        Text(
-            text = title,
-            color = Color.White,
-            fontWeight = FontWeight.ExtraBold,
-            fontSize = 22.sp,
-            lineHeight = 26.sp,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-    }
+private fun TvTitleFallback(title: String) {
+    Text(
+        text = title,
+        color = Color.White,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 26.sp,
+        lineHeight = 30.sp,
+        letterSpacing = (-0.4).sp,
+        maxLines = 2,
+        overflow = TextOverflow.Ellipsis,
+    )
+}
+
+@Composable
+private fun TvLogo(title: String, logoUrl: String?, width: Dp, onFailed: () -> Unit) {
+    AsyncImage(
+        model = logoUrl,
+        contentDescription = title,
+        contentScale = ContentScale.Fit,
+        alignment = Alignment.CenterStart,
+        onError = { onFailed() },
+        modifier = Modifier
+            .height(46.dp)
+            .widthIn(max = width.coerceAtMost(240.dp))
+            .fillMaxWidth(),
+    )
 }
 
 private fun Int.asRuntime(): String {
@@ -528,6 +518,7 @@ private fun TvRailRow(
     posterHeight: Dp,
     menuFocus: FocusRequester,
     menuFocused: Boolean,
+    visible: Boolean,
     posterTarget: TvPosterTarget,
     onPick: (Int) -> Unit,
     onRetry: () -> Unit,
@@ -539,11 +530,12 @@ private fun TvRailRow(
     val requesters = remember(rail.id, count) { List(count) { FocusRequester() } }
     val emptyFocus = remember(rail.id) { FocusRequester() }
     val selected = pick.coerceIn(0, (count - 1).coerceAtLeast(0))
-    if (active) {
+    var placed by remember(rail.id) { mutableStateOf(false) }
+    if (active && visible) {
         posterTarget.requester = if (count == 0) emptyFocus else requesters[selected]
     }
-    LaunchedEffect(active, rail.id, count, menuFocused) {
-        if (!active || menuFocused) return@LaunchedEffect
+    LaunchedEffect(active, rail.id, count, menuFocused, visible) {
+        if (!active || !visible || menuFocused) return@LaunchedEffect
         val requester = if (count == 0) emptyFocus else requesters[selected]
         repeat(8) {
             val moved = runCatching { requester.requestFocus() }
@@ -553,7 +545,12 @@ private fun TvRailRow(
         }
     }
     LaunchedEffect(active, selected, count) {
-        if (!active || count == 0 || selected == 0) return@LaunchedEffect
+        if (!active || count == 0) return@LaunchedEffect
+        if (!placed) {
+            placed = true
+            if (selected > 0) listState.scrollToItem(selected)
+            return@LaunchedEffect
+        }
         listState.animateScrollToItem(selected)
     }
     Column(modifier.fillMaxWidth()) {
@@ -577,10 +574,10 @@ private fun TvRailRow(
             }
             Box(
                 modifier = Modifier
-                    .height(posterHeight)
+                    .height(posterHeight + 16.dp)
                     .fillMaxWidth()
                     .focusRequester(emptyFocus)
-                    .focusProperties { canFocus = active }
+                    .focusProperties { canFocus = active && visible }
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
@@ -592,7 +589,9 @@ private fun TvRailRow(
                     Text(message, color = Color.White.copy(alpha = 0.7f), fontSize = 15.sp)
                 } else {
                     Row(
-                        modifier = Modifier.padding(start = RailRest),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(start = RailRest, top = 8.dp, bottom = 8.dp),
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
                         repeat(6) {
@@ -643,7 +642,7 @@ private fun TvRailRow(
                                 if (it.isFocused) onPick(index)
                             }
                             .focusProperties {
-                                canFocus = active
+                                canFocus = active && visible
                                 if (index == 0) left = menuFocus
                                 if (index == movies.lastIndex) right = FocusRequester.Cancel
                             }
@@ -659,13 +658,27 @@ private fun TvRailRow(
                             )
                             .clip(PosterShape)
                             .background(Color(0xFF2A2A2E)),
+                        contentAlignment = Alignment.Center,
                     ) {
-                        AsyncImage(
-                            model = item.posterUrl ?: item.backdropUrl,
-                            contentDescription = stringResource(R.string.poster_content_description, item.title),
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize(),
-                        )
+                        val cover = item.posterUrl?.takeIf { it.isNotBlank() }
+                        var missing by remember(item.id, cover) { mutableStateOf(cover == null) }
+                        if (!missing) {
+                            AsyncImage(
+                                model = cover,
+                                contentDescription = stringResource(R.string.poster_content_description, item.title),
+                                contentScale = ContentScale.Crop,
+                                onError = { missing = true },
+                                modifier = Modifier.fillMaxSize(),
+                            )
+                        }
+                        if (missing) {
+                            Icon(
+                                imageVector = ShellIcons.trailers,
+                                contentDescription = stringResource(R.string.poster_content_description, item.title),
+                                tint = Color.White.copy(alpha = 0.45f),
+                                modifier = Modifier.size(28.dp),
+                            )
+                        }
                     }
                 }
             }

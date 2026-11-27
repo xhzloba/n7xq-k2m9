@@ -45,14 +45,21 @@ internal class TvWashMotion {
     }
 }
 
-/** UltraPlex с backdrop, тот же `plexWash`, что красит мобильную главную и деталку. */
-internal suspend fun Movie.extractBackdropWash(context: Context): PosterWash? {
-    val url = backdropUrl?.takeIf { it.isNotBlank() } ?: posterUrl?.takeIf { it.isNotBlank() } ?: return null
+internal fun Movie.washSource(fromBackdrop: Boolean): String? = if (fromBackdrop) {
+    backdropUrl?.takeIf { it.isNotBlank() } ?: posterUrl?.takeIf { it.isNotBlank() }
+} else {
+    posterUrl?.takeIf { it.isNotBlank() } ?: backdropUrl?.takeIf { it.isNotBlank() }
+}
+
+/** UltraPlex тем же `plexWash`, что на мобилке. По кадру — backdrop, без него постер. Выключено — постер. */
+internal suspend fun Movie.extractTvWash(context: Context, fromBackdrop: Boolean): PosterWash? {
+    val url = washSource(fromBackdrop) ?: return null
+    val frame = fromBackdrop && url == backdropUrl
     val result = context.imageLoader.execute(
         ImageRequest.Builder(context)
             .data(url)
             .allowHardware(false)
-            .size(480, 270)
+            .size(if (frame) 480 else 160, if (frame) 270 else 240)
             .scale(Scale.FIT)
             .build(),
     )

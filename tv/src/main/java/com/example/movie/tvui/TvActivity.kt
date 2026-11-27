@@ -24,7 +24,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -92,22 +96,41 @@ private fun TvShell(model: TvHomeViewModel) {
     var browsing by remember { mutableStateOf(false) }
     val tabFocus = remember { AppTab.entries.map { FocusRequester() } }
     val posterTarget = remember { TvPosterTarget() }
+    var homeRail by rememberSaveable { mutableStateOf("popular") }
+    val homePicks = remember { mutableStateMapOf<String, Int>() }
+    var homeReset by remember { mutableIntStateOf(0) }
+    LaunchedEffect(tab) {
+        if (tab != AppTab.Home) browsing = false
+    }
+    SideEffect {
+        if (tab != AppTab.Home && tab != AppTab.Settings) posterTarget.requester = null
+    }
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(ComposeColor.Black),
     ) {
-        if (tab == AppTab.Home) {
-            TvHomeScreen(
-                rails = rails,
-                posterTarget = posterTarget,
+        TvHomeScreen(
+            rails = rails,
+            activeId = homeRail,
+            onActiveId = { homeRail = it },
+            picks = homePicks,
+            reset = homeReset,
+            visible = tab == AppTab.Home,
+            posterTarget = posterTarget,
+            menuFocus = tabFocus[AppTab.Home.ordinal],
+            menuFocused = menuFocused,
+            onBrowsing = { browsing = it },
+            onRetry = model::reload,
+            modifier = Modifier.fillMaxSize(),
+        )
+        if (tab == AppTab.Settings) {
+            TvSettingsScreen(
                 menuFocus = tabFocus[tab.ordinal],
-                menuFocused = menuFocused,
-                onBrowsing = { browsing = it },
-                onRetry = model::reload,
+                posterTarget = posterTarget,
                 modifier = Modifier.fillMaxSize(),
             )
-        } else {
+        } else if (tab != AppTab.Home) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text(
                     text = stringResource(tab.label),
@@ -121,7 +144,10 @@ private fun TvShell(model: TvHomeViewModel) {
             selected = tab,
             tabFocus = tabFocus,
             posterTarget = posterTarget,
-            onSelect = { tab = it },
+            onSelect = { next -> if (next != tab) tab = next },
+            onReselect = { next ->
+                if (next == AppTab.Home) homeReset++
+            },
             onMenuFocus = { menuFocused = it },
             compact = browsing,
             modifier = Modifier
@@ -139,6 +165,7 @@ private fun TvPill(
     tabFocus: List<FocusRequester>,
     posterTarget: TvPosterTarget,
     onSelect: (AppTab) -> Unit,
+    onReselect: (AppTab) -> Unit,
     onMenuFocus: (Boolean) -> Unit,
     compact: Boolean,
     modifier: Modifier = Modifier,
@@ -164,6 +191,7 @@ private fun TvPill(
         AppTab.entries.forEachIndexed { index, tab ->
             val interaction = remember(tab) { MutableInteractionSource() }
             var focused by remember(tab) { mutableStateOf(false) }
+            var reselectArmed by remember(tab) { mutableStateOf(false) }
             val lit = tab == selected || focused
             Box(
                 modifier = Modifier
@@ -171,7 +199,14 @@ private fun TvPill(
                     .focusRequester(tabFocus[index])
                     .onFocusChanged {
                         focused = it.isFocused
-                        if (it.isFocused) onSelect(tab)
+                        if (!it.isFocused) {
+                            reselectArmed = false
+                        } else if (tab != selected) {
+                            onSelect(tab)
+                            reselectArmed = false
+                        } else {
+                            reselectArmed = true
+                        }
                     }
                     .focusProperties {
                         if (index == 0) up = FocusRequester.Cancel
@@ -189,7 +224,14 @@ private fun TvPill(
                     .clickable(
                         interactionSource = interaction,
                         indication = null,
-                        onClick = { onSelect(tab) },
+                        onClick = {
+                            if (tab == selected && reselectArmed) {
+                                onReselect(tab)
+                            } else {
+                                if (tab != selected) onSelect(tab)
+                                reselectArmed = true
+                            }
+                        },
                     ),
                 contentAlignment = Alignment.Center,
             ) {
