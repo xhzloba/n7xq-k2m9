@@ -35,6 +35,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.focus.FocusRequester
@@ -61,6 +64,7 @@ import com.example.movie.ui.theme.MovieTheme
 
 internal class TvPosterTarget {
     var requester: FocusRequester? = null
+    var poster: FocusRequester? = null
 }
 
 class TvActivity : ComponentActivity() {
@@ -107,6 +111,7 @@ private fun TvShell(model: TvHomeViewModel) {
     val catalogRail = remember { mutableStateMapOf<String, String>() }
     val catalogPicks = remember { mutableStateMapOf<String, Int>() }
     var catalogReset by remember { mutableIntStateOf(0) }
+    var catalogMenu by remember { mutableIntStateOf(0) }
     LaunchedEffect(catalogType, tab) {
         if (tab == AppTab.Catalog) catalogModel.show(catalogType)
     }
@@ -154,6 +159,7 @@ private fun TvShell(model: TvHomeViewModel) {
             categories = TvCatalogViewModel.Kinds,
             categoryId = catalogType,
             onCategory = { catalogType = it },
+            menuPulse = catalogMenu,
             modifier = Modifier
                 .fillMaxSize()
                 .zIndex(if (tab == AppTab.Catalog) 1f else 0f),
@@ -194,6 +200,9 @@ private fun TvShell(model: TvHomeViewModel) {
                 }
             },
             onMenuFocus = { menuFocused = it },
+            onLongPress = { pressed ->
+                if (pressed == AppTab.Catalog && tab == AppTab.Catalog) catalogMenu++
+            },
             compact = browsing,
             modifier = Modifier
                 .align(Alignment.CenterStart)
@@ -213,6 +222,7 @@ private fun TvPill(
     onSelect: (AppTab) -> Unit,
     onReselect: (AppTab) -> Unit,
     onMenuFocus: (Boolean) -> Unit,
+    onLongPress: (AppTab) -> Unit,
     compact: Boolean,
     modifier: Modifier = Modifier,
 ) {
@@ -238,6 +248,7 @@ private fun TvPill(
             val interaction = remember(tab) { MutableInteractionSource() }
             var focused by remember(tab) { mutableStateOf(false) }
             var reselectArmed by remember(tab) { mutableStateOf(false) }
+            var longPressed by remember(tab) { mutableStateOf(false) }
             val lit = tab == selected || focused
             Box(
                 modifier = Modifier
@@ -247,11 +258,25 @@ private fun TvPill(
                         focused = it.isFocused
                         if (!it.isFocused) {
                             reselectArmed = false
+                            longPressed = false
                         } else if (tab != selected) {
                             onSelect(tab)
                             reselectArmed = false
                         } else {
                             reselectArmed = true
+                        }
+                    }
+                    .onPreviewKeyEvent { event ->
+                        val native = event.nativeKeyEvent
+                        if (event.type == KeyEventType.KeyDown && native.isLongPress && focused && tab == selected) {
+                            longPressed = true
+                            onLongPress(tab)
+                            true
+                        } else if (longPressed && focused && (event.type == KeyEventType.KeyUp || native.repeatCount > 0)) {
+                            if (event.type == KeyEventType.KeyUp) longPressed = false
+                            true
+                        } else {
+                            false
                         }
                     }
                     .focusProperties {
@@ -271,6 +296,7 @@ private fun TvPill(
                         interactionSource = interaction,
                         indication = null,
                         onClick = {
+                            if (longPressed) return@clickable
                             if (tab == selected && reselectArmed) {
                                 onReselect(tab)
                             } else {
