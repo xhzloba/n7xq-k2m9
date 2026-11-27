@@ -134,8 +134,10 @@ private fun TextureView.showFrame(videoWidth: Int, videoHeight: Int) {
         val sx: Float
         val sy: Float
         if (videoRatio > viewRatio) {
-            sx = 1f
-            sy = viewRatio / videoRatio
+            val fill = videoRatio / viewRatio
+            val zoom = 1f + (fill - 1f) * 0.72f
+            sx = zoom
+            sy = (viewRatio / videoRatio) * zoom
         } else {
             sx = videoRatio / viewRatio
             sy = 1f

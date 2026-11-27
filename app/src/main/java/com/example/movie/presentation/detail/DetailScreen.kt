@@ -1348,40 +1348,74 @@ private fun DetailContent(
             val slotTop = statusTop + belowBar
             val slotBottom = contentTop - aboveLogo
             val slot = (slotBottom - slotTop).coerceAtLeast(0.dp)
+            val bezel = 4.dp
+            val neck = 12.dp
+            val foot = 6.dp
+            val raised = 0.dp
+            val chassis = Color.Black
             val frameWidth = screenWidth - DetailInset * 2
-            val frameHeight = minOf(frameWidth * 9f / 16f, slot)
-            if (frameHeight > 0.dp) {
-                val frameTop = slotBottom - frameHeight
-                Box(
+            val chrome = bezel * 2 + neck + foot
+            val screenHeight = minOf(frameWidth * 9f / 16f, (slot - chrome - raised).coerceAtLeast(0.dp))
+            if (screenHeight > 0.dp) {
+                val frameTop = slotBottom - screenHeight - chrome - raised
+                Column(
                     modifier = Modifier
                         .align(Alignment.TopCenter)
                         .padding(top = frameTop)
-                        .width(frameWidth)
-                        .height(frameHeight)
-                        .clipToBounds()
-                        .background(Color.Black),
-                    contentAlignment = Alignment.Center,
+                        .width(frameWidth),
+                    horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    val media = trailerMedia
-                    if (holdTrailer && media != null) {
-                        key(trailerPlay) {
-                            BackdropTrailer(
-                                url = media.video,
-                                audio = media.audio,
-                                referer = trailerPage,
-                                modifier = Modifier.fillMaxSize(),
-                                onReady = { trailerFrame = true },
-                                onFailed = { wantTrailer = false },
-                            )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(screenHeight + bezel * 2)
+                            .clip(RoundedCornerShape(11.dp))
+                            .background(chassis)
+                            .padding(bezel),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(RoundedCornerShape(3.dp))
+                                .background(Color.Black),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            val media = trailerMedia
+                            if (holdTrailer && media != null) {
+                                key(trailerPlay) {
+                                    BackdropTrailer(
+                                        url = media.video,
+                                        audio = media.audio,
+                                        referer = trailerPage,
+                                        modifier = Modifier.fillMaxSize(),
+                                        onReady = { trailerFrame = true },
+                                        onFailed = { wantTrailer = false },
+                                    )
+                                }
+                            }
+                            if (trailerLoading) {
+                                CircularProgressIndicator(
+                                    color = Color.White,
+                                    strokeWidth = 2.5.dp,
+                                    modifier = Modifier.size(36.dp),
+                                )
+                            }
                         }
                     }
-                    if (trailerLoading) {
-                        CircularProgressIndicator(
-                            color = Color.White,
-                            strokeWidth = 2.5.dp,
-                            modifier = Modifier.size(36.dp),
-                        )
-                    }
+                    Box(
+                        Modifier
+                            .width(frameWidth * 0.16f)
+                            .height(neck)
+                            .background(chassis),
+                    )
+                    Box(
+                        Modifier
+                            .width(frameWidth * 0.4f)
+                            .height(foot)
+                            .clip(RoundedCornerShape(bottomStart = 3.dp, bottomEnd = 3.dp))
+                            .background(chassis),
+                    )
                 }
             }
         }
