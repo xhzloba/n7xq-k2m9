@@ -374,6 +374,7 @@
     <string name="search_voice_no_match">Речь не распознана</string>
     <string name="search_voice_network">Нужен интернет для голосового ввода</string>
     <string name="nav_home">Главная</string>
+    <string name="nav_search">Поиск</string>
     <string name="nav_catalog">Каталог</string>
     <string name="nav_kinopoisk">Кинопоиск</string>
     <string name="kp_updated">Обновлено %1$s</string>

@@ -34,6 +34,11 @@ import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -46,6 +51,7 @@ import com.example.movie.presentation.settings.LocalUserSettings
 internal fun TvSettingsScreen(
     menuFocus: FocusRequester,
     posterTarget: TvPosterTarget,
+    onReachMenu: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val repository = LocalUserSettings.current
@@ -69,6 +75,7 @@ internal fun TvSettingsScreen(
             onChecked = repository::setPlexBackdrop,
             menuFocus = menuFocus,
             rowFocus = rowFocus,
+            onReachMenu = onReachMenu,
         )
     }
 }
@@ -79,6 +86,7 @@ private fun TvPlexFrameRow(
     onChecked: (Boolean) -> Unit,
     menuFocus: FocusRequester,
     rowFocus: FocusRequester,
+    onReachMenu: () -> Unit,
 ) {
     var focused by remember { mutableStateOf(false) }
     Row(
@@ -87,8 +95,17 @@ private fun TvPlexFrameRow(
             .fillMaxWidth()
             .focusRequester(rowFocus)
             .onFocusChanged { focused = it.isFocused }
+            .onPreviewKeyEvent { event ->
+                if (!focused || event.type != KeyEventType.KeyDown || event.key != Key.DirectionLeft) {
+                    return@onPreviewKeyEvent false
+                }
+                val native = event.nativeKeyEvent
+                if (native.repeatCount > 0 || native.isLongPress) return@onPreviewKeyEvent true
+                onReachMenu()
+                true
+            }
             .focusProperties {
-                left = menuFocus
+                left = FocusRequester.Cancel
                 up = FocusRequester.Cancel
                 down = FocusRequester.Cancel
                 right = FocusRequester.Cancel

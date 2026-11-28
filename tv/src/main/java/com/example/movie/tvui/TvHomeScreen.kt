@@ -98,6 +98,8 @@ import kotlin.math.roundToInt
 private val SideInset = 56.dp
 private val RailRest = SideInset
 private val TitleHeight = 28.dp
+private val LogoHeight = 58.dp
+private val LogoMaxWidth = 280.dp
 private val RowGap = 26.dp
 private val MetaInk = Color.White.copy(alpha = 0.92f)
 
@@ -113,11 +115,9 @@ internal fun TvHomeScreen(
     menuFocus: FocusRequester,
     menuFocused: Boolean,
     onBrowsing: (Boolean) -> Unit,
+    onReachMenu: () -> Unit,
     onRetry: () -> Unit,
-    categories: List<TvCategory> = emptyList(),
-    categoryId: String = "",
-    onCategory: (String) -> Unit = {},
-    menuPulse: Int = 0,
+    backdrop: TvBackdrop,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -125,39 +125,11 @@ internal fun TvHomeScreen(
         if (rails.none { it.id == activeId } && rails.isNotEmpty()) onActiveId(rails.first().id)
     }
     var seenReset by remember { mutableIntStateOf(reset) }
-    var armMenu by remember { mutableStateOf(false) }
-    var pendingType by remember { mutableStateOf<String?>(null) }
-    var seenPulse by remember { mutableIntStateOf(menuPulse) }
-    val categoryRequesters = remember(categories) { List(categories.size) { FocusRequester() } }
-    val categoryIndex = categories.indexOfFirst { it.id == categoryId }.coerceAtLeast(0)
-    val categoryFocus = categoryRequesters.getOrNull(categoryIndex)
-    var categoryFocused by remember { mutableStateOf(false) }
     LaunchedEffect(reset) {
         if (reset == seenReset) return@LaunchedEffect
         seenReset = reset
         rails.firstOrNull()?.let { onActiveId(it.id) }
         picks.clear()
-    }
-    LaunchedEffect(menuPulse) {
-        if (menuPulse == seenPulse) return@LaunchedEffect
-        seenPulse = menuPulse
-        if (categories.isNotEmpty()) armMenu = true
-    }
-    LaunchedEffect(categoryFocused) {
-        if (categoryFocused) armMenu = false
-    }
-    LaunchedEffect(armMenu) {
-        if (!armMenu) return@LaunchedEffect
-        val opener = categoryFocus ?: run {
-            armMenu = false
-            return@LaunchedEffect
-        }
-        repeat(8) {
-            val moved = runCatching { opener.requestFocus() }
-            if (moved.isSuccess && moved.getOrNull() != false) return@LaunchedEffect
-            delay(40)
-        }
-        armMenu = false
     }
     val activeIndex = rails.indexOfFirst { it.id == activeId }.coerceAtLeast(0)
     val activeRail = rails.getOrNull(activeIndex)
@@ -170,26 +142,15 @@ internal fun TvHomeScreen(
     SideEffect {
         if (visible) onBrowsing(pick > 0 && activeRail?.movies?.isNotEmpty() == true)
     }
-    LaunchedEffect(pendingType, activeRail?.id, activeRail?.ready) {
-        val type = pendingType ?: return@LaunchedEffect
-        val rail = activeRail ?: return@LaunchedEffect
-        if (!rail.id.startsWith("$type:") || !rail.ready) return@LaunchedEffect
-        repeat(10) {
-            val poster = posterTarget.poster ?: return@repeat
-            val moved = runCatching { poster.requestFocus() }
-            if (moved.isSuccess && moved.getOrNull() != false) {
-                pendingType = null
-                return@LaunchedEffect
-            }
-            delay(40)
-        }
-    }
     val shown = movie ?: held
 
     val settings by LocalUserSettings.current.settings.collectAsStateWithLifecycle()
     val fromFrame = settings.plexBackdrop
     val motion = remember { TvWashMotion() }
     val wash = motion.current()
+    SideEffect {
+        if (visible) backdrop.wash = wash
+    }
     val cache = remember { HashMap<String, PosterWashCache>() }
     LaunchedEffect(shown?.id, shown?.backdropUrl, shown?.posterUrl, fromFrame) {
         val item = shown ?: return@LaunchedEffect
@@ -231,21 +192,7 @@ internal fun TvHomeScreen(
             .onPreviewKeyEvent { event ->
                 if (!visible) return@onPreviewKeyEvent false
                 val native = event.nativeKeyEvent
-                val confirm = event.key == Key.DirectionCenter || event.key == Key.Enter || event.key == Key.NumPadEnter
-                if (categoryFocused && confirm && (event.type == KeyEventType.KeyUp || native.repeatCount > 0 || native.isLongPress)) {
-                    return@onPreviewKeyEvent true
-                }
-                if (
-                    event.type == KeyEventType.KeyDown &&
-                    native.isLongPress &&
-                    confirm &&
-                    categories.isNotEmpty() &&
-                    !categoryFocused
-                ) {
-                    armMenu = true
-                    return@onPreviewKeyEvent true
-                }
-                if (event.type != KeyEventType.KeyDown || categoryFocused) {
+                if (event.type != KeyEventType.KeyDown) {
                     return@onPreviewKeyEvent false
                 }
                 val vertical = event.key == Key.DirectionDown || event.key == Key.DirectionUp
@@ -297,7 +244,7 @@ internal fun TvHomeScreen(
                 )
             }
         }
-        val textW = (maxWidth * 0.50f - SideInset).coerceIn(280.dp, 560.dp)
+        val textW = (maxWidth * 0.50f - SideInset).coerceIn(240.dp, 560.dp)
         TvHeroMeta(
             movie = shown,
             neighbors = listOfNotNull(
@@ -309,22 +256,9 @@ internal fun TvHomeScreen(
                 .align(Alignment.TopStart)
                 .padding(start = SideInset, top = 28.dp),
         )
-        val chosen = categories.firstOrNull { it.id == categoryId }
-        if (chosen != null && !categoryFocused) {
-            Text(
-                text = stringResource(chosen.label),
-                color = Color.White,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .padding(top = 20.dp)
-                    .zIndex(3f),
-            )
-        }
-        val posterH = (maxHeight * 0.36f).coerceIn(148.dp, 240.dp)
+        val posterH = (maxHeight * 0.42f).coerceIn(168.dp, 280.dp)
         val rowHeight = posterH + 50.dp + RowGap
-        val stageHeight = rowHeight + TitleHeight + 14.dp + posterH * 0.16f
+        val stageHeight = rowHeight + TitleHeight + 6.dp + posterH * 0.16f - 28.dp
         val density = LocalDensity.current
         val rowPx = with(density) { rowHeight.toPx() }
         val spanFrom = minOf(shift.value, activeIndex.toFloat())
@@ -333,32 +267,6 @@ internal fun TvHomeScreen(
             (activeIndex - 1)..(activeIndex + 1)
         } else {
             (spanFrom.toInt() - 1)..(spanTo.toInt() + 1)
-        }
-        if (categories.isNotEmpty()) {
-            TvCategoryList(
-                categories = categories,
-                categoryId = categoryId,
-                requesters = categoryRequesters,
-                menuFocus = menuFocus,
-                posterTarget = posterTarget,
-                visible = visible,
-                reachable = menuFocused || categoryFocused || armMenu,
-                onCommit = { id ->
-                    if (id != categoryId) {
-                        pendingType = id
-                        onCategory(id)
-                    } else {
-                        posterTarget.poster?.requestFocus()
-                    }
-                },
-                onFocused = { categoryFocused = it },
-                modifier = Modifier
-                    .align(Alignment.CenterStart)
-                    .zIndex(4f)
-                    .padding(start = 48.dp)
-                    .offset(y = (-28).dp)
-                    .graphicsLayer { alpha = if (categoryFocused) 1f else 0f },
-            )
         }
         Box(
             modifier = Modifier
@@ -378,8 +286,9 @@ internal fun TvHomeScreen(
                         menuFocus = menuFocus,
                         menuFocused = menuFocused,
                         visible = visible,
-                        skipAutoFocus = categoryFocused || pendingType != null,
+                        inset = SideInset,
                         posterTarget = posterTarget,
+                        onReachMenu = onReachMenu,
                         onPick = { picks[rail.id] = it },
                         onRetry = onRetry,
                         modifier = Modifier
@@ -461,7 +370,7 @@ private fun TvHeroMeta(
     movie: Movie?,
     neighbors: List<Movie>,
     width: Dp,
-    overviewLines: Int = 3,
+    overviewLines: Int = 2,
     modifier: Modifier = Modifier,
 ) {
     val container = LocalAppContainer.current
@@ -500,7 +409,11 @@ private fun TvHeroMeta(
             },
             label = "hero",
         ) { item ->
-            if (item != null) TvHeroBody(item, width, facts[item.id], overviewLines)
+            if (item != null) {
+                TvHeroBody(item, width, facts[item.id], overviewLines)
+            } else {
+                TvHeroSkeleton(width, overviewLines)
+            }
         }
     }
 }
@@ -521,13 +434,17 @@ private fun TvHeroBody(movie: Movie, width: Dp, facts: HeroFacts?, overviewLines
     var logoFailed by remember(movie.id, logo) { mutableStateOf(logo.isNullOrBlank()) }
     Column(Modifier.width(width)) {
         when {
-            logo.isNullOrBlank() && waiting -> Box(Modifier.height(46.dp)) {
-                Bone(Modifier.width(168.dp).height(28.dp), bone)
+            logo.isNullOrBlank() && waiting -> Box(Modifier.height(LogoHeight)) {
+                Bone(Modifier.width(200.dp).height(34.dp), bone)
             }
             logoFailed -> TvTitleFallback(movie.title)
-            else -> Box(Modifier.height(46.dp)) {
-                TvLogo(title = movie.title, logoUrl = logo, width = width, onFailed = { logoFailed = true })
-            }
+            else -> TvLogo(
+                title = movie.title,
+                logoUrl = logo,
+                width = width,
+                bone = bone,
+                onFailed = { logoFailed = true },
+            )
         }
         Spacer(Modifier.height(8.dp))
         Row(
@@ -535,9 +452,9 @@ private fun TvHeroBody(movie: Movie, width: Dp, facts: HeroFacts?, overviewLines
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            movie.age?.let { age ->
+            if (movie.age != null) {
                 Text(
-                    text = stringResource(R.string.age_badge, age),
+                    text = stringResource(R.string.age_badge, movie.age),
                     color = Color.White,
                     fontSize = 10.sp,
                     lineHeight = 12.sp,
@@ -546,9 +463,13 @@ private fun TvHeroBody(movie: Movie, width: Dp, facts: HeroFacts?, overviewLines
                         .border(1.dp, Color.White.copy(alpha = 0.72f), RoundedCornerShape(4.dp))
                         .padding(horizontal = 5.dp, vertical = 0.dp),
                 )
+            } else if (waiting) {
+                Bone(Modifier.width(28.dp).height(14.dp), bone)
             }
-            movie.year?.let { year ->
-                Text(year.toString(), color = MetaInk, fontSize = 11.sp, lineHeight = 14.sp)
+            if (movie.year != null) {
+                Text(movie.year.toString(), color = MetaInk, fontSize = 11.sp, lineHeight = 14.sp)
+            } else if (waiting) {
+                Bone(Modifier.width(36.dp).height(12.dp), bone)
             }
             when {
                 runtime != null -> Text(
@@ -561,7 +482,7 @@ private fun TvHeroBody(movie: Movie, width: Dp, facts: HeroFacts?, overviewLines
             }
             if (movie.genres.isNotBlank()) {
                 Text(
-                    text = movie.genres,
+                    text = movie.genres.twoGenres(),
                     color = MetaInk,
                     fontSize = 11.sp,
                     lineHeight = 14.sp,
@@ -569,9 +490,11 @@ private fun TvHeroBody(movie: Movie, width: Dp, facts: HeroFacts?, overviewLines
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f, fill = false),
                 )
+            } else if (waiting) {
+                Bone(Modifier.width(120.dp).height(12.dp), bone)
             }
         }
-        Spacer(Modifier.height(4.dp))
+        Spacer(Modifier.height(10.dp))
         if (overview.isBlank() && waiting) {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 repeat(overviewLines) { line ->
@@ -599,6 +522,44 @@ private fun TvHeroBody(movie: Movie, width: Dp, facts: HeroFacts?, overviewLines
 }
 
 @Composable
+private fun TvHeroSkeleton(width: Dp, overviewLines: Int) {
+    val pulse = rememberInfiniteTransition(label = "hero-empty")
+    val bone by pulse.animateFloat(
+        initialValue = 0.08f,
+        targetValue = 0.18f,
+        animationSpec = infiniteRepeatable(tween(680), RepeatMode.Reverse),
+        label = "hero-empty-alpha",
+    )
+    Column(Modifier.width(width)) {
+        Box(Modifier.height(LogoHeight), contentAlignment = Alignment.CenterStart) {
+            Bone(Modifier.width(200.dp).height(34.dp), bone)
+        }
+        Spacer(Modifier.height(8.dp))
+        Row(
+            Modifier.height(18.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Bone(Modifier.width(28.dp).height(14.dp), bone)
+            Bone(Modifier.width(36.dp).height(12.dp), bone)
+            Bone(Modifier.width(48.dp).height(12.dp), bone)
+            Bone(Modifier.width(120.dp).height(12.dp), bone)
+        }
+        Spacer(Modifier.height(10.dp))
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            repeat(overviewLines) { line ->
+                val fraction = when (line) {
+                    0 -> 1f
+                    overviewLines - 1 -> 0.66f
+                    else -> 0.92f
+                }
+                Bone(Modifier.fillMaxWidth(fraction).height(10.dp), bone)
+            }
+        }
+    }
+}
+
+@Composable
 private fun Bone(modifier: Modifier, alpha: Float) {
     Box(
         modifier
@@ -613,8 +574,8 @@ private fun TvTitleFallback(title: String) {
         text = title,
         color = Color.White,
         fontWeight = FontWeight.SemiBold,
-        fontSize = 26.sp,
-        lineHeight = 30.sp,
+        fontSize = 30.sp,
+        lineHeight = 34.sp,
         letterSpacing = (-0.4).sp,
         maxLines = 2,
         overflow = TextOverflow.Ellipsis,
@@ -622,102 +583,42 @@ private fun TvTitleFallback(title: String) {
 }
 
 @Composable
-private fun TvLogo(title: String, logoUrl: String?, width: Dp, onFailed: () -> Unit) {
-    AsyncImage(
-        model = logoUrl,
-        contentDescription = title,
-        contentScale = ContentScale.Fit,
-        alignment = Alignment.CenterStart,
-        onError = { onFailed() },
-        modifier = Modifier
-            .height(46.dp)
-            .widthIn(max = width.coerceAtMost(240.dp))
-            .fillMaxWidth(),
-    )
-}
-
-@Composable
-private fun TvCategoryList(
-    categories: List<TvCategory>,
-    categoryId: String,
-    requesters: List<FocusRequester>,
-    menuFocus: FocusRequester,
-    posterTarget: TvPosterTarget,
-    visible: Boolean,
-    reachable: Boolean,
-    onCommit: (String) -> Unit,
-    onFocused: (Boolean) -> Unit,
-    modifier: Modifier = Modifier,
+private fun TvLogo(
+    title: String,
+    logoUrl: String?,
+    width: Dp,
+    bone: Float,
+    onFailed: () -> Unit,
 ) {
-    Column(
-        modifier = modifier
-            .onFocusChanged { onFocused(it.hasFocus) }
-            .width(136.dp)
-            .background(Color.Black.copy(alpha = 0.92f), RoundedCornerShape(12.dp))
-            .padding(3.dp),
-        verticalArrangement = Arrangement.spacedBy(1.dp),
+    var ready by remember(logoUrl) { mutableStateOf(false) }
+    Box(
+        modifier = Modifier
+            .height(LogoHeight)
+            .widthIn(max = width.coerceAtMost(LogoMaxWidth))
+            .fillMaxWidth(),
+        contentAlignment = Alignment.CenterStart,
     ) {
-        categories.forEachIndexed { index, category ->
-            val selected = category.id == categoryId
-            var rowFocused by remember(category.id) { mutableStateOf(false) }
-            val open = { onCommit(category.id) }
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(18.dp)
-                    .focusRequester(requesters[index])
-                    .onFocusChanged { rowFocused = it.isFocused }
-                    .onPreviewKeyEvent { event ->
-                        if (!rowFocused) return@onPreviewKeyEvent false
-                        val confirm = event.key == Key.DirectionRight ||
-                            event.key == Key.DirectionCenter ||
-                            event.key == Key.Enter ||
-                            event.key == Key.NumPadEnter
-                        if (!confirm) return@onPreviewKeyEvent false
-                        val native = event.nativeKeyEvent
-                        if (event.type != KeyEventType.KeyDown || native.repeatCount > 0 || native.isLongPress) {
-                            true
-                        } else {
-                            open()
-                            true
-                        }
-                    }
-                    .focusProperties {
-                        canFocus = visible && reachable
-                        left = menuFocus
-                        right = FocusRequester.Cancel
-                        if (index == 0) up = FocusRequester.Cancel
-                        if (index == categories.lastIndex) down = FocusRequester.Cancel
-                    }
-                    .clip(RoundedCornerShape(8.dp))
-                    .border(
-                        width = if (rowFocused) 1.dp else 0.dp,
-                        color = if (rowFocused) Color.White else Color.Transparent,
-                        shape = RoundedCornerShape(8.dp),
-                    )
-                    .background(if (rowFocused) Color.White.copy(alpha = 0.14f) else Color.Transparent)
-                    .clickable(
-                        interactionSource = remember(category.id) { MutableInteractionSource() },
-                        indication = null,
-                        onClick = open,
-                    )
-                    .padding(horizontal = 8.dp),
-                contentAlignment = Alignment.CenterStart,
-            ) {
-                Text(
-                    text = stringResource(category.label),
-                    color = if (rowFocused || selected) Color.White else Color.White.copy(alpha = 0.7f),
-                    fontSize = 11.sp,
-                    lineHeight = 13.sp,
-                    fontWeight = if (rowFocused || selected) FontWeight.SemiBold else FontWeight.Medium,
-                    maxLines = 1,
-                    softWrap = false,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-        }
+        if (!ready) Bone(Modifier.width(200.dp).height(34.dp), bone)
+        AsyncImage(
+            model = logoUrl,
+            contentDescription = title,
+            contentScale = ContentScale.Fit,
+            alignment = Alignment.CenterStart,
+            onSuccess = { ready = true },
+            onError = { onFailed() },
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer { alpha = if (ready) 1f else 0f },
+        )
     }
 }
+
+
+private fun String.twoGenres(): String = split(',', '·', '•', '/')
+    .map { it.trim() }
+    .filter { it.isNotEmpty() }
+    .take(2)
+    .joinToString(", ")
 
 private fun Int.asRuntime(): String {
     val hours = this / 60
@@ -739,9 +640,9 @@ private fun TvRailRow(
     menuFocused: Boolean,
     inset: Dp = RailRest,
     visible: Boolean,
-    skipAutoFocus: Boolean = false,
     upFocus: FocusRequester? = null,
     posterTarget: TvPosterTarget,
+    onReachMenu: () -> Unit,
     onPick: (Int) -> Unit,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
@@ -758,8 +659,8 @@ private fun TvRailRow(
         posterTarget.poster = target
         posterTarget.requester = target
     }
-    LaunchedEffect(active, rail.id, count, menuFocused, visible, skipAutoFocus) {
-        if (!active || !visible || menuFocused || skipAutoFocus) return@LaunchedEffect
+    LaunchedEffect(active, rail.id, count, menuFocused, visible) {
+        if (!active || !visible || menuFocused) return@LaunchedEffect
         val requester = if (count == 0) emptyFocus else requesters[selected]
         repeat(8) {
             val moved = runCatching { requester.requestFocus() }
@@ -789,7 +690,7 @@ private fun TvRailRow(
                 .padding(start = inset)
                 .height(TitleHeight),
         )
-        Spacer(Modifier.height(6.dp))
+        Spacer(Modifier.height(2.dp))
         if (count == 0) {
             val message = when {
                 !rail.ready -> ""
@@ -822,8 +723,8 @@ private fun TvRailRow(
                     Row(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(start = inset, top = 8.dp, bottom = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            .padding(start = inset, top = 4.dp, bottom = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(18.dp),
                     ) {
                         repeat(6) {
                             Box(
@@ -841,11 +742,11 @@ private fun TvRailRow(
             val posterW = posterHeight * 0.68f
             LazyRow(
                 state = listState,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(18.dp),
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(
                     start = inset,
                     end = 48.dp,
-                    top = 8.dp,
+                    top = 4.dp,
                     bottom = 8.dp,
                 ),
                 userScrollEnabled = false,
@@ -872,12 +773,22 @@ private fun TvRailRow(
                                 focused = it.isFocused
                                 if (it.isFocused) onPick(index)
                             }
+                            .onPreviewKeyEvent { event ->
+                                if (index != 0 || !focused) return@onPreviewKeyEvent false
+                                if (event.type != KeyEventType.KeyDown || event.key != Key.DirectionLeft) {
+                                    return@onPreviewKeyEvent false
+                                }
+                                val native = event.nativeKeyEvent
+                                if (native.repeatCount > 0 || native.isLongPress) return@onPreviewKeyEvent true
+                                onReachMenu()
+                                true
+                            }
                             .focusProperties {
                                 canFocus = visible && (active || focused)
                                 up = FocusRequester.Cancel
                                 down = FocusRequester.Cancel
                                 if (upFocus != null) up = upFocus
-                                if (index == 0) left = menuFocus
+                                if (index == 0) left = FocusRequester.Cancel
                                 if (index == movies.lastIndex) right = FocusRequester.Cancel
                             }
                             .clickable(

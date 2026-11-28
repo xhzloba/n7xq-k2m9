@@ -7,6 +7,9 @@ import androidx.compose.animation.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import coil.imageLoader
 import coil.request.ImageRequest
@@ -19,6 +22,17 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+
+internal class TvBackdrop {
+    var wash by mutableStateOf(
+        PosterWash(
+            topLeft = Color(0xFF101014),
+            topRight = Color(0xFF101014),
+            bottomRight = Color(0xFF101014),
+            bottomLeft = Color(0xFF101014),
+        ),
+    )
+}
 
 internal class TvWashMotion {
     val topLeft = Animatable(Color(0xFF101014))
