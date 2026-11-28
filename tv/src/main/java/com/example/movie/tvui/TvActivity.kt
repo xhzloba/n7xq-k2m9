@@ -99,6 +99,8 @@ private fun TvShell(model: TvHomeViewModel) {
     var catalogReset by remember { mutableIntStateOf(0) }
     var returning by remember { mutableIntStateOf(0) }
     var reach by remember { mutableIntStateOf(0) }
+    var shelf by remember { mutableStateOf<TvRail?>(null) }
+    var shelfIndex by remember { mutableIntStateOf(0) }
     val backdrop = remember { TvBackdrop() }
     val kind = place.kind
     LaunchedEffect(kind) {
@@ -107,8 +109,8 @@ private fun TvShell(model: TvHomeViewModel) {
     LaunchedEffect(place) {
         if (place != TvPlace.Home && place.kind == null) browsing = false
     }
-    LaunchedEffect(returning, place, rails, catalogRails) {
-        if (returning == 0) return@LaunchedEffect
+    LaunchedEffect(returning, place, rails, catalogRails, shelf) {
+        if (returning == 0 || shelf != null) return@LaunchedEffect
         val ready = when {
             place == TvPlace.Home -> rails.isEmpty() || rails.any { it.ready || it.movies.isNotEmpty() }
             kind != null -> catalogRails.any { it.id.startsWith("$kind:") && (it.ready || it.movies.isNotEmpty()) }
@@ -143,6 +145,11 @@ private fun TvShell(model: TvHomeViewModel) {
             onBrowsing = { browsing = it },
             onReachMenu = { reach++ },
             onRetry = model::reload,
+            onSeeAll = {
+                shelfIndex = 0
+                shelf = it
+            },
+            hold = shelf != null,
             backdrop = backdrop,
             modifier = Modifier
                 .fillMaxSize()
@@ -161,6 +168,11 @@ private fun TvShell(model: TvHomeViewModel) {
             onBrowsing = { browsing = it },
             onReachMenu = { reach++ },
             onRetry = catalogModel::reload,
+            onSeeAll = {
+                shelfIndex = 0
+                shelf = it
+            },
+            hold = shelf != null,
             backdrop = backdrop,
             modifier = Modifier
                 .fillMaxSize()
@@ -194,12 +206,31 @@ private fun TvShell(model: TvHomeViewModel) {
             )
             else -> Unit
         }
+        shelf?.let { rail ->
+            TvAllPage(
+                rail = rail,
+                menuFocused = menuFocused,
+                returning = returning,
+                posterTarget = shelfIndex,
+                onPosterTarget = { shelfIndex = it },
+                onOpen = {},
+                onReachMenu = { reach++ },
+                onClose = {
+                    shelf = null
+                    returning++
+                },
+                modifier = Modifier
+                    .fillMaxSize()
+                    .zIndex(3f),
+            )
+        }
         TvSideMenu(
             current = place,
             compact = browsing && !menuFocused,
             reach = reach,
             focus = menuFocus,
             onOpen = { next ->
+                shelf = null
                 if (next != place) {
                     if (next.kind != null && next.kind != kind) catalogReset++
                     place = next

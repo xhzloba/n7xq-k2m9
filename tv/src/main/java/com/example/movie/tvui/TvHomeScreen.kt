@@ -16,6 +16,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.BringIntoViewSpec
@@ -125,6 +126,8 @@ internal fun TvHomeScreen(
     onBrowsing: (Boolean) -> Unit,
     onReachMenu: () -> Unit,
     onRetry: () -> Unit,
+    onSeeAll: (TvRail) -> Unit,
+    hold: Boolean = false,
     backdrop: TvBackdrop,
     modifier: Modifier = Modifier,
 ) {
@@ -262,7 +265,7 @@ internal fun TvHomeScreen(
             width = textW,
             modifier = Modifier
                 .align(Alignment.TopStart)
-                .padding(start = TvRailInset, top = 28.dp),
+                .padding(start = TvRailInset, top = 52.dp),
         )
         val posterH = (maxHeight * 0.40f).coerceIn(160.dp, 268.dp)
         val rowHeight = posterH + 50.dp + RowGap
@@ -297,6 +300,8 @@ internal fun TvHomeScreen(
                         inset = TvRailInset,
                         posterTarget = posterTarget,
                         onReachMenu = onReachMenu,
+                        onSeeAll = { onSeeAll(rail) },
+                        hold = hold,
                         onPick = { picks[rail.id] = it },
                         onRetry = onRetry,
                         modifier = Modifier
@@ -652,6 +657,8 @@ private fun TvRailRow(
     upFocus: FocusRequester? = null,
     posterTarget: TvPosterTarget,
     onReachMenu: () -> Unit,
+    onSeeAll: () -> Unit,
+    hold: Boolean = false,
     onPick: (Int) -> Unit,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
@@ -661,6 +668,7 @@ private fun TvRailRow(
     val listState = rememberLazyListState()
     val requesters = remember(rail.id, count) { List(count) { FocusRequester() } }
     val emptyFocus = remember(rail.id) { FocusRequester() }
+    val seeAll = remember(rail.id) { FocusRequester() }
     val selected = pick.coerceIn(0, (count - 1).coerceAtLeast(0))
     if (active && visible) {
         val target = if (count == 0) emptyFocus else requesters[selected]
@@ -668,7 +676,7 @@ private fun TvRailRow(
         posterTarget.requester = target
     }
     LaunchedEffect(active, rail.id, count, menuFocused, visible) {
-        if (!active || !visible || menuFocused) return@LaunchedEffect
+        if (!active || !visible || menuFocused || hold) return@LaunchedEffect
         val requester = if (count == 0) emptyFocus else requesters[selected]
         repeat(8) {
             val moved = runCatching { requester.requestFocus() }
@@ -796,12 +804,12 @@ private fun TvRailRow(
                                 true
                             }
                             .focusProperties {
-                                canFocus = visible && (active || focused)
+                                canFocus = visible && !hold && (active || focused)
                                 up = FocusRequester.Cancel
                                 down = FocusRequester.Cancel
                                 if (upFocus != null) up = upFocus
                                 if (index == 0) left = FocusRequester.Cancel
-                                if (index == movies.lastIndex) right = FocusRequester.Cancel
+                                if (index == movies.lastIndex) right = seeAll
                             }
                             .clickable(
                                 interactionSource = interaction,
@@ -838,9 +846,79 @@ private fun TvRailRow(
                         }
                     }
                 }
+                item(key = "see-all") {
+                    TvSeeAll(
+                        height = posterHeight,
+                        focus = seeAll,
+                        allow = visible && active && !hold,
+                        left = requesters[movies.lastIndex],
+                        onOpen = onSeeAll,
+                    )
+                }
             }
             }
         }
         Spacer(Modifier.height(RowGap))
+    }
+}
+
+@Composable
+private fun TvSeeAll(
+    height: Dp,
+    focus: FocusRequester,
+    allow: Boolean,
+    left: FocusRequester,
+    onOpen: () -> Unit,
+) {
+    var focused by remember { mutableStateOf(false) }
+    val shape = RoundedCornerShape(percent = 50)
+    Box(
+        modifier = Modifier.height(height),
+        contentAlignment = Alignment.CenterStart,
+    ) {
+        Text(
+            text = stringResource(R.string.rail_see_all),
+            color = Color.White,
+            fontSize = 17.sp,
+            lineHeight = 20.sp,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier
+                .focusRequester(focus)
+                .onFocusChanged { focused = it.isFocused }
+                .onPreviewKeyEvent { event ->
+                    if (!focused) return@onPreviewKeyEvent false
+                    val open = event.key == Key.DirectionRight ||
+                        event.key == Key.DirectionCenter ||
+                        event.key == Key.Enter ||
+                        event.key == Key.NumPadEnter
+                    if (!open) return@onPreviewKeyEvent false
+                    if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent true
+                    val native = event.nativeKeyEvent
+                    if (native.repeatCount > 0 || native.isLongPress) return@onPreviewKeyEvent true
+                    onOpen()
+                    true
+                }
+                .focusProperties {
+                    canFocus = allow
+                    this.left = left
+                    right = FocusRequester.Cancel
+                    up = FocusRequester.Cancel
+                    down = FocusRequester.Cancel
+                }
+                .focusable()
+                .border(
+                    width = 2.dp,
+                    color = if (focused) Color.White else Color.Transparent,
+                    shape = shape,
+                )
+                .clip(shape)
+                .background(Color.White.copy(alpha = 0.16f))
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onOpen,
+                )
+                .padding(horizontal = 28.dp, vertical = 14.dp),
+        )
     }
 }

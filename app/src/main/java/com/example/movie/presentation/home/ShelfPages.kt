@@ -30,6 +30,11 @@ internal class ShelfPages {
         page = 0
     }
 
+    /** Уже показанные id, без сдвига страницы. Следующий advance пропустит их как повтор. */
+    fun remember(movies: List<Movie>) {
+        movies.forEach { seen.add(it.id) }
+    }
+
     fun advance(batch: List<Movie>, hasMore: Boolean, paged: Boolean): ShelfTake {
         val ids = LinkedHashSet<String>(batch.size)
         val fresh = ArrayList<Movie>(batch.size)

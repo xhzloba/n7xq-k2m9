@@ -53,7 +53,11 @@ internal class TvCatalogViewModel(
         cache.remove(type)
         val sorts = CatalogSort.forType(type)
         _rails.value = sorts.map { sort ->
-            TvRail(id = "$type:${sort.name}", titleRes = sort.title)
+            TvRail(
+                id = "$type:${sort.name}",
+                titleRes = sort.title,
+                query = CatalogQuery(sort = sort.sort, type = type, country = sort.country),
+            )
         }
         job = viewModelScope.launch {
             sorts.forEach { sort ->

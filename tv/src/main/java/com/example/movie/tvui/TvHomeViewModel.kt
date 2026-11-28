@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.update
 internal data class TvRail(
     val id: String,
     @StringRes val titleRes: Int,
+    val query: CatalogQuery? = null,
     val movies: List<Movie> = emptyList(),
     val ready: Boolean = false,
     val failed: Boolean = false,
@@ -73,7 +74,9 @@ internal class TvHomeViewModel(
         }
     }
 
-    private fun fresh(): List<TvRail> = specs.map { TvRail(id = it.id, titleRes = it.titleRes) }
+    private fun fresh(): List<TvRail> = specs.map {
+        TvRail(id = it.id, titleRes = it.titleRes, query = it.query)
+    }
 
     private suspend fun fetch(spec: Spec): Result<List<Movie>> {
         val first = load(spec)
