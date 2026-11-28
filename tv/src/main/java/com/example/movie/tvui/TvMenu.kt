@@ -128,6 +128,10 @@ private val PearlStroke = Brush.linearGradient(
 )
 private val ClearStroke = Brush.linearGradient(listOf(Color.Transparent, Color.Transparent))
 private val CardWidth = 208.dp
+internal val TvPillStart = 16.dp
+private val PillPad = 5.dp
+private val PillWell = 26.dp
+internal val TvRailInset = TvPillStart + PillPad * 2 + PillWell + TvPillStart
 
 @Composable
 internal fun TvSideMenu(
@@ -174,7 +178,7 @@ internal fun TvSideMenu(
         animationSpec = tween(280, easing = FastOutSlowInEasing),
         label = "pill",
     )
-    val well = lerp(26.dp, 16.dp, travel)
+    val well = lerp(PillWell, 16.dp, travel)
     val iconSize = lerp(15.dp, 9.dp, travel)
     val kindFocus = remember { Kinds.map { FocusRequester() } }
     var originY by remember { mutableFloatStateOf(0f) }
@@ -210,11 +214,11 @@ internal fun TvSideMenu(
             Column(
                 modifier = Modifier
                     .align(Alignment.CenterStart)
-                    .padding(start = 8.dp)
+                    .padding(start = TvPillStart)
                     .clip(PillShape)
                     .background(Color.Black.copy(alpha = 0.38f + (0.1f - 0.38f) * travel))
                     .padding(
-                        horizontal = lerp(5.dp, 3.dp, travel),
+                        horizontal = lerp(PillPad, 3.dp, travel),
                         vertical = lerp(7.dp, 4.dp, travel),
                     ),
                 verticalArrangement = Arrangement.spacedBy(lerp(2.dp, 1.dp, travel)),

@@ -14,9 +14,12 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.BringIntoViewSpec
+import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -40,6 +43,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -95,12 +99,16 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
-private val SideInset = 56.dp
-private val RailRest = SideInset
+private val RailRest = TvRailInset
 private val TitleHeight = 28.dp
 private val LogoHeight = 58.dp
 private val LogoMaxWidth = 280.dp
-private val RowGap = 26.dp
+private val RowGap = 14.dp
+
+/** Фокус сам ленту не тянет. Место активного постера задаёт тот же scroll, что и при листании. */
+private object StillPoster : BringIntoViewSpec {
+    override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float = 0f
+}
 private val MetaInk = Color.White.copy(alpha = 0.92f)
 
 @Composable
@@ -244,7 +252,7 @@ internal fun TvHomeScreen(
                 )
             }
         }
-        val textW = (maxWidth * 0.50f - SideInset).coerceIn(240.dp, 560.dp)
+        val textW = (maxWidth * 0.50f - TvRailInset).coerceIn(240.dp, 560.dp)
         TvHeroMeta(
             movie = shown,
             neighbors = listOfNotNull(
@@ -254,11 +262,11 @@ internal fun TvHomeScreen(
             width = textW,
             modifier = Modifier
                 .align(Alignment.TopStart)
-                .padding(start = SideInset, top = 28.dp),
+                .padding(start = TvRailInset, top = 28.dp),
         )
-        val posterH = (maxHeight * 0.42f).coerceIn(168.dp, 280.dp)
+        val posterH = (maxHeight * 0.40f).coerceIn(160.dp, 268.dp)
         val rowHeight = posterH + 50.dp + RowGap
-        val stageHeight = rowHeight + TitleHeight + 6.dp + posterH * 0.16f - 28.dp
+        val stageHeight = rowHeight + TitleHeight + 6.dp + posterH * 0.16f - 26.dp
         val density = LocalDensity.current
         val rowPx = with(density) { rowHeight.toPx() }
         val spanFrom = minOf(shift.value, activeIndex.toFloat())
@@ -286,7 +294,7 @@ internal fun TvHomeScreen(
                         menuFocus = menuFocus,
                         menuFocused = menuFocused,
                         visible = visible,
-                        inset = SideInset,
+                        inset = TvRailInset,
                         posterTarget = posterTarget,
                         onReachMenu = onReachMenu,
                         onPick = { picks[rail.id] = it },
@@ -630,6 +638,7 @@ private fun Int.asRuntime(): String {
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun TvRailRow(
     rail: TvRail,
@@ -653,7 +662,6 @@ private fun TvRailRow(
     val requesters = remember(rail.id, count) { List(count) { FocusRequester() } }
     val emptyFocus = remember(rail.id) { FocusRequester() }
     val selected = pick.coerceIn(0, (count - 1).coerceAtLeast(0))
-    var placed by remember(rail.id) { mutableStateOf(false) }
     if (active && visible) {
         val target = if (count == 0) emptyFocus else requesters[selected]
         posterTarget.poster = target
@@ -669,13 +677,16 @@ private fun TvRailRow(
             delay(40)
         }
     }
+    var wasActive by remember(rail.id) { mutableStateOf(false) }
     LaunchedEffect(active, selected, count) {
-        if (!active || count == 0) return@LaunchedEffect
-        if (!placed) {
-            placed = true
-            if (selected > 0) listState.scrollToItem(selected)
+        if (!active || count == 0) {
+            wasActive = false
             return@LaunchedEffect
         }
+        val enter = !wasActive
+        wasActive = true
+        val parked = listState.firstVisibleItemIndex == selected
+        if (enter && parked) return@LaunchedEffect
         listState.animateScrollToItem(selected)
     }
     Column(modifier.fillMaxWidth()) {
@@ -740,6 +751,7 @@ private fun TvRailRow(
             }
         } else {
             val posterW = posterHeight * 0.68f
+            CompositionLocalProvider(LocalBringIntoViewSpec provides StillPoster) {
             LazyRow(
                 state = listState,
                 horizontalArrangement = Arrangement.spacedBy(18.dp),
@@ -826,6 +838,7 @@ private fun TvRailRow(
                         }
                     }
                 }
+            }
             }
         }
         Spacer(Modifier.height(RowGap))
